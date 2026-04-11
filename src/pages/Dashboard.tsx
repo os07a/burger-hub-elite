@@ -8,9 +8,9 @@ const Dashboard = () => {
       <PageHeader title="لوحة التحكم" subtitle="السبت، 11 أبريل 2026" badge="مباشر" />
 
       <div className="grid grid-cols-4 gap-3 mb-5">
-        <MetricCard label="إيرادات اليوم" value="4,820" sub="↑ 12% عن أمس" subColor="success" />
-        <MetricCard label="عدد الطلبات" value="138" sub="متوسط 35 ريال/طلب" />
-        <MetricCard label="العمال الحاضرون" value="7 / 9" sub="2 غياب اليوم" subColor="warning" />
+        <MetricCard label="متوسط الإيرادات اليومية" value="696" sub="بناءً على 132 يوم فعلي" subColor="success" />
+        <MetricCard label="إجمالي المبيعات" value="97,640" sub="ديسمبر 2025 – أبريل 2026" />
+        <MetricCard label="صافي المبيعات" value="91,870" sub="بعد الخصومات والمسترد" subColor="success" />
         <MetricCard label="تنبيهات المخزون" value="3" sub="تحتاج إعادة طلب" subColor="danger" />
       </div>
 

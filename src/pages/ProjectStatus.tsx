@@ -310,12 +310,13 @@ const ProjectStatus = () => (
     </div>
 
     {/* ═══════ القسم الخامس: الاستثمار ═══════ */}
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-5 gap-2">
       {[
-        { label: "ديكور وتجهيزات", amount: "69,585", pct: 23.8, icon: "🎨", color: "border-t-purple-500" },
-        { label: "معدات وآلات", amount: "84,100", pct: 28.8, icon: "⚙️", color: "border-t-blue-500" },
-        { label: "إيجار (سنوي)", amount: "40,000", pct: 13.7, icon: "🏠", color: "border-t-amber-500" },
-        { label: "رواتب + تشغيل", amount: "84,000", pct: 28.7, icon: "👷", color: "border-t-green-500" },
+        { label: "ديكور وتشطيبات", amount: "60,386", pct: 20.7, icon: "🎨", color: "border-t-purple-500" },
+        { label: "آلات ومعدات", amount: "48,566", pct: 16.6, icon: "⚙️", color: "border-t-blue-500" },
+        { label: "إيجار", amount: "40,000", pct: 13.7, icon: "🏠", color: "border-t-amber-500" },
+        { label: "رواتب + عمالة", amount: "24,030", pct: 8.2, icon: "👷", color: "border-t-green-500" },
+        { label: "أخرى (هوية + رسوم + صيانة)", amount: "119,423", pct: 40.8, icon: "📋", color: "border-t-gray-500" },
       ].map((item) => (
         <div key={item.label} className={`bg-surface border border-border ${item.color} border-t-2 rounded-lg p-3 flex items-center gap-3`}>
           <div className="text-[22px]">{item.icon}</div>
