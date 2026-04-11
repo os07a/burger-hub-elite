@@ -14,6 +14,36 @@ const Dashboard = () => {
         <MetricCard label="تنبيهات المخزون" value="3" sub="تحتاج إعادة طلب" subColor="danger" />
       </div>
 
+      {/* تحصيل اليوم */}
+      <div className="bg-surface border border-border rounded-lg p-4 border-r-[3px] border-r-primary mb-5">
+        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">إيرادات اليوم — التحصيل اليومي للمبيعات</div>
+        <div className="grid grid-cols-3 gap-4 mb-3">
+          <div className="bg-background rounded-lg p-3 border border-border text-center">
+            <div className="text-[10px] text-gray-light font-medium mb-1">💵 كاش</div>
+            <div className="text-[20px] font-bold text-foreground">2,890</div>
+            <div className="text-[10px] text-gray-light mt-0.5">ريال · 60%</div>
+          </div>
+          <div className="bg-background rounded-lg p-3 border border-border text-center">
+            <div className="text-[10px] text-gray-light font-medium mb-1">💳 شبكة</div>
+            <div className="text-[20px] font-bold text-foreground">1,930</div>
+            <div className="text-[10px] text-gray-light mt-0.5">ريال · 40%</div>
+          </div>
+          <div className="bg-background rounded-lg p-3 border border-border text-center">
+            <div className="text-[10px] text-primary font-semibold mb-1">الإجمالي</div>
+            <div className="text-[20px] font-bold text-primary">4,820</div>
+            <div className="text-[10px] text-success mt-0.5 font-medium">↑ 12% عن أمس</div>
+          </div>
+        </div>
+        <div className="h-2 bg-background rounded-sm overflow-hidden flex">
+          <div className="h-full bg-foreground rounded-r-sm" style={{ width: "60%" }} />
+          <div className="h-full bg-primary rounded-l-sm" style={{ width: "40%" }} />
+        </div>
+        <div className="flex justify-between mt-1.5 text-[9px] text-gray-light">
+          <span>● كاش 60%</span>
+          <span>● شبكة 40%</span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-surface border border-border rounded-lg p-4">
           <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">أكثر المبيعات اليوم</div>
