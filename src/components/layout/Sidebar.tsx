@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Sun, Moon } from "lucide-react";
 import {
   LayoutGrid, TrendingUp, Heart, Users, Calendar, Wallet,
-  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike
+  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike, MessageSquare
 } from "lucide-react";
 
 const navGroups = [
@@ -16,6 +16,7 @@ const navGroups = [
       { id: "advisor", label: "المستشار الذكي", icon: MessageCircle, path: "/advisor" },
       { id: "behavior", label: "سلوك المستهلك", icon: TrendingUp, path: "/behavior" },
       { id: "loyalty", label: "الولاء", icon: Heart, path: "/loyalty" },
+      { id: "messages", label: "الرسائل النصية", icon: MessageSquare, path: "/messages" },
     ],
   },
   {
