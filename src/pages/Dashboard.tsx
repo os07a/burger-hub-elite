@@ -8,39 +8,39 @@ const Dashboard = () => {
       <PageHeader title="لوحة التحكم" subtitle="السبت، 11 أبريل 2026" badge="مباشر" />
 
       <div className="grid grid-cols-4 gap-3 mb-5">
-        <MetricCard label="إيرادات اليوم" value="4,820" sub="↑ 12% عن أمس" subColor="success" />
-        <MetricCard label="عدد الطلبات" value="138" sub="متوسط 35 ريال/طلب" />
-        <MetricCard label="العمال الحاضرون" value="7 / 9" sub="2 غياب اليوم" subColor="warning" />
+        <MetricCard label="متوسط الإيرادات اليومية" value="696" sub="بناءً على 132 يوم فعلي" subColor="success" />
+        <MetricCard label="إجمالي المبيعات" value="97,640" sub="ديسمبر 2025 – أبريل 2026" />
+        <MetricCard label="صافي المبيعات" value="91,870" sub="بعد الخصومات والمسترد" subColor="success" />
         <MetricCard label="تنبيهات المخزون" value="3" sub="تحتاج إعادة طلب" subColor="danger" />
       </div>
 
       {/* تحصيل اليوم */}
       <div className="bg-surface border border-border rounded-lg p-4 border-r-[3px] border-r-primary mb-5">
-        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">إيرادات اليوم — التحصيل اليومي للمبيعات</div>
+        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">ملخص المبيعات — متوسطات حقيقية (132 يوم)</div>
         <div className="grid grid-cols-3 gap-4 mb-3">
           <div className="bg-background rounded-lg p-3 border border-border text-center">
-            <div className="text-[10px] text-gray-light font-medium mb-1">💵 كاش</div>
-            <div className="text-[20px] font-bold text-foreground">2,890</div>
-            <div className="text-[10px] text-gray-light mt-0.5">ريال · 60%</div>
+            <div className="text-[10px] text-gray-light font-medium mb-1">📊 متوسط يومي</div>
+            <div className="text-[20px] font-bold text-foreground">696</div>
+            <div className="text-[10px] text-gray-light mt-0.5">ريال/يوم</div>
           </div>
           <div className="bg-background rounded-lg p-3 border border-border text-center">
-            <div className="text-[10px] text-gray-light font-medium mb-1">💳 شبكة</div>
-            <div className="text-[20px] font-bold text-foreground">1,930</div>
-            <div className="text-[10px] text-gray-light mt-0.5">ريال · 40%</div>
+            <div className="text-[10px] text-gray-light font-medium mb-1">🏆 أعلى يوم</div>
+            <div className="text-[20px] font-bold text-green-400">2,030</div>
+            <div className="text-[10px] text-gray-light mt-0.5">ريال · 2 يناير</div>
           </div>
           <div className="bg-background rounded-lg p-3 border border-border text-center">
-            <div className="text-[10px] text-primary font-semibold mb-1">الإجمالي</div>
-            <div className="text-[20px] font-bold text-primary">4,820</div>
-            <div className="text-[10px] text-green-400 mt-0.5 font-medium">↑ 12% عن أمس</div>
+            <div className="text-[10px] text-primary font-semibold mb-1">أبريل (حتى الآن)</div>
+            <div className="text-[20px] font-bold text-primary">848</div>
+            <div className="text-[10px] text-green-400 mt-0.5 font-medium">↑ 22% عن المتوسط العام</div>
           </div>
         </div>
         <div className="h-2 bg-background rounded-sm overflow-hidden flex">
-          <div className="h-full bg-foreground rounded-r-sm" style={{ width: "60%" }} />
-          <div className="h-full bg-primary rounded-l-sm" style={{ width: "40%" }} />
+          <div className="h-full bg-foreground rounded-r-sm" style={{ width: "57%" }} />
+          <div className="h-full bg-primary rounded-l-sm" style={{ width: "43%" }} />
         </div>
         <div className="flex justify-between mt-1.5 text-[9px] text-gray-light">
-          <span>● كاش 60%</span>
-          <span>● شبكة 40%</span>
+          <span>● صافي المبيعات: 91,870 ر.س</span>
+          <span>● خصومات: 5,477 ر.س (5.6%)</span>
         </div>
       </div>
 
