@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Sun, Moon } from "lucide-react";
 import {
   LayoutGrid, TrendingUp, Heart, Users, Calendar, Wallet,
   Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike
@@ -46,6 +48,22 @@ const navGroups = [
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("theme") === "dark";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
 
   return (
     <div className="w-[230px] bg-sidebar flex-shrink-0 sticky top-0 h-screen overflow-y-auto flex flex-col">
@@ -91,8 +109,15 @@ const Sidebar = () => {
         ))}
       </div>
 
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-sidebar-border">
+      {/* Footer with Dark Mode Toggle */}
+      <div className="px-4 py-4 border-t border-sidebar-border space-y-3">
+        <button
+          onClick={() => setIsDark(!isDark)}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-sidebar-hover text-sidebar-foreground hover:text-primary-foreground/80 transition-all duration-200 text-[12px]"
+        >
+          {isDark ? <Sun size={14} /> : <Moon size={14} />}
+          {isDark ? "الوضع الفاتح" : "الوضع الداكن"}
+        </button>
         <div className="text-[10px] text-sidebar-foreground/20 text-center tracking-wide">المدينة المنورة · 2026</div>
       </div>
     </div>
