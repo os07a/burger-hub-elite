@@ -59,7 +59,7 @@ const Behavior = () => {
         <MetricCard label="🔥 ذروة الأسبوع" value="الجمعة 9م" sub="810 ر.س متوسط يوم الجمعة" />
         <MetricCard label="🏆 الأكثر طلباً" value="آنجوس لحم" sub="34% من الطلبات" subColor="success" />
         <MetricCard label="📉 أضعف يوم" value="الاثنين" sub="627 ر.س متوسط" subColor="warning" />
-        <MetricCard label="📊 متوسط يومي" value="696" sub="ر.س · 132 يوم" />
+        <MetricCard label="📊 متوسط يومي" value="696" sub="132 يوم" showRiyal />
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">

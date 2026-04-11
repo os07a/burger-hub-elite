@@ -77,8 +77,8 @@ const Staff = () => (
 
     <div className="grid grid-cols-4 gap-3 mb-4">
       <MetricCard label="👥 عدد الموظفين" value={employees.length.toString()} sub={`${employees.filter(e => e.statusVariant === "success").length} حاضر الآن`} subColor="success" />
-      <MetricCard label="💰 إجمالي الرواتب" value={totalSalaries.toLocaleString()} sub="ر.س / شهر · 49.7% من الإيرادات" subColor="warning" />
-      <MetricCard label="📈 متوسط المبيعات/موظف" value={Math.round(696 * 30 / employees.length).toLocaleString()} sub="ر.س / شهر لكل موظف" />
+      <MetricCard label="💰 إجمالي الرواتب" value={totalSalaries.toLocaleString()} sub="شهرياً · 49.7% من الإيرادات" subColor="warning" showRiyal />
+      <MetricCard label="📈 متوسط المبيعات/موظف" value={Math.round(696 * 30 / employees.length).toLocaleString()} sub="شهرياً لكل موظف" showRiyal />
       <MetricCard label="📄 تنبيهات وثائق" value={employees.reduce((a, e) => a + e.alerts.filter(al => al.variant === "danger").length, 0).toString()} sub="وثائق منتهية تحتاج تجديد" subColor="danger" />
     </div>
 
