@@ -1,16 +1,15 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import RiyalIcon from "@/components/ui/RiyalIcon";
+import { Plus, X, Check } from "lucide-react";
+import { toast } from "sonner";
 
-// بيانات مركزية متطابقة مع باقي الأقسام
-const avgDaily = 696;
-const totalGrossSales = 97640;
-const totalNetSales = 91870;
-const totalDiscounts = 5477;
-const activeDays = 132;
 const totalSalaries = 10400;
-const aprilAvg = 848;
+const avgDaily = 696;
 
 const Dashboard = () => {
   return (
