@@ -34,14 +34,14 @@
 
     --radius: 0.6875rem;
 
-    --success: 145 58% 27%;
-    --success-bg: 145 40% 92%;
+    --success: 142 50% 40%;
+    --success-bg: 142 30% 93%;
     --warning: 40 100% 24%;
     --warning-bg: 40 95% 94%;
     --danger: 352 79% 30%;
     --danger-bg: 352 60% 94%;
-    --info: 224 65% 32%;
-    --info-bg: 224 50% 94%;
+    --info: 217 60% 45%;
+    --info-bg: 217 40% 94%;
 
     --sidebar-bg: 0 0% 10%;
     --sidebar-foreground: 0 0% 53%;
