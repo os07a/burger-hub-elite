@@ -26,10 +26,10 @@ const Inventory = () => (
     <PageHeader title="المخزون" subtitle="متابعة الكميات والتنبيهات — مرتبط بالموردين والمنتجات" badge={`${items.length} صنف`} />
 
     <div className="grid grid-cols-4 gap-3 mb-4">
-      <MetricCard label="إجمالي الأصناف" value={items.length.toString()} sub={`${categories.length} تصنيف`} />
-      <MetricCard label="كافٍ" value={items.filter(i => i.variant === "success").length.toString()} sub="لا يحتاج طلب" subColor="success" />
-      <MetricCard label="منخفض" value={items.filter(i => i.variant === "warning").length.toString()} sub="يحتاج إعادة طلب قريباً" subColor="warning" />
-      <MetricCard label="حرج" value={items.filter(i => i.variant === "danger").length.toString()} sub="يحتاج طلب فوري" subColor="danger" />
+      <MetricCard label="📦 إجمالي الأصناف" value={items.length.toString()} sub={`${categories.length} تصنيف`} />
+      <MetricCard label="✅ كافٍ" value={items.filter(i => i.variant === "success").length.toString()} sub="لا يحتاج طلب" subColor="success" />
+      <MetricCard label="⚡ منخفض" value={items.filter(i => i.variant === "warning").length.toString()} sub="يحتاج إعادة طلب قريباً" subColor="warning" />
+      <MetricCard label="🚨 حرج" value={items.filter(i => i.variant === "danger").length.toString()} sub="يحتاج طلب فوري" subColor="danger" />
     </div>
 
     <div className="bg-surface border border-border rounded-lg p-4">

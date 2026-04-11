@@ -40,10 +40,10 @@ const DeliveryApps = () => (
     <PageHeader title="تطبيقات التوصيل" subtitle="منصات التوصيل المرتبطة بالمطعم" badge={`${apps.length} تطبيق`} />
 
     <div className="grid grid-cols-4 gap-3 mb-5">
-      <MetricCard label="التطبيقات النشطة" value={apps.filter(a => a.status === "نشط").length} sub={`من ${apps.length} تطبيق`} subColor="success" />
-      <MetricCard label="إجمالي الطلبات" value="—" sub="بانتظار الربط" subColor="warning" />
-      <MetricCard label="إيرادات التوصيل" value="—" sub="بانتظار البيانات" subColor="warning" />
-      <MetricCard label="متوسط العمولة" value="~22%" sub="نسبة تقريبية" subColor="danger" />
+      <MetricCard label="📱 التطبيقات النشطة" value={apps.filter(a => a.status === "نشط").length} sub={`من ${apps.length} تطبيق`} subColor="success" />
+      <MetricCard label="🛵 إجمالي الطلبات" value="—" sub="بانتظار الربط" subColor="warning" />
+      <MetricCard label="💵 إيرادات التوصيل" value="—" sub="بانتظار البيانات" subColor="warning" />
+      <MetricCard label="🏷️ متوسط العمولة" value="~22%" sub="نسبة تقريبية" subColor="danger" />
     </div>
 
     <div className="grid grid-cols-2 gap-3 mb-5">

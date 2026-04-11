@@ -308,10 +308,10 @@ const Suppliers = () => {
       <PageHeader title="الموردون" subtitle="جهات التوريد الحقيقية من كشف المصروفات" badge={`${suppliers.length} مورد`} />
 
       <div className="grid grid-cols-4 gap-3 mb-4">
-        <MetricCard label="الموارد التموينية" value={supplyTotal.toLocaleString()} sub={`${supplySuppliers.length} مورد · ${cheaperCount} أرخص من السوق · ${expensiveCount} أغلى`} subColor="success" />
-        <MetricCard label="موردون الأصول" value={assetTotal.toLocaleString()} sub={`${assetSuppliers.length} مورد · ديكور وآلات وعقار`} subColor="warning" />
-        <MetricCard label="إجمالي التوريدات" value={(assetTotal + supplyTotal).toLocaleString()} sub="ريال سعودي · من أصل 292,405 مصروفات تأسيسية" />
-        <MetricCard label="عدد العمليات" value={suppliers.reduce((a, s) => a + s.ops, 0).toString()} sub="عملية موثقة" subColor="success" />
+        <MetricCard label="🛒 الموارد التموينية" value={supplyTotal.toLocaleString()} sub={`${supplySuppliers.length} مورد · ${cheaperCount} أرخص من السوق · ${expensiveCount} أغلى`} subColor="success" />
+        <MetricCard label="🏗️ موردون الأصول" value={assetTotal.toLocaleString()} sub={`${assetSuppliers.length} مورد · ديكور وآلات وعقار`} subColor="warning" />
+        <MetricCard label="💵 إجمالي التوريدات" value={(assetTotal + supplyTotal).toLocaleString()} sub="ريال سعودي · من أصل 292,405 مصروفات تأسيسية" />
+        <MetricCard label="📋 عدد العمليات" value={suppliers.reduce((a, s) => a + s.ops, 0).toString()} sub="عملية موثقة" subColor="success" />
       </div>
 
       {/* رسم بياني دائري - توزيع مصروفات التموين */}

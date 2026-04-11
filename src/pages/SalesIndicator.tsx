@@ -45,12 +45,12 @@ const SalesIndicator = () => (
     {/* مؤشرات سريعة */}
     <div className="grid grid-cols-6 gap-2 mb-4">
       {[
-        { label: "إجمالي المبيعات", value: "97,640", color: "text-primary" },
-        { label: "صافي المبيعات", value: "91,870", color: "text-green-400" },
-        { label: "متوسط يومي", value: "696", color: "text-blue-400" },
-        { label: "أعلى يوم", value: "2,030", color: "text-green-400" },
-        { label: "أدنى يوم فعلي", value: "97", color: "text-red-400" },
-        { label: "إجمالي الخصومات", value: "5,477", color: "text-orange-400" },
+        { label: "🧾 إجمالي المبيعات", value: "97,640", color: "text-primary" },
+        { label: "💵 صافي المبيعات", value: "91,870", color: "text-green-400" },
+        { label: "📊 متوسط يومي", value: "696", color: "text-blue-400" },
+        { label: "🏆 أعلى يوم", value: "2,030", color: "text-green-400" },
+        { label: "📉 أدنى يوم فعلي", value: "97", color: "text-red-400" },
+        { label: "🏷️ إجمالي الخصومات", value: "5,477", color: "text-orange-400" },
       ].map((m) => (
         <div key={m.label} className="bg-surface border border-border rounded-lg p-3 text-center">
           <div className="text-[9px] text-gray-light font-medium mb-1">{m.label}</div>
