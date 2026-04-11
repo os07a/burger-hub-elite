@@ -14,16 +14,432 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          date: string
+          employee_id: string
+          id: string
+          notes: string | null
+          status: string
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          status?: string
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_sales: {
+        Row: {
+          card_sales: number
+          cash_sales: number
+          created_at: string
+          date: string
+          delivery_sales: number
+          id: string
+          notes: string | null
+          orders_count: number
+          total_sales: number
+        }
+        Insert: {
+          card_sales?: number
+          cash_sales?: number
+          created_at?: string
+          date?: string
+          delivery_sales?: number
+          id?: string
+          notes?: string | null
+          orders_count?: number
+          total_sales?: number
+        }
+        Update: {
+          card_sales?: number
+          cash_sales?: number
+          created_at?: string
+          date?: string
+          delivery_sales?: number
+          id?: string
+          notes?: string | null
+          orders_count?: number
+          total_sales?: number
+        }
+        Relationships: []
+      }
+      employee_docs: {
+        Row: {
+          created_at: string
+          details: string | null
+          doc_number: string | null
+          doc_type: string
+          employee_id: string
+          expiry_date: string | null
+          id: string
+          issue_date: string | null
+          label: string
+          status: string
+          status_variant: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          doc_number?: string | null
+          doc_type: string
+          employee_id: string
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          label: string
+          status: string
+          status_variant?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          doc_number?: string | null
+          doc_type?: string
+          employee_id?: string
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string | null
+          label?: string
+          status?: string
+          status_variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_docs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          name: string
+          performance_rating: string | null
+          performance_tasks: string | null
+          role: string
+          role_short: string | null
+          salary: number
+          status: string
+          status_variant: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name: string
+          performance_rating?: string | null
+          performance_tasks?: string | null
+          role: string
+          role_short?: string | null
+          salary?: number
+          status?: string
+          status_variant?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          performance_rating?: string | null
+          performance_tasks?: string | null
+          role?: string
+          role_short?: string | null
+          salary?: number
+          status?: string
+          status_variant?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          category: string | null
+          cost_per_unit: number
+          created_at: string
+          id: string
+          last_restock: string | null
+          min_quantity: number
+          name: string
+          quantity: number
+          supplier: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          cost_per_unit?: number
+          created_at?: string
+          id?: string
+          last_restock?: string | null
+          min_quantity?: number
+          name: string
+          quantity?: number
+          supplier?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          cost_per_unit?: number
+          created_at?: string
+          id?: string
+          last_restock?: string | null
+          min_quantity?: number
+          name?: string
+          quantity?: number
+          supplier?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          status: string
+          supplier_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          status?: string
+          supplier_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          status?: string
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean
+          sender_id: string | null
+          title: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          sender_id?: string | null
+          title?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          sender_id?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category: string | null
+          cost: number
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          cost?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          price?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          cost?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          category: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          phone: string | null
+          rating: number | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          rating?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          rating?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "employee"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +566,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "employee"],
+    },
   },
 } as const
