@@ -57,10 +57,10 @@ const Products = () => (
     <PageHeader title="المنتجات" subtitle="دراسة التكاليف وهوامش الربح — بيانات حقيقية من ملف التحليل" badge="7 منتجات" />
 
     <div className="grid grid-cols-4 gap-3 mb-5">
-      <MetricCard label="مبيعات شهرية" value="25,500" sub="ر.س / ~850 يومياً" />
-      <MetricCard label="أعلى هامش خام" value="ناشفيل" sub="61.9% هامش" subColor="success" />
-      <MetricCard label="صافي ربح شهري" value="6,817" sub="ر.س · هامش 26.7%" subColor="success" />
-      <MetricCard label="نقطة التعادل" value="15,761" sub="ر.س · ~19 يوم عمل" subColor="warning" />
+      <MetricCard label="💰 مبيعات شهرية" value="25,500" sub="ر.س / ~850 يومياً" />
+      <MetricCard label="🏆 أعلى هامش خام" value="ناشفيل" sub="↑ 61.9% هامش" subColor="success" />
+      <MetricCard label="📈 صافي ربح شهري" value="6,817" sub="✅ ر.س · هامش 26.7%" subColor="success" />
+      <MetricCard label="⚖️ نقطة التعادل" value="15,761" sub="⏳ ر.س · ~19 يوم عمل" subColor="warning" />
     </div>
 
     {/* البرجر - بطاقات مع تحليل الهامش */}
