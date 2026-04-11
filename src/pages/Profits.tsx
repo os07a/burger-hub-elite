@@ -33,9 +33,9 @@ const Profits = () => (
 
     {/* Summary Cards */}
     <div className="grid grid-cols-3 gap-3 mb-5">
-      <MetricCard label="إجمالي المصروفات التأسيسية" value="292,405" sub="ريال سعودي" />
-      <MetricCard label="عدد العمليات" value="204" sub="98% موثقة" subColor="success" />
-      <MetricCard label="بدون مستندات" value="18" sub="7,185 ر.س تحتاج مراجعة" subColor="danger" />
+      <MetricCard label="💸 إجمالي المصروفات التأسيسية" value="292,405" sub="ريال سعودي" />
+      <MetricCard label="📋 عدد العمليات" value="204" sub="98% موثقة" subColor="success" />
+      <MetricCard label="⚠️ بدون مستندات" value="18" sub="7,185 ر.س تحتاج مراجعة" subColor="danger" />
     </div>
 
     {/* Expense Breakdown */}

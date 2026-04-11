@@ -30,10 +30,10 @@ const Attendance = () => (
     <PageHeader title="الحضور والانصراف" subtitle="السبت، 11 أبريل 2026" badge="اليوم" />
 
     <div className="grid grid-cols-4 gap-3 mb-5">
-      <MetricCard label="حاضرون" value={presentCount.toString()} sub={`من أصل ${todayRecords.length}`} subColor="success" />
-      <MetricCard label="تأخر" value={lateCount.toString()} sub="ميراج — 22 دقيقة" subColor="warning" />
-      <MetricCard label="غائب" value="0" sub="لا يوجد غياب اليوم" subColor="success" />
-      <MetricCard label="ساعات العمل اليوم" value={totalHours.toString()} sub="ساعة إجمالي" />
+      <MetricCard label="✅ حاضرون" value={presentCount.toString()} sub={`من أصل ${todayRecords.length}`} subColor="success" />
+      <MetricCard label="⏰ تأخر" value={lateCount.toString()} sub="ميراج — 22 دقيقة" subColor="warning" />
+      <MetricCard label="❌ غائب" value="0" sub="لا يوجد غياب اليوم" subColor="success" />
+      <MetricCard label="🕐 ساعات العمل اليوم" value={totalHours.toString()} sub="ساعة إجمالي" />
     </div>
 
     <div className="bg-surface border border-border rounded-lg p-4 border-r-[3px] border-r-primary mb-4">
