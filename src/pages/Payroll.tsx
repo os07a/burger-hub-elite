@@ -18,7 +18,7 @@ const Payroll = () => (
   <div>
     <PageHeader title="الرواتب" subtitle="كشف الرواتب الشهري — بيانات حقيقية من كشف المصروفات" badge={`${employees.length} موظف`} />
     <div className="grid grid-cols-4 gap-3 mb-5">
-      <MetricCard label="💰 إجمالي الرواتب الشهرية" value={totalSalaries.toLocaleString()} sub="ريال / شهر" />
+      <MetricCard label="💰 إجمالي الرواتب الشهرية" value={totalSalaries.toLocaleString()} sub="شهرياً" showRiyal />
       <MetricCard label="👥 عدد الموظفين" value={employees.length.toString()} sub={`${employees.filter(e => e.status === "نشط").length} نشط`} subColor="success" />
       <MetricCard label="📊 نسبة العمالة من الإيرادات" value={`${laborPct}%`} sub={`من ${monthlyRevenue.toLocaleString()} ر.س إيرادات شهرية`} subColor={parseFloat(laborPct) > 35 ? "danger" : "success"} />
       <MetricCard label="🏗️ من المصروفات التأسيسية" value="19,150" sub="إجمالي ما صُرف على الرواتب سابقاً" subColor="warning" />

@@ -194,7 +194,7 @@ const Archive = () => {
       <div className="grid grid-cols-4 gap-3 mb-5">
         <MetricCard label="🛒 فواتير تموينية" value={supplyDocs.length.toString()} sub={`${Math.round(supplyTotal).toLocaleString()} ر.س إجمالي`} subColor="success" />
         <MetricCard label="🏗️ فواتير الأصول" value={assetDocs.length.toString()} sub={`${Math.round(assetTotal).toLocaleString()} ر.س إجمالي`} subColor="warning" />
-        <MetricCard label="💸 إجمالي المصروفات" value="292,405" sub="ريال سعودي" />
+        <MetricCard label="💸 إجمالي المصروفات" value="292,405" sub="ريال سعودي" showRiyal />
         <MetricCard label="📅 الفترة" value="12 شهر" sub="أبريل 2025 – أبريل 2026" subColor="gray" />
       </div>
 

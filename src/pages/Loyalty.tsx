@@ -107,7 +107,7 @@ const Loyalty = () => {
       <div className="grid grid-cols-4 gap-3 mb-5">
         <MetricCard label="👤 عملاء فريدين" value={uniqueCustomers.toString()} sub={`${namedCustomers} مسجّل · ${anonymousCustomers} مجهول`} subColor="success" />
         <MetricCard label="⭐ إجمالي النقاط" value={totalPoints.toLocaleString()} sub={`${avgPointsPerVisit} نقطة/زيارة`} />
-        <MetricCard label="🧾 متوسط الفاتورة" value={`${avgTicket} ر.س`} sub={`إجمالي ${totalSales.toLocaleString()} ر.س`} subColor="success" />
+        <MetricCard label="🧾 متوسط الفاتورة" value={`${avgTicket}`} sub={`إجمالي ${totalSales.toLocaleString()}`} subColor="success" showRiyal />
         <MetricCard label="❤️ معدل الولاء" value={`${((repeatCustomers / uniqueCustomers) * 100).toFixed(1)}%`} sub={`${repeatCustomers} عميل متكرر · ${loyalCustomers} وفيّ`} subColor="warning" />
       </div>
 

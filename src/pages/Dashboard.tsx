@@ -19,9 +19,9 @@ const Dashboard = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <MetricCard label="📊 متوسط الإيرادات اليومية" value={avgDaily.toString()} sub={`بناءً على ${activeDays} يوم فعلي`} subColor="success" />
-        <MetricCard label="🧾 إجمالي المبيعات" value={totalGrossSales.toLocaleString()} sub="ديسمبر 2025 – أبريل 2026" />
-        <MetricCard label="💵 صافي المبيعات" value={totalNetSales.toLocaleString()} sub="بعد الخصومات والمسترد" subColor="success" />
+        <MetricCard label="📊 متوسط الإيرادات اليومية" value={avgDaily.toString()} sub={`بناءً على ${activeDays} يوم فعلي`} subColor="success" showRiyal />
+        <MetricCard label="🧾 إجمالي المبيعات" value={totalGrossSales.toLocaleString()} sub="ديسمبر 2025 – أبريل 2026" showRiyal />
+        <MetricCard label="💵 صافي المبيعات" value={totalNetSales.toLocaleString()} sub="بعد الخصومات والمسترد" subColor="success" showRiyal />
         <MetricCard label="🚨 تنبيهات المخزون" value="4" sub="خبز + مايونيز + بيبسي + زيت" subColor="danger" />
       </div>
 
