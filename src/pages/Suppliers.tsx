@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -313,7 +314,59 @@ const Suppliers = () => {
         <MetricCard label="عدد العمليات" value={suppliers.reduce((a, s) => a + s.ops, 0).toString()} sub="عملية موثقة" subColor="success" />
       </div>
 
-      {/* تابات التصنيف */}
+      {/* رسم بياني دائري - توزيع مصروفات التموين */}
+      {(activeTab === "all" || activeTab === "supplies") && (() => {
+        const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16"];
+        const chartData = supplySuppliers
+          .map(s => ({ name: s.name.length > 20 ? s.name.slice(0, 18) + "…" : s.name, value: s.totalNum, fullName: s.name }))
+          .sort((a, b) => b.value - a.value);
+        return (
+          <div className="bg-surface border border-border rounded-lg p-4 mb-4">
+            <div className="text-[13px] font-bold text-foreground mb-1">📊 توزيع مصروفات التموين حسب المورد</div>
+            <div className="text-[9px] text-gray-light mb-3">إجمالي {supplyTotal.toLocaleString()} ر.س موزعة على {supplySuppliers.length} مورد</div>
+            <div className="flex items-center gap-6">
+              <div className="w-[280px] h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={90}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {chartData.map((_, idx) => (
+                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => [`${value.toLocaleString()} ر.س`, "المبلغ"]}
+                      contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11, direction: "rtl" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-1.5">
+                {chartData.map((d, i) => {
+                  const pct = ((d.value / supplyTotal) * 100).toFixed(1);
+                  return (
+                    <div key={i} className="flex items-center gap-2 text-[11px]">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                      <span className="text-foreground flex-1 truncate">{d.name}</span>
+                      <span className="text-gray-light font-mono">{pct}%</span>
+                      <span className="text-primary font-bold font-mono w-[70px] text-left">{d.value.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+
       <div className="flex gap-1 mb-4 bg-surface border border-border rounded-lg p-1 w-fit">
         {tabs.map((t) => (
           <button
