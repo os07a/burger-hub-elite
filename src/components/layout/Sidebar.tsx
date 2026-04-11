@@ -50,6 +50,7 @@ const navGroups = [
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut, userRole } = useAuth();
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("theme") === "dark";
