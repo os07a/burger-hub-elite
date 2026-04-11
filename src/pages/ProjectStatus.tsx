@@ -1,4 +1,5 @@
 import PageHeader from "@/components/ui/PageHeader";
+import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 
 /* ────── بيانات كشف البنك ────── */
@@ -54,49 +55,38 @@ const maxGross = Math.max(...salesMonths.map(m => m.gross));
 const maxBankIncome = Math.max(...bankMonths.map(m => m.income));
 
 const ProjectStatus = () => (
-  <div>
+  <div className="animate-fade-in">
     <PageHeader title="حالة المشروع" subtitle="كشف بنك الراجحي + تقرير الكاشير · ديسمبر 2025 – أبريل 2026" badge="مباشر" />
 
     {/* ═══════ القسم الأول: مؤشرات مالية عليا ═══════ */}
-    <div className="grid grid-cols-5 gap-2 mb-4">
-      {[
-        { label: "إجمالي المبيعات (كاشير)", value: totalGross.toLocaleString(), unit: "ر.س", icon: "🧾", accent: "border-t-primary", textColor: "text-primary" },
-        { label: "صافي المبيعات", value: totalNet.toLocaleString(), unit: "ر.س", icon: "💵", accent: "border-t-green-500", textColor: "text-green-400" },
-        { label: "متوسط يومي", value: dailyAvg.toLocaleString(), unit: "ر.س/يوم", icon: "📊", accent: "border-t-blue-500", textColor: "text-blue-400" },
-        { label: "معدل الخصم", value: `${discountRate}%`, unit: `${totalDiscounts.toLocaleString()} ر.س`, icon: "🏷️", accent: "border-t-orange-500", textColor: "text-orange-400" },
-        { label: "الرصيد البنكي", value: "2,107", unit: "ر.س", icon: "🏦", accent: "border-t-red-500", textColor: "text-red-400" },
-      ].map((m) => (
-        <div key={m.label} className={`bg-surface border border-border ${m.accent} border-t-2 rounded-lg p-3`}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] text-gray-light font-medium">{m.label}</span>
-            <span className="text-[14px]">{m.icon}</span>
-          </div>
-          <div className={`text-[18px] font-bold ${m.textColor}`}>{m.value}</div>
-          <div className="text-[9px] text-gray-light">{m.unit}</div>
-        </div>
-      ))}
+    <div className="grid grid-cols-5 gap-4 mb-6">
+      <MetricCard label="إجمالي المبيعات (كاشير)" value={totalGross.toLocaleString()} sub="🧾 ر.س" subColor="gray" />
+      <MetricCard label="صافي المبيعات" value={totalNet.toLocaleString()} sub="💵 ر.س" subColor="success" />
+      <MetricCard label="متوسط يومي" value={dailyAvg.toLocaleString()} sub="📊 ر.س/يوم" subColor="gray" />
+      <MetricCard label="معدل الخصم" value={`${discountRate}%`} sub={`🏷️ ${totalDiscounts.toLocaleString()} ر.س`} subColor="warning" />
+      <MetricCard label="الرصيد البنكي" value="2,107" sub="🏦 ر.س" subColor="danger" />
     </div>
 
     {/* ═══════ القسم الثاني: مبيعات شهرية + أيام الأسبوع + نمو ═══════ */}
-    <div className="grid grid-cols-3 gap-3 mb-4">
+    <div className="grid grid-cols-3 gap-4 mb-6">
       {/* أداء المبيعات الشهري */}
-      <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">🧾 أداء المبيعات الشهري (كاشير)</div>
-        <div className="space-y-2">
+      <div className="ios-card">
+        <div className="text-[11px] font-medium text-muted-foreground mb-4">🧾 أداء المبيعات الشهري (كاشير)</div>
+        <div className="space-y-3">
           {salesMonths.map((m) => (
             <div key={m.key}>
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[10px] text-gray w-20">{m.month}</span>
-                <div className="flex items-center gap-2 text-[9px]">
-                  <span className="text-gray-light">{m.days} يوم</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-muted-foreground">{m.month}</span>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="text-muted-foreground">{m.days} يوم</span>
                   <span className="text-foreground font-bold">{m.net.toLocaleString()}</span>
                 </div>
               </div>
-              <div className="relative h-3 bg-border/50 rounded-sm overflow-hidden">
-                <div className="h-full bg-primary/60 rounded-sm" style={{ width: `${(m.gross / maxGross) * 100}%` }} />
-                <div className="absolute top-0 right-0 h-full bg-primary rounded-sm" style={{ width: `${(m.net / maxGross) * 100}%` }} />
+              <div className="relative h-3 bg-background rounded-full overflow-hidden">
+                <div className="h-full bg-primary/30 rounded-full" style={{ width: `${(m.gross / maxGross) * 100}%` }} />
+                <div className="absolute top-0 right-0 h-full bg-primary rounded-full" style={{ width: `${(m.net / maxGross) * 100}%` }} />
               </div>
-              <div className="flex justify-between text-[8px] text-gray-light mt-0.5">
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
                 <span>أدنى: {m.min}</span>
                 <span>متوسط: {m.avg}</span>
                 <span>أعلى: {m.max}</span>
@@ -107,28 +97,28 @@ const ProjectStatus = () => (
       </div>
 
       {/* أداء أيام الأسبوع */}
-      <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">📅 متوسط المبيعات حسب اليوم</div>
-        <div className="space-y-1.5">
+      <div className="ios-card">
+        <div className="text-[11px] font-medium text-muted-foreground mb-4">📅 متوسط المبيعات حسب اليوم</div>
+        <div className="space-y-2">
           {weekdayData.map((d) => (
             <div key={d.day} className="flex items-center gap-2">
-              <span className="text-[10px]">{d.icon}</span>
-              <span className="text-[11px] text-gray w-16">{d.day}</span>
-              <div className="flex-1 h-4 bg-border/30 rounded-sm overflow-hidden relative">
+              <span className="text-[11px]">{d.icon}</span>
+              <span className="text-[12px] text-muted-foreground w-16">{d.day}</span>
+              <div className="flex-1 h-5 bg-background rounded-full overflow-hidden relative">
                 <div
-                  className={`h-full rounded-sm ${d.avg >= 750 ? 'bg-green-500/40' : d.avg >= 670 ? 'bg-yellow-500/30' : 'bg-red-500/30'}`}
+                  className={`h-full rounded-full ${d.avg >= 750 ? 'bg-success/30' : d.avg >= 670 ? 'bg-warning/30' : 'bg-danger/30'}`}
                   style={{ width: `${(d.avg / 810) * 100}%` }}
                 />
-                <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-foreground">
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground">
                   {d.avg} ر.س
                 </span>
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-3 p-2 bg-background border border-border rounded-lg">
-          <div className="text-[9px] font-bold text-foreground mb-1">💡 استنتاج</div>
-          <div className="text-[8px] text-gray leading-relaxed">
+        <div className="mt-4 p-3 bg-background rounded-xl">
+          <div className="text-[11px] font-bold text-foreground mb-1">💡 استنتاج</div>
+          <div className="text-[10px] text-muted-foreground leading-relaxed">
             الجمعة أقوى يوم (810 ر.س) والاثنين الأضعف (627 ر.س).
             الفارق 29% — فرصة لعروض يوم الاثنين.
           </div>
@@ -136,29 +126,29 @@ const ProjectStatus = () => (
       </div>
 
       {/* النمو الشهري */}
-      <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">📈 النمو الشهري</div>
-        <div className="space-y-2">
+      <div className="ios-card">
+        <div className="text-[11px] font-medium text-muted-foreground mb-4">📈 النمو الشهري</div>
+        <div className="space-y-3">
           {growthData.map((g) => (
-            <div key={g.from + g.to} className="p-2.5 bg-background border border-border rounded-lg">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-gray">{g.from} → {g.to}</span>
-                <span className={`text-[13px] font-bold ${g.pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <div key={g.from + g.to} className="p-3 bg-background rounded-xl">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] text-muted-foreground">{g.from} → {g.to}</span>
+                <span className={`text-[14px] font-bold ${g.pct >= 0 ? 'text-success' : 'text-danger'}`}>
                   {g.pct >= 0 ? '↑' : '↓'} {Math.abs(g.pct)}%
                 </span>
               </div>
               <div className="w-full h-2 bg-border rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${g.pct >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                  className={`h-full rounded-full ${g.pct >= 0 ? 'bg-success' : 'bg-danger'}`}
                   style={{ width: `${Math.min(Math.abs(g.pct), 100)}%` }}
                 />
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-3 p-2 bg-background border border-border rounded-lg">
-          <div className="text-[9px] font-bold text-foreground mb-1">⚠️ ملاحظة</div>
-          <div className="text-[8px] text-gray leading-relaxed">
+        <div className="mt-4 p-3 bg-background rounded-xl">
+          <div className="text-[11px] font-bold text-foreground mb-1">⚠️ ملاحظة</div>
+          <div className="text-[10px] text-muted-foreground leading-relaxed">
             النمو متذبذب بشدة — صعود كبير يليه هبوط حاد.
             يناير تضخّم بسبب خصومات الافتتاح (4,709 ر.س خصم).
           </div>
@@ -167,11 +157,11 @@ const ProjectStatus = () => (
     </div>
 
     {/* ═══════ القسم الثالث: نقاط الضعف + التوقعات + العجز ═══════ */}
-    <div className="grid grid-cols-3 gap-3 mb-4">
+    <div className="grid grid-cols-3 gap-4 mb-6">
       {/* نقاط الضعف */}
-      <div className="bg-surface border border-border border-r-2 border-r-red-500 rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-red-400 uppercase tracking-wider mb-3">🔴 نقاط الضعف</div>
-        <div className="space-y-2">
+      <div className="ios-card">
+        <div className="text-[11px] font-medium text-danger mb-4">🔴 نقاط الضعف</div>
+        <div className="space-y-2.5">
           {[
             { title: "فبراير: أضعف شهر كامل", desc: "متوسط 538 ر.س/يوم — أقل من التعادل التشغيلي. أيام وصلت 97 ر.س فقط.", severity: "danger" as const },
             { title: "الاثنين: أضعف يوم أسبوعي", desc: "627 ر.س متوسط — أقل 23% من الجمعة. يحتاج استراتيجية عروض.", severity: "warning" as const },
@@ -179,23 +169,23 @@ const ProjectStatus = () => (
             { title: "خصومات يناير مبالغة", desc: `4,709 ر.س خصومات (14.6% من مبيعات الشهر) — أكلت هامش الربح.`, severity: "warning" as const },
             { title: "اعتماد على أيام الذروة", desc: "أعلى 10 أيام = 30% من إجمالي المبيعات — خطر تركّز.", severity: "warning" as const },
           ].map((w) => (
-            <div key={w.title} className="p-2 bg-background border border-border rounded-lg">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="text-[10px] font-bold text-foreground">{w.title}</span>
-                <StatusBadge variant={w.severity} className="text-[7px]">
+            <div key={w.title} className="p-3 bg-background rounded-xl">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[11px] font-bold text-foreground">{w.title}</span>
+                <StatusBadge variant={w.severity}>
                   {w.severity === "danger" ? "حرج" : "تحذير"}
                 </StatusBadge>
               </div>
-              <div className="text-[8px] text-gray leading-relaxed">{w.desc}</div>
+              <div className="text-[10px] text-muted-foreground leading-relaxed">{w.desc}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* العجز والفجوات */}
-      <div className="bg-surface border border-border border-r-2 border-r-orange-500 rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-orange-400 uppercase tracking-wider mb-3">🟠 العجز والفجوات</div>
-        <div className="space-y-2">
+      <div className="ios-card">
+        <div className="text-[11px] font-medium text-warning mb-4">🟠 العجز والفجوات</div>
+        <div className="space-y-2.5">
           {[
             { title: "فجوة البنك vs الكاشير", value: `${(totalNet - totalBankRevenue).toLocaleString()} ر.س`, desc: "المبيعات في الكاشير (91,870) أعلى من إيداعات البنك (68,270) — يعني فيه كاش لم يودع.", icon: "🔍" },
             { title: "عجز السيولة", value: "2,107 ر.س", desc: "الرصيد الحالي يكفي يوم واحد فقط بالمعدل الحالي. أقل من أسبوع تشغيل.", icon: "🚨" },
@@ -203,23 +193,23 @@ const ProjectStatus = () => (
             { title: "أيام تحت 300 ر.س", value: "8 أيام", desc: "8 أيام من 132 تحت 300 ر.س — غالبها في ديسمبر وفبراير.", icon: "📉" },
             { title: "لا بيانات تكلفة", value: "0%", desc: "تكلفة البضاعة المباعة = صفر في النظام. يعني هامش الربح الحقيقي غير محسوب.", icon: "⚠️" },
           ].map((g) => (
-            <div key={g.title} className="p-2 bg-background border border-border rounded-lg">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[10px] font-bold text-foreground flex items-center gap-1">
-                  <span className="text-[12px]">{g.icon}</span> {g.title}
+            <div key={g.title} className="p-3 bg-background rounded-xl">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-bold text-foreground flex items-center gap-1">
+                  <span className="text-[13px]">{g.icon}</span> {g.title}
                 </span>
-                <span className="text-[11px] font-bold text-orange-400">{g.value}</span>
+                <span className="text-[12px] font-bold text-warning">{g.value}</span>
               </div>
-              <div className="text-[8px] text-gray leading-relaxed">{g.desc}</div>
+              <div className="text-[10px] text-muted-foreground leading-relaxed">{g.desc}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* التوقعات */}
-      <div className="bg-surface border border-border border-r-2 border-r-green-500 rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-green-400 uppercase tracking-wider mb-3">🟢 التوقعات والتحليل التنبؤي</div>
-        <div className="space-y-2">
+      <div className="ios-card">
+        <div className="text-[11px] font-medium text-success mb-4">🟢 التوقعات والتحليل التنبؤي</div>
+        <div className="space-y-2.5">
           {(() => {
             const apr30Projected = Math.round(9325 * (30 / 11));
             const q2Projected = Math.round(apr30Projected * 3 * 1.1);
@@ -231,14 +221,14 @@ const ProjectStatus = () => (
               { title: "استرداد رأس المال", value: `~${roiMonths} شهر`, desc: `بمتوسط ربح شهري ~${Math.round(netCashFlow / 4).toLocaleString()} ر.س — يحتاج تحسين الهوامش.`, icon: "⏱️" },
               { title: "الإيجابي: مارس نموذجي", value: "798 ر.س/يوم", desc: "مارس أثبت أن المتجر قادر على 25K+ شهرياً بدون خصومات.", icon: "✅" },
             ].map((f) => (
-              <div key={f.title} className="p-2 bg-background border border-border rounded-lg">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-[10px] font-bold text-foreground flex items-center gap-1">
-                    <span className="text-[12px]">{f.icon}</span> {f.title}
+              <div key={f.title} className="p-3 bg-background rounded-xl">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold text-foreground flex items-center gap-1">
+                    <span className="text-[13px]">{f.icon}</span> {f.title}
                   </span>
-                  <span className="text-[11px] font-bold text-green-400">{f.value}</span>
+                  <span className="text-[12px] font-bold text-success">{f.value}</span>
                 </div>
-                <div className="text-[8px] text-gray leading-relaxed">{f.desc}</div>
+                <div className="text-[10px] text-muted-foreground leading-relaxed">{f.desc}</div>
               </div>
             ));
           })()}
@@ -247,26 +237,26 @@ const ProjectStatus = () => (
     </div>
 
     {/* ═══════ القسم الرابع: البنك + الاستثمار ═══════ */}
-    <div className="grid grid-cols-2 gap-3 mb-4">
+    <div className="grid grid-cols-2 gap-4 mb-6">
       {/* إيرادات vs مصروفات البنك */}
-      <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">🏦 الحركة البنكية — إيرادات vs مصروفات</div>
-        <div className="space-y-2">
+      <div className="ios-card">
+        <div className="text-[11px] font-medium text-muted-foreground mb-4">🏦 الحركة البنكية — إيرادات vs مصروفات</div>
+        <div className="space-y-3">
           {bankMonths.map((m) => {
             const net = m.income - m.expenses;
             return (
               <div key={m.month}>
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-[10px] text-gray w-14">{m.month}</span>
-                  <span className={`text-[9px] font-bold ${net >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-muted-foreground">{m.month}</span>
+                  <span className={`text-[11px] font-bold ${net >= 0 ? 'text-success' : 'text-danger'}`}>
                     {net >= 0 ? '+' : ''}{net.toLocaleString()}
                   </span>
                 </div>
-                <div className="space-y-0.5">
-                  <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                <div className="space-y-1">
+                  <div className="h-2 bg-background rounded-full overflow-hidden">
                     <div className="h-full bg-success/50 rounded-full" style={{ width: `${(m.income / maxBankIncome) * 100}%` }} />
                   </div>
-                  <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                  <div className="h-2 bg-background rounded-full overflow-hidden">
                     <div className="h-full bg-danger/40 rounded-full" style={{ width: `${(m.expenses / maxBankIncome) * 100}%` }} />
                   </div>
                 </div>
@@ -274,36 +264,36 @@ const ProjectStatus = () => (
             );
           })}
         </div>
-        <div className="flex gap-3 mt-3 text-[8px] text-gray-light">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-green-400 inline-block" /> إيرادات</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-400 inline-block" /> مصروفات</span>
+        <div className="flex gap-4 mt-4 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-success/50 inline-block" /> إيرادات</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-danger/40 inline-block" /> مصروفات</span>
         </div>
       </div>
 
       {/* توزيع المصروفات */}
-      <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">💸 توزيع المصروفات البنكية</div>
-        <div className="space-y-1.5">
+      <div className="ios-card">
+        <div className="text-[11px] font-medium text-muted-foreground mb-4">💸 توزيع المصروفات البنكية</div>
+        <div className="space-y-2.5">
           {[
             { label: "مشتريات التشغيل", amount: 54642, color: "bg-primary", emoji: "🛒" },
-            { label: "فواتير كهرباء", amount: 2428, color: "bg-yellow-500", emoji: "⚡" },
-            { label: "إقامات عمالة", amount: 3614, color: "bg-orange-500", emoji: "📋" },
-            { label: "موردين", amount: 2550, color: "bg-blue-500", emoji: "🚛" },
+            { label: "فواتير كهرباء", amount: 2428, color: "bg-warning", emoji: "⚡" },
+            { label: "إقامات عمالة", amount: 3614, color: "bg-accent", emoji: "📋" },
+            { label: "موردين", amount: 2550, color: "bg-info", emoji: "🚛" },
             { label: "سحوبات ومتفرقات", amount: 3500, color: "bg-muted-foreground", emoji: "💳" },
           ].map((item) => {
             const pct = Math.round((item.amount / totalBankExpenses) * 100);
             return (
-              <div key={item.label} className="group">
-                <div className="flex items-center justify-between text-[10px] mb-0.5">
-                  <span className="text-gray flex items-center gap-1">
-                    <span className="text-[11px]">{item.emoji}</span>{item.label}
+              <div key={item.label}>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <span className="text-[12px]">{item.emoji}</span>{item.label}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-gray-light">{pct}%</span>
-                    <span className="text-foreground font-medium">{item.amount.toLocaleString()}</span>
+                    <span className="text-[10px] text-muted-foreground">{pct}%</span>
+                    <span className="text-foreground font-semibold">{item.amount.toLocaleString()}</span>
                   </div>
                 </div>
-                <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-background rounded-full overflow-hidden">
                   <div className={`h-full ${item.color} rounded-full`} style={{ width: `${pct}%` }} />
                 </div>
               </div>
@@ -314,25 +304,27 @@ const ProjectStatus = () => (
     </div>
 
     {/* ═══════ القسم الخامس: الاستثمار ═══════ */}
-    <div className="grid grid-cols-5 gap-2">
-      {[
-        { label: "ديكور وتشطيبات", amount: "60,386", pct: 20.7, icon: "🎨", color: "border-t-purple-500" },
-        { label: "آلات ومعدات", amount: "48,566", pct: 16.6, icon: "⚙️", color: "border-t-blue-500" },
-        { label: "إيجار", amount: "40,000", pct: 13.7, icon: "🏠", color: "border-t-amber-500" },
-        { label: "رواتب + عمالة", amount: "24,030", pct: 8.2, icon: "👷", color: "border-t-green-500" },
-        { label: "أخرى (هوية + رسوم + صيانة)", amount: "119,423", pct: 40.8, icon: "📋", color: "border-t-gray-500" },
-      ].map((item) => (
-        <div key={item.label} className={`bg-surface border border-border ${item.color} border-t-2 rounded-lg p-3 flex items-center gap-3`}>
-          <div className="text-[22px]">{item.icon}</div>
-          <div>
-            <div className="text-[13px] font-bold text-foreground">{item.amount} <span className="text-[9px] text-gray-light font-normal">ر.س</span></div>
-            <div className="text-[10px] text-gray">{item.label}</div>
-            <div className="w-16 h-1 bg-border rounded-full overflow-hidden mt-1">
-              <div className="h-full bg-foreground/30 rounded-full" style={{ width: `${item.pct * 3}%` }} />
+    <div className="ios-card">
+      <div className="text-[11px] font-medium text-muted-foreground mb-4">💰 توزيع الاستثمار — {investmentTotal.toLocaleString()} ر.س</div>
+      <div className="grid grid-cols-5 gap-3">
+        {[
+          { label: "ديكور وتشطيبات", amount: "60,386", pct: 20.7, icon: "🎨" },
+          { label: "آلات ومعدات", amount: "48,566", pct: 16.6, icon: "⚙️" },
+          { label: "إيجار", amount: "40,000", pct: 13.7, icon: "🏠" },
+          { label: "رواتب + عمالة", amount: "24,030", pct: 8.2, icon: "👷" },
+          { label: "أخرى", amount: "119,423", pct: 40.8, icon: "📋" },
+        ].map((item) => (
+          <div key={item.label} className="bg-background rounded-xl p-4 text-center">
+            <div className="text-[22px] mb-2">{item.icon}</div>
+            <div className="text-[15px] font-bold text-foreground">{item.amount}</div>
+            <div className="text-[10px] text-muted-foreground mt-1">{item.label}</div>
+            <div className="w-full h-1.5 bg-border rounded-full overflow-hidden mt-2">
+              <div className="h-full bg-primary/40 rounded-full" style={{ width: `${item.pct * 2.5}%` }} />
             </div>
+            <div className="text-[9px] text-muted-foreground mt-1">{item.pct}%</div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   </div>
 );
