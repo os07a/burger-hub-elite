@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutGrid, TrendingUp, Heart, Users, Calendar, Wallet,
   Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike, MessageSquare
