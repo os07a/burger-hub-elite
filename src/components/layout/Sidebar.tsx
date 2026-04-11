@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid, TrendingUp, Heart, Users, Calendar, Wallet,
-  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle
+  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike
 } from "lucide-react";
 
 const navGroups = [
@@ -31,6 +31,7 @@ const navGroups = [
       { id: "products", label: "المنتجات", icon: ShoppingBag, path: "/products" },
       { id: "inventory", label: "المخزون", icon: Package, path: "/inventory" },
       { id: "suppliers", label: "الموردون", icon: Truck, path: "/suppliers" },
+      { id: "delivery-apps", label: "تطبيقات التوصيل", icon: Bike, path: "/delivery-apps" },
     ],
   },
   {
