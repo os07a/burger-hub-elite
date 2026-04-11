@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import FloatingAdvisor from "@/components/FloatingAdvisor";
 
 const AppLayout = () => {
   return (
@@ -8,6 +9,7 @@ const AppLayout = () => {
       <main className="flex-1 p-7 max-w-[calc(100vw-220px)] overflow-x-hidden">
         <Outlet />
       </main>
+      <FloatingAdvisor />
     </div>
   );
 };
