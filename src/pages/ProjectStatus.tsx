@@ -262,9 +262,13 @@ const ProjectStatus = () => (
                     {net >= 0 ? '+' : ''}{net.toLocaleString()}
                   </span>
                 </div>
-                <div className="relative h-3">
-                  <div className="h-full bg-green-500/30 rounded-r-sm border-r-2 border-r-green-400" style={{ width: `${(m.income / maxBankIncome) * 100}%` }} />
-                  <div className="h-full bg-red-500/20 rounded-l-sm border-l-2 border-l-red-400 absolute top-0 right-0" style={{ width: `${(m.expenses / maxBankIncome) * 100}%` }} />
+                <div className="space-y-0.5">
+                  <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                    <div className="h-full bg-success/50 rounded-full" style={{ width: `${(m.income / maxBankIncome) * 100}%` }} />
+                  </div>
+                  <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                    <div className="h-full bg-danger/40 rounded-full" style={{ width: `${(m.expenses / maxBankIncome) * 100}%` }} />
+                  </div>
                 </div>
               </div>
             );
