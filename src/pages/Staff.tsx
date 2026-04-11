@@ -4,8 +4,10 @@ import StatusBadge from "@/components/ui/StatusBadge";
 
 const employees = [
   {
-    initials: "يو", name: "يونس", role: "كاشير — دوام كامل · 3,200 ر/شهر",
+    initials: "يو", name: "يونس", role: "كاشير + إشراف عام — دوام كامل · 3,200 ر/شهر",
+    salary: 3200,
     status: "حاضر", statusVariant: "success" as const,
+    performance: { salesHandled: "~40% من عمليات الكاشير", avgDaily: "حضور منتظم · أقل تأخير" },
     docs: [
       { label: "الإقامة", date: "12 مارس 2026", status: "باقي 11 شهر", statusClass: "text-success" },
       { label: "الشهادة الصحية", date: "30 يونيو 2025", status: "منتهية", statusClass: "text-danger" },
@@ -16,7 +18,9 @@ const employees = [
   },
   {
     initials: "شي", name: "شيمول", role: "طباخ رئيسي — دوام كامل · 3,800 ر/شهر",
+    salary: 3800,
     status: "حاضر", statusVariant: "success" as const,
+    performance: { salesHandled: "مسؤول تحضير البرجر (آنجوس + ناشفيل + كريسبي)", avgDaily: "إنتاجية عالية · يغطي الذروة" },
     docs: [
       { label: "الإقامة", date: "5 مايو 2025", status: "منتهية", statusClass: "text-danger" },
       { label: "الشهادة الصحية", date: "20 أبريل 2026", status: "باقي 9 أيام", statusClass: "text-warning" },
@@ -29,8 +33,10 @@ const employees = [
     ],
   },
   {
-    initials: "مي", name: "ميراج", role: "توصيل — دوام جزئي · 1,800 ر/شهر",
+    initials: "مي", name: "ميراج", role: "تحضير + توصيل — دوام جزئي · 1,800 ر/شهر",
+    salary: 1800,
     status: "تأخر", statusVariant: "warning" as const,
+    performance: { salesHandled: "تحضير البطاطس والجوانب + توصيل محلي", avgDaily: "تأخيرات متكررة · يحتاج متابعة" },
     docs: [
       { label: "الإقامة", date: "18 يوليو 2026", status: "باقي 3 شهور", statusClass: "text-success" },
       { label: "الشهادة الصحية", date: "18 يوليو 2026", status: "باقي 3 شهور", statusClass: "text-success" },
@@ -40,8 +46,10 @@ const employees = [
     alerts: [{ text: "● جميع الوثائق سارية", variant: "success" as const }],
   },
   {
-    initials: "عم", name: "موظف 4", role: "مساعد مطبخ — دوام جزئي · 1,600 ر/شهر",
-    status: "غائب", statusVariant: "danger" as const, avatarBg: "bg-gray",
+    initials: "ري", name: "ريان", role: "مساعد مطبخ — دوام جزئي · 1,600 ر/شهر",
+    salary: 1600,
+    status: "حاضر", statusVariant: "success" as const,
+    performance: { salesHandled: "مساعدة شيمول في التحضير + نظافة المطبخ", avgDaily: "أداء مقبول" },
     docs: [
       { label: "الإقامة", date: "22 أبريل 2026", status: "باقي 11 يوم", statusClass: "text-warning" },
       { label: "الشهادة الصحية", date: "15 نوفمبر 2025", status: "منتهية", statusClass: "text-danger" },
@@ -55,6 +63,8 @@ const employees = [
   },
 ];
 
+const totalSalaries = employees.reduce((a, e) => a + e.salary, 0);
+
 const alertColors = {
   success: "bg-success-bg text-success",
   warning: "bg-warning-bg text-warning",
@@ -63,12 +73,20 @@ const alertColors = {
 
 const Staff = () => (
   <div>
-    <PageHeader title="العمال" subtitle="الوثائق والإجازات والتنبيهات" />
+    <PageHeader title="العمال" subtitle="الوثائق والإجازات والتنبيهات" badge={`${employees.length} موظف`} />
+
+    <div className="grid grid-cols-4 gap-3 mb-4">
+      <MetricCard label="عدد الموظفين" value={employees.length.toString()} sub={`${employees.filter(e => e.statusVariant === "success").length} حاضر الآن`} subColor="success" />
+      <MetricCard label="إجمالي الرواتب" value={totalSalaries.toLocaleString()} sub="ر.س / شهر · 49.7% من الإيرادات" subColor="warning" />
+      <MetricCard label="متوسط المبيعات/موظف" value={Math.round(696 * 30 / employees.length).toLocaleString()} sub="ر.س / شهر لكل موظف" />
+      <MetricCard label="تنبيهات وثائق" value={employees.reduce((a, e) => a + e.alerts.filter(al => al.variant === "danger").length, 0).toString()} sub="وثائق منتهية تحتاج تجديد" subColor="danger" />
+    </div>
+
     <div className="border border-border rounded-xl overflow-hidden bg-border space-y-px">
       {employees.map((emp) => (
         <div key={emp.name} className="bg-surface">
           <div className="flex items-center gap-3.5 p-4 border-b border-border hover:bg-background/50 transition-colors">
-            <div className={`w-[38px] h-[38px] rounded-full ${emp.avatarBg || "bg-primary"} flex items-center justify-center text-[13px] font-bold text-primary-foreground flex-shrink-0`}>
+            <div className="w-[38px] h-[38px] rounded-full bg-primary flex items-center justify-center text-[13px] font-bold text-primary-foreground flex-shrink-0">
               {emp.initials}
             </div>
             <div className="flex-1">
@@ -77,6 +95,15 @@ const Staff = () => (
             </div>
             <StatusBadge variant={emp.statusVariant}>{emp.status}</StatusBadge>
           </div>
+
+          {/* ربط بالأداء */}
+          <div className="px-5 py-2 border-b border-border bg-background/30">
+            <div className="flex gap-4 text-[10px]">
+              <span className="text-gray-light">📊 المهام: <span className="text-foreground font-medium">{emp.performance.salesHandled}</span></span>
+              <span className="text-gray-light">📈 الأداء: <span className="text-foreground font-medium">{emp.performance.avgDaily}</span></span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-4 border-b border-border">
             {emp.docs.map((doc) => (
               <div key={doc.label} className="p-3.5 border-l border-border last:border-l-0">
@@ -104,6 +131,30 @@ const Staff = () => (
           </div>
         </div>
       ))}
+    </div>
+
+    {/* ملخص تكلفة الموظفين مقابل الإيرادات */}
+    <div className="mt-4 p-3 bg-surface border border-border rounded-lg">
+      <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-2">📊 تحليل تكلفة العمالة مقابل الإيرادات</div>
+      <div className="grid grid-cols-3 gap-3 text-[11px]">
+        <div className="bg-background rounded-lg p-3 border border-border text-center">
+          <div className="text-[9px] text-gray-light mb-1">الرواتب الشهرية</div>
+          <div className="text-[16px] font-bold text-foreground">{totalSalaries.toLocaleString()}</div>
+          <div className="text-[9px] text-gray-light">ر.س</div>
+        </div>
+        <div className="bg-background rounded-lg p-3 border border-border text-center">
+          <div className="text-[9px] text-gray-light mb-1">متوسط الإيرادات الشهرية</div>
+          <div className="text-[16px] font-bold text-primary">{(696 * 30).toLocaleString()}</div>
+          <div className="text-[9px] text-gray-light">ر.س (696 × 30 يوم)</div>
+        </div>
+        <div className="bg-background rounded-lg p-3 border border-border text-center">
+          <div className="text-[9px] text-gray-light mb-1">نسبة العمالة من الإيرادات</div>
+          <div className={`text-[16px] font-bold ${(totalSalaries / (696 * 30)) > 0.35 ? 'text-red-400' : 'text-green-400'}`}>
+            {((totalSalaries / (696 * 30)) * 100).toFixed(1)}%
+          </div>
+          <div className="text-[9px] text-gray-light">{(totalSalaries / (696 * 30)) > 0.35 ? '⚠️ أعلى من المعيار (30-35%)' : '✅ ضمن المعيار'}</div>
+        </div>
+      </div>
     </div>
   </div>
 );
