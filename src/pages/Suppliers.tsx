@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { ChevronDown, FileText, BarChart3, X, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
+import RiyalIcon from "@/components/ui/RiyalIcon";
 
 type SupplierType = "assets" | "supplies";
 
@@ -41,14 +43,13 @@ interface Supplier {
 }
 
 const suppliers: Supplier[] = [
-  // ═══ موردون تموينيون (أولاً) ═══
   {
     name: "مؤسسة الحلول المساندة التجارية", category: "لحوم · بطاطس · صوصات · أجبان", status: "نشط", statusVariant: "success",
     ops: 11, total: "7,500", totalNum: 7500,
     items: "لحم بريسكت بلاك أنجوس، كروك أن بطاطس، جبن شرائح أمريكي، مايونيز هاينز، صلصة باربكيو، هامبرجر جبن شرائح",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "يمثل 49% من تكلفة التموين · المورد الرئيسي للحوم والبطاطس",
-    smartTip: "💡 سعر البريسكت أنجوس (38 ر.س/كجم) أقل من سعر السوق. التمسك بهذا المورد يوفّر ~200 ر.س شهرياً",
+    smartTip: "سعر البريسكت أنجوس (38 ر.س/كجم) أقل من سعر السوق. التمسك بهذا المورد يوفّر ~200 ر.س شهرياً",
     marketInsights: [
       { item: "بريسكت بلاك أنجوس", yourPrice: 38, avgMarketPrice: 43, unit: "ر.س/كجم", verdict: "أرخص", impactNote: "توفير 5 ر.س/كجم = ~200 ر.س شهرياً" },
       { item: "بطاطس مقلية 7×7", yourPrice: 111, avgMarketPrice: 115, unit: "ر.س/كرتون", verdict: "أرخص", impactNote: "توفير بسيط 4 ر.س/كرتون" },
@@ -68,12 +69,12 @@ const suppliers: Supplier[] = [
     ],
   },
   {
-    name: "شركة السلال المنتجة التجارية (Baskets)", category: "مشروبات · زيوت · ورقيات", status: "نشط", statusVariant: "success",
+    name: "شركة السلال المنتجة التجارية", category: "مشروبات · زيوت · ورقيات", status: "نشط", statusVariant: "success",
     ops: 10, total: "3,380", totalNum: 3380,
     items: "بيبسي قوارير 250مل، بيبسي دايت، سفن أب، زيت الرائد تنك 17لتر، ورق زعتر أوريقانو",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "يمثل 22% من تكلفة التموين · المورد الرئيسي للمشروبات والزيوت",
-    smartTip: "💡 زيت الرائد 17لتر (72 ر.س) أغلى من البدائل المحلية. فكّر بتجربة زيت عافية بالجملة",
+    smartTip: "زيت الرائد 17لتر (72 ر.س) أغلى من البدائل المحلية. فكّر بتجربة زيت عافية بالجملة",
     marketInsights: [
       { item: "بيبسي قوارير 250مل (كرتون)", yourPrice: 50, avgMarketPrice: 48, unit: "ر.س/كرتون", verdict: "سعر السوق", impactNote: "سعر قريب من السوق" },
       { item: "زيت الرائد تنك 17لتر", yourPrice: 72, avgMarketPrice: 65, unit: "ر.س/تنك", verdict: "أغلى", impactNote: "أغلى بـ7 ر.س/تنك · ~28 ر.س شهرياً زيادة" },
@@ -94,7 +95,7 @@ const suppliers: Supplier[] = [
     items: "Beef chuck roll Angus Pure AUS (لحم بقر أنجوس استرالي)",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "5% من تكلفة التموين · مورد بديل للحوم",
-    smartTip: "⚠️ سعر الكجم (43 ر.س) أعلى من الحلول المساندة (38 ر.س). استخدم كبديل طوارئ فقط",
+    smartTip: "سعر الكجم (43 ر.س) أعلى من الحلول المساندة (38 ر.س). استخدم كبديل طوارئ فقط",
     marketInsights: [
       { item: "لحم أنجوس Chuck Roll", yourPrice: 43, avgMarketPrice: 43, unit: "ر.س/كجم", verdict: "سعر السوق", impactNote: "سعر مطابق للسوق لكن الحلول المساندة أرخص بـ5 ر.س" },
     ],
@@ -108,7 +109,7 @@ const suppliers: Supplier[] = [
     items: "أنصاف صدور دجاج طرية بدون عظم وبدون جلد ساديا 2كجم",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "6% من تكلفة التموين · مورد الدجاج الوحيد",
-    smartTip: "✅ سعر صدور الدجاج (44 ر.س/كجم) منافس. ساديا ماركة موثوقة ومتاحة بالجملة",
+    smartTip: "سعر صدور الدجاج (44 ر.س/كجم) منافس. ساديا ماركة موثوقة ومتاحة بالجملة",
     marketInsights: [
       { item: "صدور دجاج ساديا 2كجم", yourPrice: 44, avgMarketPrice: 46, unit: "ر.س/باكة", verdict: "أرخص", impactNote: "توفير 2 ر.س/باكة = ~32 ر.س شهرياً" },
     ],
@@ -120,12 +121,12 @@ const suppliers: Supplier[] = [
     ],
   },
   {
-    name: "شركة الخليج الغربية للاستيراد (Gulfwest)", category: "لحوم مجمدة · بطاطس مقلية", status: "نشط", statusVariant: "success",
+    name: "شركة الخليج الغربية للاستيراد", category: "لحوم مجمدة · بطاطس مقلية", status: "نشط", statusVariant: "success",
     ops: 1, total: "2,114", totalNum: 2114,
     items: "بطاطس مقلية شوسترنق فرايز 7*7، لحم بقري بريسكت كامل مجمد، لحم بقر برجر بلدي مجمد",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "14% من تكلفة التموين · مورد بديل للحوم والبطاطس بالجملة",
-    smartTip: "💡 سعر البريسكت (38 ر.س/كجم) منافس ومشابه للحلول المساندة. البطاطس (99 ر.س/كرتون) أرخص من الكل",
+    smartTip: "سعر البريسكت (38 ر.س/كجم) منافس ومشابه للحلول المساندة. البطاطس (99 ر.س/كرتون) أرخص من الكل",
     marketInsights: [
       { item: "بطاطس مقلية 7×7 (كرتون)", yourPrice: 99, avgMarketPrice: 115, unit: "ر.س/كرتون", verdict: "أرخص", impactNote: "توفير 16 ر.س/كرتون · ممتاز للكميات الكبيرة" },
       { item: "بريسكت بقري كامل مجمد", yourPrice: 38, avgMarketPrice: 43, unit: "ر.س/كجم", verdict: "أرخص", impactNote: "سعر ممتاز مقارنة بالسوق" },
@@ -141,7 +142,7 @@ const suppliers: Supplier[] = [
     items: "فلفل أبيض مجفف، تورد ناعم صيني، فلفل بابريكا ناعم بارد، فلفل بابريكا خشن",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "أقل من 1% من التكلفة · مصروف ثانوي",
-    smartTip: "✅ أسعار البهارات ممتازة ومنافسة. المروانى من أرخص محلات التوابل بالجملة في المنطقة",
+    smartTip: "أسعار البهارات ممتازة ومنافسة. المروانى من أرخص محلات التوابل بالجملة في المنطقة",
     marketInsights: [
       { item: "فلفل أبيض مجفف 435جم", yourPrice: 15, avgMarketPrice: 18, unit: "ر.س", verdict: "أرخص", impactNote: "توفير 3 ر.س/عبوة" },
     ],
@@ -156,7 +157,7 @@ const suppliers: Supplier[] = [
     items: "سالمون طازج، روبيان (هومار)",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "2% من تكلفة التموين · مورد تخصصي",
-    smartTip: "⚠️ سعر السلمون (150 ر.س) أعلى من سوق الجملة. فاوض أو ابحث عن مورد سمك بالجملة",
+    smartTip: "سعر السلمون (150 ر.س) أعلى من سوق الجملة. فاوض أو ابحث عن مورد سمك بالجملة",
     marketInsights: [
       { item: "سالمون طازج (كجم تقريبي)", yourPrice: 75, avgMarketPrice: 60, unit: "ر.س/كجم", verdict: "أغلى", impactNote: "أغلى بـ15 ر.س/كجم · ابحث عن بديل بالجملة" },
       { item: "روبيان (هومار)", yourPrice: 90, avgMarketPrice: 85, unit: "ر.س/كجم", verdict: "سعر السوق", impactNote: "سعر مقبول" },
@@ -171,7 +172,7 @@ const suppliers: Supplier[] = [
     items: "ميكروف مستطيل 28 ونص مقسم 150 حبة",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "أقل من 1% · مصروف تشغيلي ثانوي",
-    smartTip: "✅ سعر مناسب للتغليف بالجملة",
+    smartTip: "سعر مناسب للتغليف بالجملة",
     invoices: [
       { date: "2026-03-30", invoiceNo: "261003195459", amount: 40, items: "ميكروف مستطيل 28 ونص مقسم 150 حبة ×2 ربطة" },
     ],
@@ -182,7 +183,7 @@ const suppliers: Supplier[] = [
     items: "ثقالة استيل مدور م13 هندي، حوض موزع زبدة رول",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "أقل من 1% · أدوات تشغيلية",
-    smartTip: "✅ سعر مقبول لأدوات المطبخ الاستيل",
+    smartTip: "سعر مقبول لأدوات المطبخ الاستيل",
     invoices: [
       { date: "2026-03-31", invoiceNo: "6701001909", amount: 140, items: "ثقالة استيل مدور م13 هندي (33.10 ر.س)، حوض موزع زبدة رول (90 ر.س)" },
     ],
@@ -193,13 +194,12 @@ const suppliers: Supplier[] = [
     items: "ماكس رول تركي 300 متر عدد 6",
     docs: "موثق", docsVariant: "success", type: "supplies",
     costImpact: "أقل من 1% · مصروف تشغيلي ثانوي",
-    smartTip: "✅ سعر جيد للفائف بالجملة",
+    smartTip: "سعر جيد للفائف بالجملة",
     invoices: [
       { date: "2026-04-04", invoiceNo: "260060014114", amount: 55, items: "ماكس رول تركي 300 متر عدد 6 ×1 باكة" },
     ],
   },
-
-  // ═══ موردون أصول (ثانياً) ═══
+  // ═══ موردون أصول ═══
   {
     name: "مورد الديكور والاستيل", category: "ديكور · استيل · رخام", status: "نشط", statusVariant: "success",
     ops: 22, total: "49,482", totalNum: 49482, items: "طاولات استيل، ألواح ديكور، واجهات",
@@ -265,255 +265,317 @@ const suppliers: Supplier[] = [
   },
 ];
 
-const getVerdictStyle = (verdict: MarketInsight["verdict"]) => {
-  switch (verdict) {
-    case "أرخص": return "bg-green-500/15 text-green-400 border-green-500/30";
-    case "سعر السوق": return "bg-blue-500/15 text-blue-400 border-blue-500/30";
-    case "أغلى": return "bg-red-500/15 text-red-400 border-red-500/30";
-  }
+// ── Invoice Modal ──
+const InvoiceModal = ({ supplier, onClose }: { supplier: Supplier; onClose: () => void }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden m-4"
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-5 border-b border-border">
+        <div>
+          <h3 className="text-[15px] font-bold text-foreground">{supplier.name}</h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{supplier.invoices?.length} فاتورة · إجمالي {supplier.total} ر.س</p>
+        </div>
+        <button onClick={onClose} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-colors">
+          <X size={14} className="text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* Invoices */}
+      <div className="overflow-y-auto max-h-[60vh] p-4 space-y-2">
+        {supplier.invoices?.map((inv, i) => (
+          <div key={i} className="ios-card !p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded">{inv.date}</span>
+                <span className="text-[10px] text-muted-foreground font-mono">#{inv.invoiceNo}</span>
+              </div>
+              <span className="text-[14px] font-bold text-primary flex items-center gap-1">
+                {inv.amount.toLocaleString()} <RiyalIcon size={10} />
+              </span>
+            </div>
+            <p className="text-[11px] text-foreground leading-relaxed">{inv.items}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// ── Market Insights Modal ──
+const InsightsModal = ({ supplier, onClose }: { supplier: Supplier; onClose: () => void }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="bg-card rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden m-4"
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between p-5 border-b border-border">
+        <div>
+          <h3 className="text-[15px] font-bold text-foreground">تحليل ذكي</h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">مقارنة أسعارك بالسوق السعودي</p>
+        </div>
+        <button onClick={onClose} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-colors">
+          <X size={14} className="text-muted-foreground" />
+        </button>
+      </div>
+
+      <div className="overflow-y-auto max-h-[60vh] p-4 space-y-2.5">
+        {supplier.marketInsights?.map((ins, i) => {
+          const diff = ins.yourPrice - ins.avgMarketPrice;
+          const pct = ((diff / ins.avgMarketPrice) * 100).toFixed(0);
+          return (
+            <div key={i} className="ios-card !p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[12px] font-semibold text-foreground">{ins.item}</span>
+                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                  ins.verdict === "أرخص" ? "bg-success/15 text-success" :
+                  ins.verdict === "أغلى" ? "bg-danger/15 text-danger" :
+                  "bg-info/15 text-info"
+                }`}>
+                  {ins.verdict === "أرخص" ? <TrendingDown size={10} className="inline ml-1" /> :
+                   ins.verdict === "أغلى" ? <TrendingUp size={10} className="inline ml-1" /> :
+                   <Minus size={10} className="inline ml-1" />}
+                  {ins.verdict}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <div className="bg-muted rounded-lg p-2.5 text-center">
+                  <div className="text-[9px] text-muted-foreground mb-1">سعرك</div>
+                  <div className="text-[14px] font-bold text-foreground">{ins.yourPrice} <span className="text-[9px] text-muted-foreground font-normal">{ins.unit}</span></div>
+                </div>
+                <div className="bg-muted rounded-lg p-2.5 text-center">
+                  <div className="text-[9px] text-muted-foreground mb-1">متوسط السوق</div>
+                  <div className="text-[14px] font-bold text-foreground">{ins.avgMarketPrice} <span className="text-[9px] text-muted-foreground font-normal">{ins.unit}</span></div>
+                </div>
+              </div>
+
+              <div className={`text-[10px] px-2.5 py-1.5 rounded-lg ${
+                ins.verdict === "أرخص" ? "bg-success/10 text-success" :
+                ins.verdict === "أغلى" ? "bg-danger/10 text-danger" :
+                "bg-info/10 text-info"
+              }`}>
+                {diff !== 0 && <span className="font-bold">{diff > 0 ? "+" : ""}{pct}% </span>}
+                {ins.impactNote}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+);
+
+// ── Supplier Card ──
+const SupplierCard = ({
+  s,
+  onViewInvoices,
+  onViewInsights,
+}: {
+  s: Supplier;
+  onViewInvoices: () => void;
+  onViewInsights: () => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="ios-card animate-fade-in">
+      {/* Main Row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[16px] shrink-0 ${
+            s.type === "supplies" ? "bg-success/10" : "bg-warning/10"
+          }`}>
+            {s.type === "supplies" ? "🥩" : "🏗️"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold text-foreground truncate">{s.name}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">{s.category}</div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-left ml-3">
+            <div className="text-[15px] font-bold text-primary flex items-center gap-1">
+              {s.total} <RiyalIcon size={10} />
+            </div>
+            <div className="text-[9px] text-muted-foreground">{s.ops} عملية</div>
+          </div>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="w-7 h-7 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-all"
+          >
+            <ChevronDown size={13} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded Details */}
+      {expanded && (
+        <div className="mt-4 pt-3 border-t border-border space-y-3">
+          {/* Status + Tags */}
+          <div className="flex flex-wrap gap-1.5">
+            <StatusBadge variant={s.statusVariant}>{s.status}</StatusBadge>
+            <StatusBadge variant={s.docsVariant}>{s.docs}</StatusBadge>
+            <StatusBadge variant={s.type === "supplies" ? "success" : "warning"}>
+              {s.type === "supplies" ? "تموين" : "أصول"}
+            </StatusBadge>
+          </div>
+
+          {/* Cost Impact */}
+          {s.costImpact && (
+            <div className="text-[10px] text-muted-foreground bg-muted rounded-lg px-3 py-2">
+              📌 {s.costImpact}
+            </div>
+          )}
+
+          {/* Smart Tip */}
+          {s.smartTip && (
+            <div className="text-[10px] bg-primary/8 text-primary rounded-lg px-3 py-2 border border-primary/15">
+              💡 {s.smartTip}
+            </div>
+          )}
+
+          {/* Items */}
+          <div>
+            <div className="text-[9px] text-muted-foreground font-semibold mb-1">الأصناف</div>
+            <div className="text-[11px] text-foreground leading-relaxed">{s.items}</div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            {s.invoices && s.invoices.length > 0 && (
+              <button
+                onClick={onViewInvoices}
+                className="flex items-center gap-1.5 text-[10px] font-semibold text-primary bg-primary/10 hover:bg-primary/15 px-3 py-2 rounded-lg transition-colors"
+              >
+                <FileText size={12} />
+                عرض الفواتير ({s.invoices.length})
+              </button>
+            )}
+            {s.marketInsights && s.marketInsights.length > 0 && (
+              <button
+                onClick={onViewInsights}
+                className="flex items-center gap-1.5 text-[10px] font-semibold text-accent-foreground bg-accent/15 hover:bg-accent/25 px-3 py-2 rounded-lg transition-colors"
+              >
+                <BarChart3 size={12} />
+                تحليل ذكي
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
-const getVerdictIcon = (verdict: MarketInsight["verdict"]) => {
-  switch (verdict) {
-    case "أرخص": return "↓";
-    case "سعر السوق": return "≈";
-    case "أغلى": return "↑";
-  }
-};
-
+// ── Main Page ──
 const Suppliers = () => {
   const [activeTab, setActiveTab] = useState<"all" | SupplierType>("all");
-  const [expandedSupplier, setExpandedSupplier] = useState<string | null>(null);
-  const [showInsights, setShowInsights] = useState<string | null>(null);
+  const [invoiceModal, setInvoiceModal] = useState<Supplier | null>(null);
+  const [insightsModal, setInsightsModal] = useState<Supplier | null>(null);
 
   const filtered = activeTab === "all" ? suppliers : suppliers.filter(s => s.type === activeTab);
-  const assetSuppliers = suppliers.filter(s => s.type === "assets");
   const supplySuppliers = suppliers.filter(s => s.type === "supplies");
-  const assetTotal = assetSuppliers.reduce((a, s) => a + s.totalNum, 0);
+  const assetSuppliers = suppliers.filter(s => s.type === "assets");
   const supplyTotal = supplySuppliers.reduce((a, s) => a + s.totalNum, 0);
+  const assetTotal = assetSuppliers.reduce((a, s) => a + s.totalNum, 0);
 
-  // حساب عدد الأصناف الأرخص والأغلى
   const allInsights = supplySuppliers.flatMap(s => s.marketInsights || []);
   const cheaperCount = allInsights.filter(i => i.verdict === "أرخص").length;
   const expensiveCount = allInsights.filter(i => i.verdict === "أغلى").length;
 
+  const COLORS = ["hsl(var(--success))", "hsl(var(--info))", "hsl(var(--warning))", "hsl(var(--danger))", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16"];
+  const chartData = supplySuppliers
+    .map(s => ({ name: s.name.length > 18 ? s.name.slice(0, 16) + "…" : s.name, value: s.totalNum }))
+    .sort((a, b) => b.value - a.value);
+
   const tabs: { key: "all" | SupplierType; label: string; count: number }[] = [
     { key: "all", label: "الكل", count: suppliers.length },
-    { key: "supplies", label: "الموارد التموينية", count: supplySuppliers.length },
-    { key: "assets", label: "موردون الأصول", count: assetSuppliers.length },
+    { key: "supplies", label: "التموين", count: supplySuppliers.length },
+    { key: "assets", label: "الأصول", count: assetSuppliers.length },
   ];
 
   return (
     <div>
-      <PageHeader title="الموردون" subtitle="جهات التوريد الحقيقية من كشف المصروفات" badge={`${suppliers.length} مورد`} />
+      <PageHeader title="الموردون" subtitle="إدارة ذكية لجهات التوريد والمشتريات" badge={`${suppliers.length} مورد`} />
 
-      <div className="grid grid-cols-4 gap-3 mb-4">
-        <MetricCard label="🛒 الموارد التموينية" value={supplyTotal.toLocaleString()} sub={`${supplySuppliers.length} مورد · ${cheaperCount} أرخص من السوق · ${expensiveCount} أغلى`} subColor="success" showRiyal />
-        <MetricCard label="🏗️ موردون الأصول" value={assetTotal.toLocaleString()} sub={`${assetSuppliers.length} مورد · ديكور وآلات وعقار`} subColor="warning" showRiyal />
-        <MetricCard label="💵 إجمالي التوريدات" value={(assetTotal + supplyTotal).toLocaleString()} sub="من أصل 292,405 مصروفات تأسيسية" showRiyal />
-        <MetricCard label="📋 عدد العمليات" value={suppliers.reduce((a, s) => a + s.ops, 0).toString()} sub="عملية موثقة" subColor="success" />
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <MetricCard label="الموارد التموينية" value={supplyTotal.toLocaleString()} sub={`${supplySuppliers.length} مورد`} subColor="success" showRiyal />
+        <MetricCard label="موردون الأصول" value={assetTotal.toLocaleString()} sub={`${assetSuppliers.length} مورد`} subColor="warning" showRiyal />
+        <MetricCard label="أرخص من السوق" value={cheaperCount.toString()} sub={`من ${allInsights.length} صنف`} subColor="success" />
+        <MetricCard label="أغلى من السوق" value={expensiveCount.toString()} sub="يحتاج مفاوضة" subColor="danger" />
       </div>
 
-      {/* رسم بياني دائري - توزيع مصروفات التموين */}
-      {(activeTab === "all" || activeTab === "supplies") && (() => {
-        const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16"];
-        const chartData = supplySuppliers
-          .map(s => ({ name: s.name.length > 20 ? s.name.slice(0, 18) + "…" : s.name, value: s.totalNum, fullName: s.name }))
-          .sort((a, b) => b.value - a.value);
-        return (
-          <div className="bg-surface border border-border rounded-lg p-4 mb-4">
-            <div className="text-[13px] font-bold text-foreground mb-1">📊 توزيع مصروفات التموين حسب المورد</div>
-            <div className="text-[9px] text-gray-light mb-3">إجمالي {supplyTotal.toLocaleString()} ر.س موزعة على {supplySuppliers.length} مورد</div>
-            <div className="flex items-center gap-6">
-              <div className="w-[280px] h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={90}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {chartData.map((_, idx) => (
-                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number) => [`${value.toLocaleString()} ر.س`, "المبلغ"]}
-                      contentStyle={{ background: "hsl(var(--surface))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11, direction: "rtl" }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 space-y-1.5">
-                {chartData.map((d, i) => {
-                  const pct = ((d.value / supplyTotal) * 100).toFixed(1);
-                  return (
-                    <div key={i} className="flex items-center gap-2 text-[11px]">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-                      <span className="text-foreground flex-1 truncate">{d.name}</span>
-                      <span className="text-gray-light font-mono">{pct}%</span>
-                      <span className="text-primary font-bold font-mono w-[70px] text-left">{d.value.toLocaleString()}</span>
-                    </div>
-                  );
-                })}
-              </div>
+      {/* Chart - compact */}
+      {(activeTab === "all" || activeTab === "supplies") && (
+        <div className="ios-card mb-5">
+          <div className="text-[12px] font-bold text-foreground mb-3">توزيع مصروفات التموين</div>
+          <div className="flex items-center gap-6">
+            <div className="w-[200px] h-[160px] shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+                    {chartData.map((_, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number) => [`${value.toLocaleString()} ر.س`, ""]}
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11, direction: "rtl" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        );
-      })()}
-
-
-      <div className="flex gap-1 mb-4 bg-surface border border-border rounded-lg p-1 w-fit">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
-              activeTab === t.key
-                ? "bg-primary text-primary-foreground"
-                : "text-gray hover:text-foreground hover:bg-background"
-            }`}
-          >
-            {t.label} <span className="opacity-60">({t.count})</span>
-          </button>
-        ))}
-      </div>
-
-      {/* عنوان القسم */}
-      {activeTab !== "all" && (
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[16px]">{activeTab === "supplies" ? "🥩" : "🏗️"}</span>
-          <div>
-            <div className="text-[13px] font-bold text-foreground">
-              {activeTab === "supplies" ? "الموارد التموينية" : "موردون الأصول"}
-            </div>
-            <div className="text-[9px] text-gray-light">
-              {activeTab === "supplies"
-                ? "اللحوم، المشروبات، البهارات، الأسماك، الأجبان، والمستلزمات التشغيلية اليومية"
-                : "الديكور، الآلات، العقار، التراخيص، الهوية البصرية، الشبكات، والدعاية"}
+            <div className="flex-1 space-y-1">
+              {chartData.slice(0, 6).map((d, i) => (
+                <div key={i} className="flex items-center gap-2 text-[10px]">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                  <span className="text-foreground flex-1 truncate">{d.name}</span>
+                  <span className="text-muted-foreground font-mono">{((d.value / supplyTotal) * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+              {chartData.length > 6 && (
+                <div className="text-[9px] text-muted-foreground">+{chartData.length - 6} آخرين</div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {filtered.map((s) => (
-        <div key={s.name} className={`bg-surface rounded-lg p-4 mb-2.5 border border-border transition-colors hover:border-primary/30 ${
-          s.type === "assets" ? "border-r-2 border-r-orange-500/50" : "border-r-2 border-r-green-500/50"
-        }`}>
-          <div className="flex justify-between items-start mb-3">
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => s.invoices && setExpandedSupplier(expandedSupplier === s.name ? null : s.name)}
-            >
-              <span className="text-[14px]">{s.type === "assets" ? "🏗️" : "🥩"}</span>
-              <div>
-                <div className="text-[14px] font-bold text-foreground flex items-center gap-1.5">
-                  {s.name}
-                  {s.invoices && (
-                    <span className="text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-                      {s.invoices.length} فاتورة
-                    </span>
-                  )}
-                  {s.marketInsights && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setShowInsights(showInsights === s.name ? null : s.name); }}
-                      className="text-[9px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded-full hover:bg-accent/80 transition-colors"
-                    >
-                      📊 تحليل ذكي
-                    </button>
-                  )}
-                </div>
-                <div className="text-[10px] text-gray-light mt-0.5 font-medium">{s.category}</div>
-              </div>
-            </div>
-            <div className="flex gap-1.5">
-              <StatusBadge variant={s.type === "assets" ? "warning" : "success"}>
-                {s.type === "assets" ? "أصول" : "تموين"}
-              </StatusBadge>
-              <StatusBadge variant={s.docsVariant}>{s.docs}</StatusBadge>
-              <StatusBadge variant={s.statusVariant}>{s.status}</StatusBadge>
-            </div>
-          </div>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 bg-card border border-border rounded-xl p-1 w-fit">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={`px-4 py-2 rounded-lg text-[11px] font-semibold transition-colors ${
+              activeTab === t.key
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            {t.label} ({t.count})
+          </button>
+        ))}
+      </div>
 
-          {/* التأثير والنصيحة الذكية */}
-          {s.type === "supplies" && s.costImpact && (
-            <div className="mb-3 flex flex-wrap gap-2">
-              <span className="text-[9px] bg-muted text-muted-foreground px-2 py-1 rounded-md">
-                📌 {s.costImpact}
-              </span>
-              {s.smartTip && (
-                <span className="text-[9px] bg-primary/10 text-primary px-2 py-1 rounded-md">
-                  {s.smartTip}
-                </span>
-              )}
-            </div>
-          )}
+      {/* Supplier List */}
+      <div className="space-y-2.5">
+        {filtered.map(s => (
+          <SupplierCard
+            key={s.name}
+            s={s}
+            onViewInvoices={() => setInvoiceModal(s)}
+            onViewInsights={() => setInsightsModal(s)}
+          />
+        ))}
+      </div>
 
-          <div className="grid grid-cols-3 gap-2 mb-2.5">
-            <div>
-              <div className="text-[9px] text-gray-light font-semibold uppercase tracking-wide mb-1">عدد العمليات</div>
-              <div className="text-[13px] font-bold text-foreground">{s.ops}</div>
-            </div>
-            <div>
-              <div className="text-[9px] text-gray-light font-semibold uppercase tracking-wide mb-1">إجمالي المبلغ</div>
-              <div className="text-[13px] font-bold text-primary">{s.total} ر.س</div>
-            </div>
-            <div>
-              <div className="text-[9px] text-gray-light font-semibold uppercase tracking-wide mb-1">الأصناف</div>
-              <div className="text-[11px] text-gray font-medium">{s.items}</div>
-            </div>
-          </div>
-
-          {/* تحليل ذكي - مقارنة الأسعار بالسوق */}
-          {s.marketInsights && showInsights === s.name && (
-            <div className="mt-3 pt-3 border-t border-border">
-              <div className="text-[10px] font-bold text-gray-light mb-2">📊 مقارنة الأسعار بالسوق المحلي السعودي</div>
-              <div className="space-y-1.5">
-                {s.marketInsights.map((ins, i) => (
-                  <div key={i} className="flex items-center justify-between bg-background rounded-md px-3 py-2">
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${getVerdictStyle(ins.verdict)}`}>
-                        {getVerdictIcon(ins.verdict)} {ins.verdict}
-                      </span>
-                      <div className="flex-1">
-                        <div className="text-[11px] font-medium text-foreground">{ins.item}</div>
-                        <div className="text-[9px] text-gray-light">{ins.impactNote}</div>
-                      </div>
-                    </div>
-                    <div className="text-left mr-3">
-                      <div className="text-[10px] text-foreground font-bold">{ins.yourPrice} <span className="text-gray-light font-normal">{ins.unit}</span></div>
-                      <div className="text-[9px] text-gray-light">السوق: {ins.avgMarketPrice} {ins.unit}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* تفصيل الفواتير */}
-          {s.invoices && expandedSupplier === s.name && (
-            <div className="mt-3 pt-3 border-t border-border">
-              <div className="text-[10px] font-bold text-gray-light mb-2">📋 سجل الفواتير</div>
-              <div className="space-y-1.5">
-                {s.invoices.map((inv, i) => (
-                  <div key={i} className="flex items-center justify-between bg-background rounded-md px-3 py-2 text-[11px]">
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className="text-gray-light font-mono text-[10px] w-[75px]">{inv.date}</span>
-                      <span className="text-gray font-mono text-[9px] w-[90px]">#{inv.invoiceNo}</span>
-                      <span className="text-foreground flex-1 truncate">{inv.items}</span>
-                    </div>
-                    <span className="font-bold text-primary mr-3 whitespace-nowrap">{inv.amount.toLocaleString()} ر.س</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
+      {/* Modals */}
+      {invoiceModal && <InvoiceModal supplier={invoiceModal} onClose={() => setInvoiceModal(null)} />}
+      {insightsModal && <InsightsModal supplier={insightsModal} onClose={() => setInsightsModal(null)} />}
     </div>
   );
 };
