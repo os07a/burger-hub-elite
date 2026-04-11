@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid, TrendingUp, Heart, Users, Calendar, Wallet,
-  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3
+  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity
 } from "lucide-react";
 
 const navGroups = [
@@ -9,6 +9,7 @@ const navGroups = [
     label: "الرئيسية",
     items: [
       { id: "dashboard", label: "لوحة التحكم", icon: LayoutGrid, path: "/" },
+      { id: "project-status", label: "حالة المشروع", icon: Activity, path: "/project-status" },
       { id: "behavior", label: "سلوك المستهلك", icon: TrendingUp, path: "/behavior" },
       { id: "loyalty", label: "الولاء", icon: Heart, path: "/loyalty" },
     ],
