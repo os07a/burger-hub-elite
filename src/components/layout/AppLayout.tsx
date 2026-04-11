@@ -6,7 +6,7 @@ const AppLayout = () => {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 p-7 max-w-[calc(100vw-220px)] overflow-x-hidden">
+      <main className="flex-1 p-8 max-w-[calc(100vw-230px)] overflow-x-hidden">
         <Outlet />
       </main>
       <FloatingAdvisor />

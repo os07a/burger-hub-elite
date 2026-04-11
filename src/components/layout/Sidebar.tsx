@@ -48,45 +48,52 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="w-[220px] bg-sidebar flex-shrink-0 sticky top-0 h-screen overflow-y-auto flex flex-col">
-      <div className="p-4 pb-3 border-b border-sidebar-border mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-[9px] h-[9px] rounded-full bg-primary flex-shrink-0" />
+    <div className="w-[230px] bg-sidebar flex-shrink-0 sticky top-0 h-screen overflow-y-auto flex flex-col">
+      {/* Logo */}
+      <div className="px-5 pt-5 pb-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-2.5">
+          <div className="w-[10px] h-[10px] rounded-full bg-primary flex-shrink-0" />
           <div>
-            <div className="text-[15px] font-bold text-primary-foreground">برجرهم</div>
-            <div className="text-[9px] text-sidebar-foreground/40 tracking-wider uppercase">BURGERHUM OS</div>
+            <div className="text-[16px] font-semibold text-primary-foreground tracking-tight">برجرهم</div>
+            <div className="text-[9px] text-sidebar-foreground/35 tracking-[0.15em] uppercase mt-0.5">BURGERHUM OS</div>
           </div>
         </div>
       </div>
 
-      {navGroups.map((group) => (
-        <div key={group.label} className="px-2.5 pb-1">
-          <div className="text-[9px] text-sidebar-foreground/40 uppercase tracking-wider px-2 pt-3 pb-1 font-semibold">
-            {group.label}
+      {/* Nav Groups */}
+      <div className="flex-1 py-3 px-3 space-y-4">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <div className="text-[9px] text-sidebar-foreground/35 uppercase tracking-[0.12em] px-3 pb-2 font-medium">
+              {group.label}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const isActive = location.pathname === item.path;
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => navigate(item.path)}
+                    className={`flex items-center gap-3 px-3 py-[9px] cursor-pointer text-[13px] rounded-xl transition-all duration-200 ${
+                      isActive
+                        ? "bg-sidebar-active text-primary-foreground font-semibold"
+                        : "text-sidebar-foreground hover:bg-sidebar-hover hover:text-primary-foreground/80 font-normal"
+                    }`}
+                  >
+                    <Icon size={16} strokeWidth={isActive ? 2 : 1.5} className={isActive ? "opacity-100" : "opacity-45"} />
+                    {item.label}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {group.items.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            return (
-              <div
-                key={item.id}
-                onClick={() => navigate(item.path)}
-                className={`flex items-center gap-2.5 px-2.5 py-2 cursor-pointer text-[13px] rounded-lg mb-px font-medium transition-colors ${
-                  isActive
-                    ? "bg-sidebar-active text-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-hover hover:text-primary-foreground/80"
-                }`}
-              >
-                <Icon size={15} className={isActive ? "opacity-100" : "opacity-50"} />
-                {item.label}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+        ))}
+      </div>
 
-      <div className="mt-auto p-4 border-t border-sidebar-border">
-        <div className="text-[10px] text-sidebar-foreground/25 text-center">المدينة المنورة · 2026</div>
+      {/* Footer */}
+      <div className="px-5 py-4 border-t border-sidebar-border">
+        <div className="text-[10px] text-sidebar-foreground/20 text-center tracking-wide">المدينة المنورة · 2026</div>
       </div>
     </div>
   );
