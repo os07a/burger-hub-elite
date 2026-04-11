@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutGrid, TrendingUp, Heart, Users, Calendar, Wallet,
   Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike, MessageSquare
@@ -49,6 +50,7 @@ const navGroups = [
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut, userRole } = useAuth();
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("theme") === "dark";
@@ -119,6 +121,18 @@ const Sidebar = () => {
           {isDark ? <Sun size={14} /> : <Moon size={14} />}
           {isDark ? "الوضع الفاتح" : "الوضع الداكن"}
         </button>
+        <button
+          onClick={async () => { await signOut(); navigate("/login"); }}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-danger-bg text-danger hover:opacity-80 transition-all duration-200 text-[12px]"
+        >
+          <LogOut size={14} />
+          تسجيل الخروج
+        </button>
+        {userRole && (
+          <div className="text-[10px] text-sidebar-foreground/40 text-center">
+            {userRole === "admin" ? "👑 مدير" : "👤 موظف"}
+          </div>
+        )}
         <div className="text-[10px] text-sidebar-foreground/20 text-center tracking-wide">المدينة المنورة · 2026</div>
       </div>
     </div>
