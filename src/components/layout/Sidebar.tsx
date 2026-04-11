@@ -121,6 +121,18 @@ const Sidebar = () => {
           {isDark ? <Sun size={14} /> : <Moon size={14} />}
           {isDark ? "الوضع الفاتح" : "الوضع الداكن"}
         </button>
+        <button
+          onClick={async () => { await signOut(); navigate("/login"); }}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-danger-bg text-danger hover:opacity-80 transition-all duration-200 text-[12px]"
+        >
+          <LogOut size={14} />
+          تسجيل الخروج
+        </button>
+        {userRole && (
+          <div className="text-[10px] text-sidebar-foreground/40 text-center">
+            {userRole === "admin" ? "👑 مدير" : "👤 موظف"}
+          </div>
+        )}
         <div className="text-[10px] text-sidebar-foreground/20 text-center tracking-wide">المدينة المنورة · 2026</div>
       </div>
     </div>
