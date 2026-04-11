@@ -16,6 +16,7 @@ import Inventory from "@/pages/Inventory";
 import Suppliers from "@/pages/Suppliers";
 import Archive from "@/pages/Archive";
 import Profits from "@/pages/Profits";
+import ProjectStatus from "@/pages/ProjectStatus";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/project-status" element={<ProjectStatus />} />
             <Route path="/behavior" element={<Behavior />} />
             <Route path="/loyalty" element={<Loyalty />} />
             <Route path="/staff" element={<Staff />} />
