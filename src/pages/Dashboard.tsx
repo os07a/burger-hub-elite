@@ -1,6 +1,7 @@
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
+import RiyalIcon from "@/components/ui/RiyalIcon";
 
 // بيانات مركزية متطابقة مع باقي الأقسام
 const avgDaily = 696;
@@ -31,12 +32,12 @@ const Dashboard = () => {
           <div className="bg-background rounded-xl p-4 text-center">
             <div className="text-[11px] text-muted-foreground font-medium mb-1.5">📊 متوسط يومي</div>
             <div className="text-[22px] font-bold text-foreground tracking-tight">{avgDaily}</div>
-            <div className="text-[11px] text-muted-foreground mt-1">ريال/يوم</div>
+            <div className="text-[11px] text-muted-foreground mt-1 flex items-center justify-center gap-1"><RiyalIcon size={10} />/يوم</div>
           </div>
           <div className="bg-background rounded-xl p-4 text-center">
             <div className="text-[11px] text-muted-foreground font-medium mb-1.5">🏆 أعلى يوم</div>
             <div className="text-[22px] font-bold text-success tracking-tight">2,030</div>
-            <div className="text-[11px] text-muted-foreground mt-1">ريال · 2 يناير</div>
+            <div className="text-[11px] text-muted-foreground mt-1 flex items-center justify-center gap-1"><RiyalIcon size={10} /> · 2 يناير</div>
           </div>
           <div className="bg-background rounded-xl p-4 text-center">
             <div className="text-[11px] text-primary font-semibold mb-1.5">أبريل (حتى الآن)</div>
@@ -50,8 +51,8 @@ const Dashboard = () => {
           <div className="h-full bg-primary/60 rounded-l-full" style={{ width: `${(totalDiscounts / totalGrossSales * 100).toFixed(0)}%` }} />
         </div>
         <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
-          <span>● صافي المبيعات: {totalNetSales.toLocaleString()} ر.س</span>
-          <span>● خصومات: {totalDiscounts.toLocaleString()} ر.س ({((totalDiscounts / totalGrossSales) * 100).toFixed(1)}%)</span>
+          <span className="flex items-center gap-1">● صافي المبيعات: {totalNetSales.toLocaleString()} <RiyalIcon size={9} /></span>
+          <span className="flex items-center gap-1">● خصومات: {totalDiscounts.toLocaleString()} <RiyalIcon size={9} /> ({((totalDiscounts / totalGrossSales) * 100).toFixed(1)}%)</span>
         </div>
       </div>
 
@@ -111,7 +112,7 @@ const Dashboard = () => {
           ))}
         </div>
         <div className="mt-4 pt-3 border-t border-border flex justify-between text-[11px] text-muted-foreground">
-          <span>الرواتب الشهرية: <b className="text-foreground">{totalSalaries.toLocaleString()} ر.س</b></span>
+          <span className="flex items-center gap-1">الرواتب الشهرية: <b className="text-foreground flex items-center gap-1">{totalSalaries.toLocaleString()} <RiyalIcon size={9} /></b></span>
           <span>نسبة العمالة: <b className={totalSalaries / (avgDaily * 30) > 0.35 ? "text-danger" : "text-success"}>{((totalSalaries / (avgDaily * 30)) * 100).toFixed(1)}%</b></span>
         </div>
       </div>
