@@ -46,9 +46,9 @@ const SalesIndicator = () => (
     <div className="grid grid-cols-6 gap-2 mb-4">
       {[
         { label: "🧾 إجمالي المبيعات", value: "97,640", color: "text-primary" },
-        { label: "💵 صافي المبيعات", value: "91,870", color: "text-green-400" },
+        { label: "💵 صافي المبيعات", value: "91,870", color: "text-black" },
         { label: "📊 متوسط يومي", value: "696", color: "text-blue-400" },
-        { label: "🏆 أعلى يوم", value: "2,030", color: "text-green-400" },
+        { label: "🏆 أعلى يوم", value: "2,030", color: "text-black" },
         { label: "📉 أدنى يوم فعلي", value: "97", color: "text-red-400" },
         { label: "🏷️ إجمالي الخصومات", value: "5,477", color: "text-orange-400" },
       ].map((m) => (
@@ -86,10 +86,10 @@ const SalesIndicator = () => (
                 <tr key={m.month} className="border-b border-border/50 hover:bg-background/50">
                   <td className="py-2 font-bold text-foreground">{m.month}</td>
                   <td className="text-center text-foreground">{m.gross.toLocaleString()}</td>
-                  <td className="text-center font-medium text-green-400">{m.net.toLocaleString()}</td>
+                  <td className="text-center font-medium text-black">{m.net.toLocaleString()}</td>
                   <td className="text-center text-gray">{m.days}</td>
                   <td className="text-center font-bold text-foreground">{m.avg}</td>
-                  <td className="text-center text-orange-400">{m.discounts.toLocaleString()}</td>
+                  <td className="text-center text-rose-700">{m.discounts.toLocaleString()}</td>
                   <td className="text-center text-gray">{discPct}%</td>
                   <td className="text-center">
                     <StatusBadge variant={ratingVariant as "success" | "warning" | "danger" | "info"} className="text-[8px]">{rating}</StatusBadge>
@@ -105,13 +105,13 @@ const SalesIndicator = () => (
     <div className="grid grid-cols-3 gap-3 mb-4">
       {/* أفضل 5 أيام */}
       <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-green-400 uppercase tracking-wider mb-3">🏆 أفضل 5 أيام</div>
+        <div className="text-[9px] font-semibold uppercase tracking-wider mb-3 text-black">🏆 أفضل 5 أيام</div>
         <div className="space-y-1.5">
           {bestDays.map((d, i) => (
             <div key={d.date} className="flex items-center gap-2 p-2 bg-background border border-border rounded-lg">
-              <span className="text-[14px] w-6 text-center font-bold text-green-400">#{i + 1}</span>
+              <span className="text-[14px] w-6 text-center font-bold text-black">#{i + 1}</span>
               <span className="text-[11px] text-gray flex-1">{d.date}</span>
-              <span className="text-[13px] font-bold text-green-400">{d.value.toLocaleString()}</span>
+              <span className="text-[13px] font-bold text-black">{d.value.toLocaleString()}</span>
               <span className="text-[8px] text-gray-light">ر.س</span>
             </div>
           ))}
@@ -197,7 +197,7 @@ const SalesIndicator = () => (
 
       {/* التوقعات والأهداف */}
       <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-green-400 uppercase tracking-wider mb-3">🔮 التوقعات والأهداف</div>
+        <div className="text-[9px] font-semibold uppercase tracking-wider mb-3 text-success">🔮 التوقعات والأهداف</div>
         <div className="space-y-2">
           {[
             { title: "توقع أبريل الكامل", value: "~25,430 ر.س", desc: "بمعدل 848 ر.س/يوم × 30 يوم", trend: "up" },
@@ -213,7 +213,7 @@ const SalesIndicator = () => (
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-foreground">{f.title}</span>
-                  <span className="text-[11px] font-bold text-green-400">{f.value}</span>
+                  <span className="text-[11px] font-bold text-success">{f.value}</span>
                 </div>
                 <div className="text-[8px] text-gray">{f.desc}</div>
               </div>
