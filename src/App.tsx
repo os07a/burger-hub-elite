@@ -18,6 +18,7 @@ import Archive from "@/pages/Archive";
 import Profits from "@/pages/Profits";
 import ProjectStatus from "@/pages/ProjectStatus";
 import SalesIndicator from "@/pages/SalesIndicator";
+import BusinessAdvisor from "@/pages/BusinessAdvisor";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/archive" element={<Archive />} />
             <Route path="/profits" element={<Profits />} />
             <Route path="/sales-indicator" element={<SalesIndicator />} />
+            <Route path="/advisor" element={<BusinessAdvisor />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
