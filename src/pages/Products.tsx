@@ -92,39 +92,51 @@ const Products = () => {
                 const cost = Number(p.cost);
                 const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
                 return (
-                  <div key={p.id} className="rounded-2xl border border-border bg-background p-4 hover:shadow-md transition-all">
-                    {p.image_url && (
-                      <img src={p.image_url} alt={p.name} loading="lazy" className="w-full h-32 object-cover rounded-xl mb-3" />
-                    )}
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="text-[14px] font-bold text-foreground">{p.name}</div>
-                      <div className="text-[16px] font-bold text-primary flex items-center gap-1">{price} <RiyalIcon size={11} /></div>
+                  <div key={p.id} className="rounded-2xl border border-border bg-background p-3 hover:shadow-md hover:border-primary/30 transition-all flex gap-3">
+                    {/* Square thumbnail — fixed compact size */}
+                    <div className="shrink-0">
+                      {p.image_url ? (
+                        <img
+                          src={p.image_url}
+                          alt={p.name}
+                          loading="lazy"
+                          className="w-16 h-16 object-cover rounded-xl border border-border"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-muted/60 border border-border flex items-center justify-center text-[20px]">
+                          🍔
+                        </div>
+                      )}
                     </div>
-                    {p.description && <div className="text-[10px] text-muted-foreground leading-relaxed mb-3">{p.description}</div>}
-                    <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                      <div className="bg-muted/50 rounded-xl py-2">
-                        <div className="text-[10px] text-muted-foreground mb-0.5">التكلفة</div>
-                        <div className="text-[13px] font-bold text-foreground">{cost.toFixed(2)}</div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="text-[13px] font-bold text-foreground truncate">{p.name}</div>
+                        <div className="text-[14px] font-bold text-primary flex items-center gap-0.5 shrink-0">
+                          {price}<RiyalIcon size={10} />
+                        </div>
                       </div>
-                      <div className="bg-muted/50 rounded-xl py-2">
-                        <div className="text-[10px] text-muted-foreground mb-0.5">الربح</div>
-                        <div className="text-[13px] font-bold text-foreground">{(price - cost).toFixed(2)}</div>
+
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground mb-2">
+                        <span>تكلفة <span className="text-foreground font-semibold">{cost.toFixed(1)}</span></span>
+                        <span>•</span>
+                        <span>ربح <span className="text-foreground font-semibold">{(price - cost).toFixed(1)}</span></span>
+                        <span>•</span>
+                        <span className={`font-bold ${getMarginColor(margin)}`}>{margin.toFixed(0)}%</span>
                       </div>
-                      <div className="bg-muted/50 rounded-xl py-2">
-                        <div className="text-[10px] text-muted-foreground mb-0.5">هامش</div>
-                        <div className={`text-[13px] font-bold ${getMarginColor(margin)}`}>{margin.toFixed(1)}%</div>
-                      </div>
+
+                      {isAdmin && (
+                        <div className="flex gap-1.5 mt-auto">
+                          <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px]" onClick={() => handleEdit(p)}>
+                            <Pencil size={10} className="ml-1" /> تعديل
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-danger" onClick={() => setConfirmDel(p)}>
+                            <Trash2 size={10} />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {isAdmin && (
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(p)}>
-                          <Pencil size={12} className="ml-1" /> تعديل
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setConfirmDel(p)} className="text-danger">
-                          <Trash2 size={12} />
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 );
               })}
