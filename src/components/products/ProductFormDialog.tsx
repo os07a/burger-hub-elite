@@ -1,0 +1,90 @@
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useAddProduct, useUpdateProduct, type Product } from "@/hooks/useProducts";
+import { toast } from "sonner";
+
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  product?: Product | null;
+}
+
+const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
+  const add = useAddProduct();
+  const update = useUpdateProduct();
+  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "" });
+
+  useEffect(() => {
+    if (product) {
+      setForm({
+        name: product.name,
+        category: product.category ?? "",
+        price: Number(product.price),
+        cost: Number(product.cost),
+        description: product.description ?? "",
+      });
+    } else {
+      setForm({ name: "", category: "", price: 0, cost: 0, description: "" });
+    }
+  }, [product, open]);
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) { toast.error("الاسم مطلوب"); return; }
+    try {
+      if (product) {
+        await update.mutateAsync({ id: product.id, ...form });
+        toast.success("تم تحديث المنتج");
+      } else {
+        await add.mutateAsync(form);
+        toast.success("تمت إضافة المنتج");
+      }
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message ?? "حدث خطأ");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl">
+        <DialogHeader>
+          <DialogTitle>{product ? "تعديل منتج" : "إضافة منتج"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>الاسم</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <Label>التصنيف</Label>
+            <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="برجر / مشروبات / جوانب..." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>السعر (ر.س)</Label>
+              <Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) || 0 })} />
+            </div>
+            <div>
+              <Label>التكلفة (ر.س)</Label>
+              <Input type="number" step="0.01" value={form.cost} onChange={(e) => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })} />
+            </div>
+          </div>
+          <div>
+            <Label>الوصف</Label>
+            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+          <Button onClick={handleSubmit} disabled={add.isPending || update.isPending}>حفظ</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ProductFormDialog;
