@@ -18,7 +18,9 @@ interface Props {
 const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
   const add = useAddProduct();
   const update = useUpdateProduct();
-  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "" });
+  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "" });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (product) {
@@ -28,11 +30,35 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
         price: Number(product.price),
         cost: Number(product.cost),
         description: product.description ?? "",
+        image_url: product.image_url ?? "",
       });
     } else {
-      setForm({ name: "", category: "", price: 0, cost: 0, description: "" });
+      setForm({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "" });
     }
   }, [product, open]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("اختر صورة فقط"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("الحجم الأقصى 5 ميجا"); return; }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+      setForm((f) => ({ ...f, image_url: data.publicUrl }));
+      toast.success("تم رفع الصورة");
+    } catch (err: any) {
+      toast.error(err.message ?? "فشل الرفع");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) { toast.error("الاسم مطلوب"); return; }
