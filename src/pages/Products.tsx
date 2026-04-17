@@ -130,14 +130,36 @@ const Products = () => {
                   return (
                     <div
                       key={p.id}
-                      className={`relative rounded-2xl border bg-background p-3 hover:shadow-lg transition-all flex gap-3 ${
+                      className={`group relative rounded-2xl border bg-background p-3 hover:shadow-lg transition-all flex gap-3 ${
                         isTop ? "border-success/40 shadow-success/5 shadow-md" : "border-border hover:border-primary/30"
                       }`}
                     >
                       {/* Top performer badge */}
                       {isTop && (
-                        <div className="absolute -top-2 -right-2 bg-success text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+                        <div className="absolute -top-2 right-2 bg-success text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
                           <Award size={9} /> الأعلى ربحاً
+                        </div>
+                      )}
+
+                      {/* Floating action icons — top-left, appear on hover */}
+                      {isAdmin && (
+                        <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                          <button
+                            onClick={() => handleEdit(p)}
+                            className="w-6 h-6 rounded-full bg-background/95 border border-border shadow-sm flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition"
+                            aria-label="تعديل"
+                            title="تعديل"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDel(p)}
+                            className="w-6 h-6 rounded-full bg-background/95 border border-border shadow-sm flex items-center justify-center text-danger hover:bg-danger hover:text-white hover:border-danger transition"
+                            aria-label="حذف"
+                            title="حذف"
+                          >
+                            <Trash2 size={11} />
+                          </button>
                         </div>
                       )}
 
@@ -158,53 +180,35 @@ const Products = () => {
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 min-w-0 flex flex-col">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="min-w-0">
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between gap-2">
                             <div className="text-[13px] font-bold text-foreground truncate leading-tight">{p.name}</div>
-                            <div className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-md border text-[9px] font-semibold ${rating.cls}`}>
-                              <span>{rating.icon}</span>
-                              <span>{rating.label}</span>
+                            <div className="text-[15px] font-bold text-primary flex items-center gap-0.5 shrink-0">
+                              {price}<RiyalIcon size={10} />
                             </div>
                           </div>
-                          <div className="text-left shrink-0">
-                            <div className="text-[15px] font-bold text-primary flex items-center gap-0.5">
-                              {price}<RiyalIcon size={10} />
+
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[9px] font-semibold ${rating.cls}`}>
+                              <span>{rating.icon}</span>
+                              <span>{rating.label}</span>
                             </div>
                             <div className={`text-[10px] font-bold ${getMarginColor(margin)}`}>{margin.toFixed(0)}%</div>
                           </div>
                         </div>
 
-                        {/* Smart visual profit bar (cost vs profit) */}
-                        <div className="mt-1 mb-2">
+                        {/* Smart visual profit bar */}
+                        <div className="mt-2">
                           <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden flex">
-                            <div
-                              className="bg-danger/60 h-full"
-                              style={{ width: `${price > 0 ? (cost / price) * 100 : 0}%` }}
-                              title={`تكلفة ${cost.toFixed(1)}`}
-                            />
-                            <div
-                              className="bg-success h-full"
-                              style={{ width: `${price > 0 ? (profit / price) * 100 : 0}%` }}
-                              title={`ربح ${profit.toFixed(1)}`}
-                            />
+                            <div className="bg-danger/60 h-full" style={{ width: `${price > 0 ? (cost / price) * 100 : 0}%` }} title={`تكلفة ${cost.toFixed(1)}`} />
+                            <div className="bg-success h-full" style={{ width: `${price > 0 ? (profit / price) * 100 : 0}%` }} title={`ربح ${profit.toFixed(1)}`} />
                           </div>
                           <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
                             <span>تكلفة <span className="text-foreground font-semibold">{cost.toFixed(1)}</span></span>
                             <span>ربح <span className="text-success font-bold">{profit.toFixed(1)}</span></span>
                           </div>
                         </div>
-
-                        {isAdmin && (
-                          <div className="flex gap-1.5 mt-auto">
-                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px]" onClick={() => handleEdit(p)}>
-                              <Pencil size={10} className="ml-1" /> تعديل
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-7 px-2 text-danger" onClick={() => setConfirmDel(p)}>
-                              <Trash2 size={10} />
-                            </Button>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
