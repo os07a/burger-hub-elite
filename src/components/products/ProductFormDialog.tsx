@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAddProduct, useUpdateProduct, type Product } from "@/hooks/useProducts";
+import { supabase } from "@/integrations/supabase/client";
+import { Upload, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -16,7 +18,9 @@ interface Props {
 const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
   const add = useAddProduct();
   const update = useUpdateProduct();
-  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "" });
+  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "" });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (product) {
@@ -26,11 +30,35 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
         price: Number(product.price),
         cost: Number(product.cost),
         description: product.description ?? "",
+        image_url: product.image_url ?? "",
       });
     } else {
-      setForm({ name: "", category: "", price: 0, cost: 0, description: "" });
+      setForm({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "" });
     }
   }, [product, open]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("اختر صورة فقط"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("الحجم الأقصى 5 ميجا"); return; }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+      setForm((f) => ({ ...f, image_url: data.publicUrl }));
+      toast.success("تم رفع الصورة");
+    } catch (err: any) {
+      toast.error(err.message ?? "فشل الرفع");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) { toast.error("الاسم مطلوب"); return; }
@@ -55,6 +83,35 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
           <DialogTitle>{product ? "تعديل منتج" : "إضافة منتج"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div>
+            <Label>صورة المنتج</Label>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+            {form.image_url ? (
+              <div className="relative inline-block mt-1">
+                <img src={form.image_url} alt="معاينة" className="w-24 h-24 rounded-xl object-cover border border-border" />
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, image_url: "" })}
+                  className="absolute -top-2 -left-2 bg-danger text-white rounded-full p-1 shadow-md hover:scale-110 transition"
+                  aria-label="إزالة الصورة"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="mt-1"
+              >
+                {uploading ? <Loader2 size={14} className="ml-1 animate-spin" /> : <Upload size={14} className="ml-1" />}
+                {uploading ? "جارٍ الرفع..." : "رفع صورة"}
+              </Button>
+            )}
+          </div>
           <div>
             <Label>الاسم</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
