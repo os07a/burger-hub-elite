@@ -3,7 +3,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import RiyalIcon from "@/components/ui/RiyalIcon";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, Crown } from "lucide-react";
 import { useProducts, useDeleteProduct, type Product } from "@/hooks/useProducts";
 import { useAuth } from "@/contexts/AuthContext";
 import ProductFormDialog from "@/components/products/ProductFormDialog";
@@ -12,7 +12,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { TrendingUp, Award } from "lucide-react";
 
 const getMarginColor = (m: number) => (m >= 55 ? "text-success" : m >= 35 ? "text-warning" : "text-danger");
 
@@ -43,10 +42,13 @@ const Products = () => {
         return s + m;
       }, 0) / products.length
     : 0;
-  const bestMargin = products.reduce<{ name: string; margin: number }>((best, p) => {
+  const bestMargin = products.reduce<{ id: string; name: string; margin: number }>((best, p) => {
     const m = Number(p.price) > 0 ? ((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100 : 0;
-    return m > best.margin ? { name: p.name, margin: m } : best;
-  }, { name: "—", margin: 0 });
+    return m > best.margin ? { id: p.id, name: p.name, margin: m } : best;
+  }, { id: "", name: "—", margin: 0 });
+
+  // Single GLOBAL top-margin product (only one crown across the whole page)
+  const topProductId = bestMargin.id;
 
   const grouped = products.reduce<Record<string, Product[]>>((acc, p) => {
     const k = p.category || "بدون تصنيف";
@@ -93,9 +95,12 @@ const Products = () => {
         </div>
       )}
 
-      {(() => null)()}
-      <GlobalTopWrapper products={products} grouped={grouped} />
-
+      <div className="space-y-4">
+        {Object.entries(grouped).map(([cat, items]) => {
+          const catAvg = items.reduce((s, p) => {
+            const m = Number(p.price) > 0 ? ((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100 : 0;
+            return s + m;
+          }, 0) / items.length;
 
           return (
             <div key={cat} className="ios-card">
@@ -118,19 +123,22 @@ const Products = () => {
                   const profit = price - cost;
                   const margin = price > 0 ? (profit / price) * 100 : 0;
                   const rating = getRating(margin);
-                  const isTop = p.id === top.id && items.length > 1 && margin > 0;
+                  const isTop = p.id === topProductId && margin > 0;
 
                   return (
                     <div
                       key={p.id}
                       className={`group relative rounded-2xl border bg-background p-3 hover:shadow-lg transition-all flex gap-3 ${
-                        isTop ? "border-success/40 shadow-success/5 shadow-md" : "border-border hover:border-primary/30"
+                        isTop
+                          ? "border-warning/50 shadow-warning/10 shadow-md bg-gradient-to-br from-warning/5 to-transparent"
+                          : "border-border hover:border-primary/30"
                       }`}
                     >
-                      {/* Top performer badge */}
+                      {/* Single global crown — only on the top-margin product */}
                       {isTop && (
-                        <div className="absolute -top-2 right-2 bg-success text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
-                          <Award size={9} /> الأعلى ربحاً
+                        <div className="absolute -top-3 right-3 z-10 flex items-center gap-1 bg-gradient-to-r from-warning to-warning/80 text-white text-[10px] font-bold pl-2.5 pr-2 py-1 rounded-full shadow-lg shadow-warning/30 ring-2 ring-background">
+                          <Crown size={11} className="fill-white" />
+                          <span>الأعلى ربحاً</span>
                         </div>
                       )}
 
