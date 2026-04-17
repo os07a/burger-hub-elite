@@ -1,7 +1,9 @@
+import { useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
-import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
-import RiyalIcon from "@/components/ui/RiyalIcon";
+import MetricCardPro from "@/components/delivery/MetricCardPro";
+import ChannelRevenueTable from "@/components/delivery/ChannelRevenueTable";
+import { useDeliveryMetrics } from "@/hooks/useDeliveryMetrics";
 import { BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from "recharts";
 
 const keetaChartData = [
@@ -50,85 +52,191 @@ const apps = [
   {
     name: "هنقرستيشن",
     nameEn: "HungerStation",
-    logo: "🟣",
+    logo: "H",
+    logoBg: "bg-[hsl(45,90%,55%)]",
     status: "نشط",
     statusVariant: "success" as const,
     commission: "20-30%",
     joined: "ديسمبر 2025",
     notes: "أكبر تطبيق توصيل في السعودية — تغطية واسعة في المدينة المنورة",
-    metrics: { orders: "—", revenue: "—", avgOrder: "—" },
   },
   {
     name: "كيتا",
     nameEn: "Keeta",
-    logo: "🟢",
+    logo: "K",
+    logoBg: "bg-[hsl(50,85%,55%)]",
     status: "نشط",
     statusVariant: "success" as const,
     commission: "15-25%",
     joined: "ديسمبر 2025",
     notes: "تطبيق جديد في السوق — عمولات أقل وحوافز للمطاعم الجديدة",
-    metrics: { orders: "—", revenue: "—", avgOrder: "—" },
   },
 ];
 
 const summaryRows = [
-  { label: "مبيعات صنف", value: keetaSummary.sales.toLocaleString(), color: "text-foreground" },
-  { label: "الإيرادات الأخرى", value: keetaSummary.otherRevenue.toFixed(2), color: "text-foreground" },
-  { label: "العمولة", value: keetaSummary.commission.toLocaleString(), color: "text-foreground" },
-  { label: "تكلفة العرض الترويجي", value: keetaSummary.promoCost.toLocaleString(), color: "text-foreground" },
-  { label: "التكاليف الأخرى", value: keetaSummary.otherCosts.toLocaleString(), color: "text-foreground" },
+  { label: "مبيعات صنف", value: keetaSummary.sales.toLocaleString() },
+  { label: "الإيرادات الأخرى", value: keetaSummary.otherRevenue.toFixed(2) },
+  { label: "العمولة", value: keetaSummary.commission.toLocaleString() },
+  { label: "تكلفة العرض الترويجي", value: keetaSummary.promoCost.toLocaleString() },
+  { label: "التكاليف الأخرى", value: keetaSummary.otherCosts.toLocaleString() },
 ];
 
-const DeliveryApps = () => (
-  <div>
-    <PageHeader title="تطبيقات التوصيل" subtitle="منصات التوصيل المرتبطة بالمطعم" badge={`${apps.length} تطبيق`} />
+const calcDelta = (cur: number, prev: number) => {
+  if (!prev) return 0;
+  return ((cur - prev) / prev) * 100;
+};
 
-    <div className="grid grid-cols-4 gap-3 mb-5">
-      <MetricCard label="📱 التطبيقات النشطة" value={apps.filter(a => a.status === "نشط").length} sub={`من ${apps.length} تطبيق`} subColor="success" />
-      <MetricCard label="🛵 إجمالي الطلبات" value="—" sub="بانتظار الربط" subColor="warning" />
-      <MetricCard label="💵 إيرادات التوصيل" value="—" sub="بانتظار البيانات" subColor="warning" />
-      <MetricCard label="🏷️ متوسط العمولة" value="~22%" sub="نسبة تقريبية" subColor="danger" />
-    </div>
+const fmtAbs = (cur: number, prev: number, suffix = "SAR") => {
+  const diff = cur - prev;
+  const sign = diff >= 0 ? "+" : "";
+  if (Math.abs(diff) >= 1000) return `${sign}${(diff / 1000).toFixed(0)}K ${suffix}`;
+  return `${sign}${diff.toFixed(0)} ${suffix}`;
+};
 
-    {/* Keeta Account Balance */}
-    <div className="bg-surface border border-border rounded-lg p-5 mb-5 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="text-[13px] font-bold text-foreground">رصيد الحساب</div>
-        <div className="text-[28px] font-bold text-foreground flex items-center gap-1.5">
-          9,214.56
-          <span className="text-[11px] text-muted-foreground font-medium">ر.س</span>
-        </div>
+const DeliveryApps = () => {
+  const { data: m } = useDeliveryMetrics();
+  const [viewBy, setViewBy] = useState<"channel" | "branch" | "brand">("channel");
+
+  const fallback = {
+    revenue: 0, ordersCount: 0, avgBasket: 0, profitMargin: 0, adSpend: 0, roas: 0,
+    prev: { revenue: 0, ordersCount: 0, avgBasket: 0, profitMargin: 0, adSpend: 0, roas: 0 },
+    channels: [] as { key: string; revenue: number; orders: number }[],
+  };
+  const d = m ?? fallback;
+
+  const channelTable = [
+    { key: "hungerstation", name: "HungerStation", logo: "H", logoColor: "bg-[hsl(45,90%,55%)]", revenue: d.channels[0]?.revenue ?? 0 },
+    { key: "keeta", name: "Keeta", logo: "K", logoColor: "bg-[hsl(50,85%,55%)]", revenue: d.channels[1]?.revenue ?? 0 },
+  ];
+
+  return (
+    <div>
+      <PageHeader
+        title="تطبيقات التوصيل"
+        subtitle="نظرة شاملة على الإيرادات، الطلبات، والأرباح"
+        badge={`${apps.length} تطبيق`}
+      />
+
+      {/* New: 6 Pro KPI cards */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <MetricCardPro
+          label="الإيرادات"
+          value={Math.round(d.revenue).toLocaleString()}
+          showRiyal
+          deltaAbs={fmtAbs(d.revenue, d.prev.revenue)}
+          delta={calcDelta(d.revenue, d.prev.revenue)}
+          compareLabel="مقارنةً بالشهر الماضي"
+          highlighted
+        />
+        <MetricCardPro
+          label="الطلبات"
+          value={d.ordersCount.toLocaleString()}
+          deltaAbs={fmtAbs(d.ordersCount, d.prev.ordersCount, "")}
+          delta={calcDelta(d.ordersCount, d.prev.ordersCount)}
+          compareLabel="مقارنةً بالشهر الماضي"
+        />
+        <MetricCardPro
+          label="متوسط السلة"
+          value={d.avgBasket.toFixed(0)}
+          showRiyal
+          deltaAbs={fmtAbs(d.avgBasket, d.prev.avgBasket)}
+          delta={calcDelta(d.avgBasket, d.prev.avgBasket)}
+          compareLabel="مقارنةً بالشهر الماضي"
+        />
+        <MetricCardPro
+          label="هامش الربحية"
+          value={Math.round(d.profitMargin).toLocaleString()}
+          showRiyal
+          badge="40% من الإيرادات"
+          deltaAbs={fmtAbs(d.profitMargin, d.prev.profitMargin)}
+          delta={calcDelta(d.profitMargin, d.prev.profitMargin)}
+          compareLabel="مقارنةً بالشهر الماضي"
+        />
+        <MetricCardPro
+          label="العائد على الإنفاق الإعلاني"
+          value={d.roas.toFixed(1)}
+          showRiyal
+          badge={`لكل 1 SAR تم إنفاقه`}
+          deltaAbs={`${d.roas > d.prev.roas ? "+" : ""}${(d.roas - d.prev.roas).toFixed(1)} SAR`}
+          delta={calcDelta(d.roas, d.prev.roas)}
+          compareLabel="مقارنةً بالشهر الماضي"
+        />
+        <MetricCardPro
+          label="الإنفاق الإعلاني"
+          value={Math.round(d.adSpend).toLocaleString()}
+          showRiyal
+          badge="4% من الإيرادات"
+          deltaAbs={fmtAbs(d.adSpend, d.prev.adSpend)}
+          delta={calcDelta(d.adSpend, d.prev.adSpend)}
+          compareLabel="مقارنةً بالشهر الماضي"
+        />
       </div>
-      <button className="px-6 py-2.5 rounded-lg bg-[hsl(50,80%,85%)] text-foreground font-semibold text-[13px] hover:bg-[hsl(50,80%,78%)] transition-colors">
-        سحب
-      </button>
-    </div>
 
-    {/* Keeta 30-day Chart + Summary */}
-    <div className="bg-surface border border-border rounded-lg p-5 mb-5">
-      <div className="flex items-start gap-6">
-        {/* Chart */}
-        <div className="flex-1 min-w-0">
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={keetaChartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
-              <Tooltip
-                contentStyle={{ fontSize: 11, direction: "rtl", borderRadius: 8, border: "1px solid hsl(var(--border))" }}
-                formatter={(value: number, name: string) => {
-                  const labels: Record<string, string> = {
-                    sales: "مبيعات صنف",
-                    commission: "العمولة",
-                    promoCost: "تكلفة العرض",
-                    otherCosts: "تكاليف أخرى",
-                    netIncome: "صافي الدخل",
-                  };
-                  return [value.toFixed(2), labels[name] || name];
-                }}
-              />
-              <Legend
-                formatter={(value: string) => {
+      {/* View-by tabs */}
+      <div className="flex items-center justify-end gap-2 mb-4">
+        <span className="text-[12px] text-muted-foreground ml-2">عرض حسب</span>
+        {[
+          { key: "channel", label: "القناة" },
+          { key: "branch", label: "الفرع" },
+          { key: "brand", label: "العلامة" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setViewBy(t.key as typeof viewBy)}
+            className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+              viewBy === t.key
+                ? "bg-info text-white"
+                : "bg-muted/60 text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Channel revenue table */}
+      <div className="mb-5">
+        <ChannelRevenueTable channels={channelTable} />
+      </div>
+
+      {/* Keeta Account Balance */}
+      <div className="bg-card border border-border rounded-2xl p-5 mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-[13px] font-bold text-foreground">رصيد حساب Keeta</div>
+          <div className="text-[28px] font-bold text-foreground flex items-center gap-1.5">
+            9,214.56
+            <span className="text-[11px] text-muted-foreground font-medium">ر.س</span>
+          </div>
+        </div>
+        <button className="px-6 py-2.5 rounded-lg bg-[hsl(50,80%,85%)] text-foreground font-semibold text-[13px] hover:bg-[hsl(50,80%,78%)] transition-colors">
+          سحب
+        </button>
+      </div>
+
+      {/* Keeta 30-day Chart + Summary */}
+      <div className="bg-card border border-border rounded-2xl p-5 mb-5">
+        <div className="flex items-start gap-6">
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-bold text-foreground mb-3">أداء Keeta — آخر 30 يوم</div>
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={keetaChartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
+                <Tooltip
+                  contentStyle={{ fontSize: 11, direction: "rtl", borderRadius: 8, border: "1px solid hsl(var(--border))" }}
+                  formatter={(value: number, name: string) => {
+                    const labels: Record<string, string> = {
+                      sales: "مبيعات صنف",
+                      commission: "العمولة",
+                      promoCost: "تكلفة العرض",
+                      otherCosts: "تكاليف أخرى",
+                      netIncome: "صافي الدخل",
+                    };
+                    return [value.toFixed(2), labels[name] || name];
+                  }}
+                />
+                <Legend formatter={(value: string) => {
                   const labels: Record<string, string> = {
                     sales: "مبيعات صنف",
                     commission: "العمولة",
@@ -137,94 +245,65 @@ const DeliveryApps = () => (
                     netIncome: "صافي الدخل",
                   };
                   return <span style={{ fontSize: 10 }}>{labels[value] || value}</span>;
-                }}
-              />
-              <Bar dataKey="sales" fill="#f59e0b" stackId="a" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="commission" fill="#6366f1" stackId="b" />
-              <Bar dataKey="promoCost" fill="#1e3a5f" stackId="b" />
-              <Bar dataKey="otherCosts" fill="#8b5cf6" stackId="b" />
-              <Line type="monotone" dataKey="netIncome" stroke="#2563eb" strokeWidth={2.5} dot={false} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Summary */}
-        <div className="w-[260px] shrink-0 pt-2" dir="rtl">
-          <div className="text-[11px] text-muted-foreground mb-1">صافي الدخل</div>
-          <div className="text-[26px] font-bold text-foreground flex items-center gap-2 mb-4">
-            {keetaSummary.netIncome.toLocaleString()}
-            <span className="text-[11px] text-danger font-medium">↓ 24.82%</span>
+                }} />
+                <Bar dataKey="sales" fill="#f59e0b" stackId="a" />
+                <Bar dataKey="commission" fill="#6366f1" stackId="b" />
+                <Bar dataKey="promoCost" fill="#1e3a5f" stackId="b" />
+                <Bar dataKey="otherCosts" fill="#8b5cf6" stackId="b" />
+                <Line type="monotone" dataKey="netIncome" stroke="#2563eb" strokeWidth={2.5} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
-          <div className="space-y-3">
-            {summaryRows.map((row) => (
-              <div key={row.label} className="flex items-center justify-between">
-                <div className="text-[11px] text-muted-foreground">{row.label}</div>
-                <div className={`text-[13px] font-bold ${row.color}`}>{row.value}</div>
-              </div>
-            ))}
+
+          <div className="w-[240px] shrink-0 pt-2" dir="rtl">
+            <div className="text-[11px] text-muted-foreground mb-1">صافي الدخل</div>
+            <div className="text-[26px] font-bold text-foreground flex items-center gap-2 mb-4">
+              {keetaSummary.netIncome.toLocaleString()}
+              <span className="text-[11px] text-danger font-medium">↓ 24.82%</span>
+            </div>
+            <div className="space-y-3">
+              {summaryRows.map((row) => (
+                <div key={row.label} className="flex items-center justify-between">
+                  <div className="text-[11px] text-muted-foreground">{row.label}</div>
+                  <div className="text-[13px] font-bold text-foreground">{row.value}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    {/* App Cards */}
-    <div className="grid grid-cols-2 gap-3 mb-5">
-      {apps.map((app) => (
-        <div key={app.name} className="bg-surface border border-border rounded-lg p-5 hover:border-primary/30 transition-colors">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center text-[24px]">
-                {app.logo}
+      {/* App Cards */}
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        {apps.map((app) => (
+          <div key={app.name} className="bg-card border border-border rounded-2xl p-5 hover:border-primary/30 transition-colors">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-xl ${app.logoBg} flex items-center justify-center text-[18px] font-bold text-white`}>
+                  {app.logo}
+                </div>
+                <div>
+                  <div className="text-[15px] font-bold text-foreground">{app.name}</div>
+                  <div className="text-[10px] text-muted-foreground font-medium">{app.nameEn} · انضمام {app.joined}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-[15px] font-bold text-foreground">{app.name}</div>
-                <div className="text-[10px] text-gray-light font-medium">{app.nameEn} · انضمام {app.joined}</div>
-              </div>
+              <StatusBadge variant={app.statusVariant}>{app.status}</StatusBadge>
             </div>
-            <StatusBadge variant={app.statusVariant}>{app.status}</StatusBadge>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-background rounded-lg p-3 border border-border text-center">
-              <div className="text-[9px] text-gray-light font-medium mb-1">الطلبات</div>
-              <div className="text-[16px] font-bold text-foreground">{app.metrics.orders}</div>
+            <div className="p-3 bg-background border border-border rounded-lg">
+              <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">ملاحظات</div>
+              <div className="text-[11px] text-foreground/80 leading-relaxed">{app.notes}</div>
             </div>
-            <div className="bg-background rounded-lg p-3 border border-border text-center">
-              <div className="text-[9px] text-gray-light font-medium mb-1">الإيرادات</div>
-              <div className="text-[16px] font-bold text-success">{app.metrics.revenue}</div>
-            </div>
-            <div className="bg-background rounded-lg p-3 border border-border text-center">
-              <div className="text-[9px] text-gray-light font-medium mb-1">العمولة</div>
-              <div className="text-[16px] font-bold text-warning">{app.commission}</div>
-            </div>
-          </div>
 
-          <div className="p-3 bg-background border border-border rounded-lg">
-            <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-1">ملاحظات</div>
-            <div className="text-[11px] text-gray leading-relaxed">{app.notes}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-
-    {/* Tips */}
-    <div className="bg-surface border border-border rounded-lg p-4">
-      <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">💡 نصائح لتطبيقات التوصيل</div>
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { icon: "📊", title: "تتبع العمولات", desc: "سجّل عمولة كل تطبيق شهرياً لمعرفة الأكثر ربحية بعد خصم العمولة." },
-          { icon: "⏱️", title: "وقت التحضير", desc: "حافظ على وقت تحضير أقل من 15 دقيقة لتحسين ترتيبك في التطبيق." },
-          { icon: "⭐", title: "التقييمات", desc: "رد على تقييمات العملاء — التقييم العالي يرفع ظهورك في نتائج البحث." },
-        ].map((tip) => (
-          <div key={tip.title} className="p-3 bg-background border border-border rounded-lg">
-            <div className="text-[14px] mb-1">{tip.icon}</div>
-            <div className="text-[11px] font-bold text-foreground mb-0.5">{tip.title}</div>
-            <div className="text-[9px] text-gray leading-relaxed">{tip.desc}</div>
+            <div className="mt-3 flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">العمولة التقريبية</span>
+              <span className="font-bold text-warning">{app.commission}</span>
+            </div>
           </div>
         ))}
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default DeliveryApps;
