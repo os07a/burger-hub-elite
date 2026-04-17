@@ -84,6 +84,35 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
         </DialogHeader>
         <div className="space-y-3">
           <div>
+            <Label>صورة المنتج</Label>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+            {form.image_url ? (
+              <div className="relative inline-block mt-1">
+                <img src={form.image_url} alt="معاينة" className="w-24 h-24 rounded-xl object-cover border border-border" />
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, image_url: "" })}
+                  className="absolute -top-2 -left-2 bg-danger text-white rounded-full p-1 shadow-md hover:scale-110 transition"
+                  aria-label="إزالة الصورة"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="mt-1"
+              >
+                {uploading ? <Loader2 size={14} className="ml-1 animate-spin" /> : <Upload size={14} className="ml-1" />}
+                {uploading ? "جارٍ الرفع..." : "رفع صورة"}
+              </Button>
+            )}
+          </div>
+          <div>
             <Label>الاسم</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
