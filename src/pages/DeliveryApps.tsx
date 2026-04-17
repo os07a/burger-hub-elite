@@ -4,7 +4,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import MetricCardPro from "@/components/delivery/MetricCardPro";
 import ChannelRevenueTable from "@/components/delivery/ChannelRevenueTable";
 import { useDeliveryMetrics } from "@/hooks/useDeliveryMetrics";
-import { BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from "recharts";
+import KeetaPerformanceChart from "@/components/delivery/KeetaPerformanceChart";
 
 const keetaChartData = [
   { date: "06/02", netIncome: 89.08, sales: 210, commission: 26.75, promoCost: 67, otherCosts: 27.17 },
