@@ -12,8 +12,19 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { TrendingUp, Award } from "lucide-react";
 
 const getMarginColor = (m: number) => (m >= 55 ? "text-success" : m >= 35 ? "text-warning" : "text-danger");
+
+const getRating = (m: number) => {
+  if (m >= 65) return { label: "ممتاز", icon: "🏆", cls: "bg-success/15 text-success border-success/30" };
+  if (m >= 50) return { label: "جيد", icon: "✅", cls: "bg-primary/10 text-primary border-primary/30" };
+  if (m >= 35) return { label: "مقبول", icon: "⚠️", cls: "bg-warning/15 text-warning border-warning/30" };
+  return { label: "مراجعة", icon: "🔴", cls: "bg-danger/10 text-danger border-danger/30" };
+};
+
+const categoryEmoji = (c: string) =>
+  c.includes("برجر") ? "🍔" : c.includes("وجب") ? "🍟" : c.includes("جوانب") ? "🧀" : c.includes("مشروب") ? "🥤" : "🍽️";
 
 const Products = () => {
   const { userRole } = useAuth();
