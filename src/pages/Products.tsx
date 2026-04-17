@@ -12,8 +12,19 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { TrendingUp, Award } from "lucide-react";
 
 const getMarginColor = (m: number) => (m >= 55 ? "text-success" : m >= 35 ? "text-warning" : "text-danger");
+
+const getRating = (m: number) => {
+  if (m >= 65) return { label: "ممتاز", icon: "🏆", cls: "bg-success/15 text-success border-success/30" };
+  if (m >= 50) return { label: "جيد", icon: "✅", cls: "bg-primary/10 text-primary border-primary/30" };
+  if (m >= 35) return { label: "مقبول", icon: "⚠️", cls: "bg-warning/15 text-warning border-warning/30" };
+  return { label: "مراجعة", icon: "🔴", cls: "bg-danger/10 text-danger border-danger/30" };
+};
+
+const categoryEmoji = (c: string) =>
+  c.includes("برجر") ? "🍔" : c.includes("وجب") ? "🍟" : c.includes("جوانب") ? "🧀" : c.includes("مشروب") ? "🥤" : "🍽️";
 
 const Products = () => {
   const { userRole } = useAuth();
@@ -83,66 +94,125 @@ const Products = () => {
       )}
 
       <div className="space-y-4">
-        {Object.entries(grouped).map(([cat, items]) => (
-          <div key={cat} className="ios-card">
-            <div className="text-[11px] font-medium text-muted-foreground mb-3">{cat} · {items.length} صنف</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {items.map((p) => {
-                const price = Number(p.price);
-                const cost = Number(p.cost);
-                const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
-                return (
-                  <div key={p.id} className="rounded-2xl border border-border bg-background p-3 hover:shadow-md hover:border-primary/30 transition-all flex gap-3">
-                    {/* Square thumbnail — fixed compact size */}
-                    <div className="shrink-0">
-                      {p.image_url ? (
-                        <img
-                          src={p.image_url}
-                          alt={p.name}
-                          loading="lazy"
-                          className="w-16 h-16 object-cover rounded-xl border border-border"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-xl bg-muted/60 border border-border flex items-center justify-center text-[20px]">
-                          🍔
+        {Object.entries(grouped).map(([cat, items]) => {
+          const catAvg = items.reduce((s, p) => {
+            const m = Number(p.price) > 0 ? ((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100 : 0;
+            return s + m;
+          }, 0) / items.length;
+          const top = items.reduce((b, p) => {
+            const m = Number(p.price) > 0 ? ((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100 : 0;
+            return m > b.m ? { id: p.id, m } : b;
+          }, { id: "", m: 0 });
+
+          return (
+            <div key={cat} className="ios-card">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[16px]">{categoryEmoji(cat)}</span>
+                  <span className="text-[12px] font-bold text-foreground">{cat}</span>
+                  <span className="text-[10px] text-muted-foreground">· {items.length} صنف</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <TrendingUp size={11} className={getMarginColor(catAvg)} />
+                  <span>متوسط هامش <span className={`font-bold ${getMarginColor(catAvg)}`}>{catAvg.toFixed(0)}%</span></span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {items.map((p) => {
+                  const price = Number(p.price);
+                  const cost = Number(p.cost);
+                  const profit = price - cost;
+                  const margin = price > 0 ? (profit / price) * 100 : 0;
+                  const rating = getRating(margin);
+                  const isTop = p.id === top.id && items.length > 1 && margin > 0;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className={`relative rounded-2xl border bg-background p-3 hover:shadow-lg transition-all flex gap-3 ${
+                        isTop ? "border-success/40 shadow-success/5 shadow-md" : "border-border hover:border-primary/30"
+                      }`}
+                    >
+                      {/* Top performer badge */}
+                      {isTop && (
+                        <div className="absolute -top-2 -right-2 bg-success text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+                          <Award size={9} /> الأعلى ربحاً
                         </div>
                       )}
-                    </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div className="text-[13px] font-bold text-foreground truncate">{p.name}</div>
-                        <div className="text-[14px] font-bold text-primary flex items-center gap-0.5 shrink-0">
-                          {price}<RiyalIcon size={10} />
-                        </div>
+                      {/* Thumbnail */}
+                      <div className="shrink-0">
+                        {p.image_url ? (
+                          <img
+                            src={p.image_url}
+                            alt={p.name}
+                            loading="lazy"
+                            className="w-16 h-16 object-cover rounded-xl border border-border"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-muted to-muted/40 border border-border flex items-center justify-center text-[24px]">
+                            {categoryEmoji(cat)}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground mb-2">
-                        <span>تكلفة <span className="text-foreground font-semibold">{cost.toFixed(1)}</span></span>
-                        <span>•</span>
-                        <span>ربح <span className="text-foreground font-semibold">{(price - cost).toFixed(1)}</span></span>
-                        <span>•</span>
-                        <span className={`font-bold ${getMarginColor(margin)}`}>{margin.toFixed(0)}%</span>
-                      </div>
-
-                      {isAdmin && (
-                        <div className="flex gap-1.5 mt-auto">
-                          <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px]" onClick={() => handleEdit(p)}>
-                            <Pencil size={10} className="ml-1" /> تعديل
-                          </Button>
-                          <Button variant="outline" size="sm" className="h-7 px-2 text-danger" onClick={() => setConfirmDel(p)}>
-                            <Trash2 size={10} />
-                          </Button>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="min-w-0">
+                            <div className="text-[13px] font-bold text-foreground truncate leading-tight">{p.name}</div>
+                            <div className={`inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-md border text-[9px] font-semibold ${rating.cls}`}>
+                              <span>{rating.icon}</span>
+                              <span>{rating.label}</span>
+                            </div>
+                          </div>
+                          <div className="text-left shrink-0">
+                            <div className="text-[15px] font-bold text-primary flex items-center gap-0.5">
+                              {price}<RiyalIcon size={10} />
+                            </div>
+                            <div className={`text-[10px] font-bold ${getMarginColor(margin)}`}>{margin.toFixed(0)}%</div>
+                          </div>
                         </div>
-                      )}
+
+                        {/* Smart visual profit bar (cost vs profit) */}
+                        <div className="mt-1 mb-2">
+                          <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden flex">
+                            <div
+                              className="bg-danger/60 h-full"
+                              style={{ width: `${price > 0 ? (cost / price) * 100 : 0}%` }}
+                              title={`تكلفة ${cost.toFixed(1)}`}
+                            />
+                            <div
+                              className="bg-success h-full"
+                              style={{ width: `${price > 0 ? (profit / price) * 100 : 0}%` }}
+                              title={`ربح ${profit.toFixed(1)}`}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+                            <span>تكلفة <span className="text-foreground font-semibold">{cost.toFixed(1)}</span></span>
+                            <span>ربح <span className="text-success font-bold">{profit.toFixed(1)}</span></span>
+                          </div>
+                        </div>
+
+                        {isAdmin && (
+                          <div className="flex gap-1.5 mt-auto">
+                            <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px]" onClick={() => handleEdit(p)}>
+                              <Pencil size={10} className="ml-1" /> تعديل
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-7 px-2 text-danger" onClick={() => setConfirmDel(p)}>
+                              <Trash2 size={10} />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <ProductFormDialog open={dialogOpen} onOpenChange={setDialogOpen} product={editing} />
