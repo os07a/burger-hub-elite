@@ -93,18 +93,9 @@ const Products = () => {
         </div>
       )}
 
-      {/* Compute single global top-margin product across ALL categories */}
       {(() => null)()}
-      <div className="space-y-4">
-        {(() => {
-          // intentionally empty — placeholder so JSX stays valid
-          return null;
-        })()}
-        {Object.entries(grouped).map(([cat, items]) => {
-          const catAvg = items.reduce((s, p) => {
-            const m = Number(p.price) > 0 ? ((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100 : 0;
-            return s + m;
-          }, 0) / items.length;
+      <GlobalTopWrapper products={products} grouped={grouped} />
+
 
           return (
             <div key={cat} className="ios-card">
