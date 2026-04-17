@@ -93,6 +93,9 @@ const Products = () => {
                 const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
                 return (
                   <div key={p.id} className="rounded-2xl border border-border bg-background p-4 hover:shadow-md transition-all">
+                    {p.image_url && (
+                      <img src={p.image_url} alt={p.name} loading="lazy" className="w-full h-32 object-cover rounded-xl mb-3" />
+                    )}
                     <div className="flex items-start justify-between mb-2">
                       <div className="text-[14px] font-bold text-foreground">{p.name}</div>
                       <div className="text-[16px] font-bold text-primary flex items-center gap-1">{price} <RiyalIcon size={11} /></div>
