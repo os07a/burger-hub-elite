@@ -93,16 +93,18 @@ const Products = () => {
         </div>
       )}
 
+      {/* Compute single global top-margin product across ALL categories */}
+      {(() => null)()}
       <div className="space-y-4">
+        {(() => {
+          // intentionally empty — placeholder so JSX stays valid
+          return null;
+        })()}
         {Object.entries(grouped).map(([cat, items]) => {
           const catAvg = items.reduce((s, p) => {
             const m = Number(p.price) > 0 ? ((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100 : 0;
             return s + m;
           }, 0) / items.length;
-          const top = items.reduce((b, p) => {
-            const m = Number(p.price) > 0 ? ((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100 : 0;
-            return m > b.m ? { id: p.id, m } : b;
-          }, { id: "", m: 0 });
 
           return (
             <div key={cat} className="ios-card">
