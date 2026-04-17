@@ -213,64 +213,15 @@ const DeliveryApps = () => {
         </button>
       </div>
 
-      {/* Keeta 30-day Chart + Summary */}
-      <div className="bg-card border border-border rounded-2xl p-5 mb-5">
-        <div className="flex items-start gap-6">
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-bold text-foreground mb-3">أداء Keeta — آخر 30 يوم</div>
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={keetaChartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, direction: "rtl", borderRadius: 8, border: "1px solid hsl(var(--border))" }}
-                  formatter={(value: number, name: string) => {
-                    const labels: Record<string, string> = {
-                      sales: "مبيعات صنف",
-                      commission: "العمولة",
-                      promoCost: "تكلفة العرض",
-                      otherCosts: "تكاليف أخرى",
-                      netIncome: "صافي الدخل",
-                    };
-                    return [value.toFixed(2), labels[name] || name];
-                  }}
-                />
-                <Legend formatter={(value: string) => {
-                  const labels: Record<string, string> = {
-                    sales: "مبيعات صنف",
-                    commission: "العمولة",
-                    promoCost: "تكلفة العرض الترويجي",
-                    otherCosts: "التكاليف الأخرى",
-                    netIncome: "صافي الدخل",
-                  };
-                  return <span style={{ fontSize: 10 }}>{labels[value] || value}</span>;
-                }} />
-                <Bar dataKey="sales" fill="#f59e0b" stackId="a" />
-                <Bar dataKey="commission" fill="#6366f1" stackId="b" />
-                <Bar dataKey="promoCost" fill="#1e3a5f" stackId="b" />
-                <Bar dataKey="otherCosts" fill="#8b5cf6" stackId="b" />
-                <Line type="monotone" dataKey="netIncome" stroke="#2563eb" strokeWidth={2.5} dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="w-[240px] shrink-0 pt-2" dir="rtl">
-            <div className="text-[11px] text-muted-foreground mb-1">صافي الدخل</div>
-            <div className="text-[26px] font-bold text-foreground flex items-center gap-2 mb-4">
-              {keetaSummary.netIncome.toLocaleString()}
-              <span className="text-[11px] text-danger font-medium">↓ 24.82%</span>
-            </div>
-            <div className="space-y-3">
-              {summaryRows.map((row) => (
-                <div key={row.label} className="flex items-center justify-between">
-                  <div className="text-[11px] text-muted-foreground">{row.label}</div>
-                  <div className="text-[13px] font-bold text-foreground">{row.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Keeta 30-day Performance Chart (smart redesign) */}
+      <div className="mb-5">
+        <KeetaPerformanceChart
+          data={keetaChartData}
+          netIncomeTotal={keetaSummary.netIncome}
+          netIncomeChange={-24.82}
+          salesTotal={keetaSummary.sales}
+          costsTotal={Math.abs(keetaSummary.commission) + Math.abs(keetaSummary.promoCost) + Math.abs(keetaSummary.otherCosts)}
+        />
       </div>
 
       {/* App Cards */}
