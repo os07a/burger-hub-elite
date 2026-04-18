@@ -237,6 +237,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (itemRows.length > 0) {
+      // Replace items for the day to keep counts accurate
+      const dates = Array.from(new Set(itemRows.map((r) => r.receipt_date as string)));
+      await admin.from("pos_receipt_items").delete().in("receipt_date", dates);
+      const { error: itemsErr } = await admin.from("pos_receipt_items").insert(itemRows);
+      if (itemsErr) console.error("pos_receipt_items insert error", itemsErr);
+    }
+
     const { error: upsertErr } = await admin.from("daily_sales").upsert(
       {
         date: targetDate,
