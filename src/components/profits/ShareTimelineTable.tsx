@@ -1,4 +1,5 @@
 import { ShareMilestone, computeMilestoneState } from "@/hooks/useShareMilestones";
+import { fmt } from "@/lib/format";
 
 interface Props {
   initialAchieved: number; // 70 done previously
@@ -33,7 +34,7 @@ const ShareTimelineTable = ({ initialAchieved, reservedShares, milestones }: Pro
             <tr className="border-b border-border/50">
               <td className="py-2 text-foreground font-medium">تم سابقاً</td>
               <td className="py-2 text-foreground">{initialAchieved}</td>
-              <td className="py-2 text-foreground">{(initialAchieved * 1000).toLocaleString("ar-SA")} ر</td>
+              <td className="py-2 text-foreground">{fmt(initialAchieved * 1000)} ر</td>
               <td className="py-2">
                 <span className="text-[10px] px-2 py-0.5 rounded-md border text-success bg-success/10 border-success/30">✅ محقق</span>
               </td>
@@ -41,7 +42,7 @@ const ShareTimelineTable = ({ initialAchieved, reservedShares, milestones }: Pro
             <tr className="border-b border-border/50">
               <td className="py-2 text-foreground font-medium">ملتزم به (إشراف+تغذية)</td>
               <td className="py-2 text-foreground">{reservedShares}</td>
-              <td className="py-2 text-foreground">{(reservedShares * 1000).toLocaleString("ar-SA")} ر</td>
+              <td className="py-2 text-foreground">{fmt(reservedShares * 1000)} ر</td>
               <td className="py-2">
                 <span className="text-[10px] px-2 py-0.5 rounded-md border text-primary bg-primary/10 border-primary/30">📌 محجوز</span>
               </td>
@@ -52,10 +53,10 @@ const ShareTimelineTable = ({ initialAchieved, reservedShares, milestones }: Pro
               return (
                 <tr key={m.id} className="border-b border-border/50 last:border-b-0">
                   <td className="py-2 text-foreground font-medium">
-                    {new Date(m.due_date).toLocaleDateString("ar-SA", { day: "numeric", month: "long", year: "numeric" })}
+                    {new Date(m.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                   </td>
                   <td className="py-2 text-foreground">{m.shares_required}</td>
-                  <td className="py-2 text-foreground">{(m.shares_required * 1000).toLocaleString("ar-SA")} ر</td>
+                  <td className="py-2 text-foreground">{fmt(m.shares_required * 1000)} ر</td>
                   <td className="py-2">
                     <span className={`text-[10px] px-2 py-0.5 rounded-md border ${b.cls}`}>{b.label}</span>
                   </td>

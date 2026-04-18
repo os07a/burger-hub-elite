@@ -1,4 +1,5 @@
 import RiyalIcon from "@/components/ui/RiyalIcon";
+import { fmt } from "@/lib/format";
 
 interface Props {
   partner: string;
@@ -56,13 +57,13 @@ const PartnerShareCard = ({
         <div className="flex justify-between text-[11px]">
           <span className="text-gray-light">نصيب الشهر الحالي</span>
           <span className="text-foreground font-semibold flex items-center gap-1">
-            {monthlyShareIncome.toLocaleString("ar-SA", { maximumFractionDigits: 0 })} <RiyalIcon size={10} />
+            {fmt(monthlyShareIncome)} <RiyalIcon size={10} />
           </span>
         </div>
         <div className="flex justify-between text-[11px]">
           <span className="text-gray-light">متوسط آخر 3 أشهر</span>
           <span className="text-foreground font-medium flex items-center gap-1">
-            {avg3mIncome.toLocaleString("ar-SA", { maximumFractionDigits: 0 })} <RiyalIcon size={10} />
+            {fmt(avg3mIncome)} <RiyalIcon size={10} />
           </span>
         </div>
         <div className="flex justify-between text-[11px]">
@@ -72,7 +73,7 @@ const PartnerShareCard = ({
         <div className="flex justify-between text-[11px] pt-1.5 border-t border-border">
           <span className="text-gray-light">الصافي</span>
           <span className={`font-bold ${net >= 0 ? "text-success" : "text-danger"} flex items-center gap-1`}>
-            {net.toLocaleString("ar-SA", { maximumFractionDigits: 0 })} <RiyalIcon size={10} />
+            {fmt(net)} <RiyalIcon size={10} />
           </span>
         </div>
       </div>

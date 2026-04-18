@@ -1,5 +1,6 @@
 import RiyalIcon from "@/components/ui/RiyalIcon";
 import { MonthlyIncome, projectCapitalCompletion } from "@/hooks/useIncomeDistribution";
+import { fmt } from "@/lib/format";
 
 interface Props {
   incomes: MonthlyIncome[];
@@ -31,7 +32,7 @@ const IncomeDistributionEngine = ({ incomes, paidShares, remainingCapital }: Pro
             <div className="bg-background rounded-md p-2.5 text-center">
               <div className="text-[10px] text-gray-light mb-1">دخل الشهر</div>
               <div className="text-[14px] font-bold text-foreground flex items-center justify-center gap-1">
-                {Math.round(current.totalRevenue).toLocaleString("ar-SA")} <RiyalIcon size={10} />
+                {fmt(current.totalRevenue)} <RiyalIcon size={10} />
               </div>
             </div>
             <div className="bg-background rounded-md p-2.5 text-center">
@@ -41,13 +42,13 @@ const IncomeDistributionEngine = ({ incomes, paidShares, remainingCapital }: Pro
             <div className="bg-background rounded-md p-2.5 text-center">
               <div className="text-[10px] text-gray-light mb-1">نصيب السهم</div>
               <div className="text-[14px] font-bold text-success flex items-center justify-center gap-1">
-                {Math.round(current.perShareAmount).toLocaleString("ar-SA")} <RiyalIcon size={10} />
+                {fmt(current.perShareAmount)} <RiyalIcon size={10} />
               </div>
             </div>
             <div className="bg-background rounded-md p-2.5 text-center">
               <div className="text-[10px] text-gray-light mb-1">محجوز للشركة</div>
               <div className="text-[14px] font-bold text-warning flex items-center justify-center gap-1">
-                {Math.round(current.reservedAmount).toLocaleString("ar-SA")} <RiyalIcon size={10} />
+                {fmt(current.reservedAmount)} <RiyalIcon size={10} />
               </div>
             </div>
           </div>
@@ -63,7 +64,7 @@ const IncomeDistributionEngine = ({ incomes, paidShares, remainingCapital }: Pro
                     <div
                       className="w-full bg-primary/70 rounded-t transition-all hover:bg-primary"
                       style={{ height: `${h}%` }}
-                      title={`${m.month}: ${Math.round(m.totalRevenue).toLocaleString("ar-SA")} ر`}
+                      title={`${m.month}: ${fmt(m.totalRevenue)} ر`}
                     />
                     <span className="text-[8px] text-gray-light">{m.month.slice(5)}</span>
                   </div>
