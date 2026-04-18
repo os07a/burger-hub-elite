@@ -19,8 +19,10 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
   const addDoc = useAddEmployeeDoc();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [lastFileBase64, setLastFileBase64] = useState<string | null>(null);
   const [form, setForm] = useState({
     label: "",
     doc_type: "iqama",
