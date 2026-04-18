@@ -60,15 +60,16 @@ const dailyAvg = Math.round(totalNet / totalDays);
 const totalDiscounts = 5477;
 const discountRate = ((totalDiscounts / totalGross) * 100).toFixed(1);
 
+// 132 days = ~19 occurrences/weekday (some 18, some 19). Totals = avg * count.
 const weekdayData = [
-  { day: "الجمعة", avg: 810 },
-  { day: "الخميس", avg: 707 },
-  { day: "السبت", avg: 704 },
-  { day: "الأحد", avg: 681 },
-  { day: "الثلاثاء", avg: 674 },
-  { day: "الأربعاء", avg: 668 },
-  { day: "الاثنين", avg: 627 },
-];
+  { day: "الجمعة", avg: 810, count: 19 },
+  { day: "الخميس", avg: 707, count: 19 },
+  { day: "السبت", avg: 704, count: 19 },
+  { day: "الأحد", avg: 681, count: 19 },
+  { day: "الثلاثاء", avg: 674, count: 19 },
+  { day: "الأربعاء", avg: 668, count: 19 },
+  { day: "الاثنين", avg: 627, count: 18 },
+].map((d) => ({ ...d, total: d.avg * d.count }));
 
 const growthData = [
   { from: "ديسمبر", to: "يناير", pct: 79.6 },
