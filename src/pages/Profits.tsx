@@ -394,6 +394,7 @@ const Profits = () => {
           </div>
         );
       })()}
+      </div>
     </div>
   );
 };
