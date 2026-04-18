@@ -1,5 +1,6 @@
 import RiyalIcon from "@/components/ui/RiyalIcon";
 import { MonthlyIncome, projectCapitalCompletion } from "@/hooks/useIncomeDistribution";
+import { fmt } from "@/lib/format";
 
 interface Props {
   incomes: MonthlyIncome[];

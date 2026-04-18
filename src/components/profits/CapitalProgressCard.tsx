@@ -1,4 +1,5 @@
 import RiyalIcon from "@/components/ui/RiyalIcon";
+import { fmt } from "@/lib/format";
 
 interface Props {
   totalCapital: number; // 200,000
@@ -34,11 +35,11 @@ const CapitalProgressCard = ({ totalCapital, raisedCapital, nextMilestoneDate, n
       <div className="flex items-end justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <span className="text-[28px] font-bold text-foreground tracking-tight">
-            {raisedCapital.toLocaleString("ar-SA")}
+            {fmt(raisedCapital)}
           </span>
           <RiyalIcon size={16} />
         </div>
-        <span className="text-[12px] text-gray-light mb-1.5">من {totalCapital.toLocaleString("ar-SA")}</span>
+        <span className="text-[12px] text-gray-light mb-1.5">من {fmt(totalCapital)}</span>
       </div>
 
       <div className="h-2 bg-background rounded-full overflow-hidden mb-2">
@@ -47,7 +48,7 @@ const CapitalProgressCard = ({ totalCapital, raisedCapital, nextMilestoneDate, n
       <div className="flex justify-between text-[11px]">
         <span className="text-gray-light">نسبة الإنجاز: {pct.toFixed(1)}%</span>
         <span className="text-foreground font-medium">
-          متبقي: {remaining.toLocaleString("ar-SA")} ر
+          متبقي: {fmt(remaining)} ر
         </span>
       </div>
 
