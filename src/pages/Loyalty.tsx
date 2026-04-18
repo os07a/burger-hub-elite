@@ -4,6 +4,8 @@ import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Users, Repeat, Star, AlertTriangle, TrendingUp, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import SyncLoyverseCustomersButton from "@/components/loyalty/SyncLoyverseCustomersButton";
+import { useLoyaltyCustomers } from "@/hooks/useLoyaltyCustomers";
 
 // ========== بيانات حقيقية من ملف البونات (679 سجل، 11 يناير – 10 أبريل 2026) ==========
 
@@ -96,12 +98,76 @@ const tierColor = (tier: string) => {
 const Loyalty = () => {
   const [showAllCustomers, setShowAllCustomers] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "customers" | "coupons" | "fraud">("overview");
+  const { customers: liveCustomers, loading: liveLoading, stats: liveStats, refetch } = useLoyaltyCustomers();
 
   const displayedCustomers = showAllCustomers ? topCustomers : topCustomers.slice(0, 5);
 
   return (
     <div>
       <PageHeader title="الولاء والبونات" subtitle="بيانات حقيقية · 679 سجل · 11 يناير – 10 أبريل 2026" badge={`${uniqueCustomers} عميل`} />
+
+      {/* Live sync card from Loyverse/Bonat */}
+      <div className="bg-surface border border-border rounded-lg p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-[13px] font-bold text-foreground">🔄 بيانات بونات الحية (عبر الكاشير)</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {liveLoading
+                ? "جاري التحميل..."
+                : liveStats.total === 0
+                ? "لم تتم المزامنة بعد · اضغط الزر لجلب العملاء من Loyverse"
+                : `${liveStats.total} عميل · يتحدث تلقائياً كل 5 دقائق`}
+            </div>
+          </div>
+          <SyncLoyverseCustomersButton onSynced={refetch} />
+        </div>
+        {liveStats.total > 0 && (
+          <div className="grid grid-cols-4 gap-2">
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5 text-center">
+              <div className="text-[10px] text-muted-foreground">🥇 ذهبي (10+ زيارة)</div>
+              <div className="text-[18px] font-bold text-foreground">{liveStats.gold}</div>
+            </div>
+            <div className="bg-slate-400/10 border border-slate-400/20 rounded-lg p-2.5 text-center">
+              <div className="text-[10px] text-muted-foreground">🥈 فضي (5+ زيارة)</div>
+              <div className="text-[18px] font-bold text-foreground">{liveStats.silver}</div>
+            </div>
+            <div className="bg-muted/30 border border-border rounded-lg p-2.5 text-center">
+              <div className="text-[10px] text-muted-foreground">👤 عادي</div>
+              <div className="text-[18px] font-bold text-foreground">{liveStats.regular}</div>
+            </div>
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-2.5 text-center">
+              <div className="text-[10px] text-muted-foreground">🎁 مؤهل لمكافأة الزيارة 5</div>
+              <div className="text-[18px] font-bold text-foreground">{liveStats.eligibleFifthVisit}</div>
+            </div>
+          </div>
+        )}
+        {liveStats.total > 0 && (
+          <div className="mt-3 border border-border rounded-lg overflow-hidden">
+            <div className="grid bg-background text-[9px] font-semibold text-muted-foreground uppercase tracking-wide" style={{ gridTemplateColumns: "1fr 110px 80px 90px 80px" }}>
+              <div className="px-3 py-2">العميل</div>
+              <div className="px-3 py-2">الهاتف</div>
+              <div className="px-3 py-2">الزيارات</div>
+              <div className="px-3 py-2">الإنفاق</div>
+              <div className="px-3 py-2">الفئة</div>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              {liveCustomers.slice(0, 20).map((c) => (
+                <div key={c.id} className="grid bg-surface items-center border-t border-border hover:bg-muted/30 transition-colors" style={{ gridTemplateColumns: "1fr 110px 80px 90px 80px" }}>
+                  <div className="px-3 py-2 text-[12px] font-bold text-foreground truncate">{c.name || "—"}</div>
+                  <div className="px-3 py-2 text-[10px] text-muted-foreground">{c.phone ? `...${c.phone.slice(-4)}` : "—"}</div>
+                  <div className="px-3 py-2 text-[12px] font-bold text-foreground">{c.total_visits}</div>
+                  <div className="px-3 py-2 text-[12px] text-foreground">{Number(c.total_spent).toFixed(0)} ر.س</div>
+                  <div className="px-3 py-2">
+                    <StatusBadge variant={c.tier === "gold" ? "info" : c.tier === "silver" ? "success" : "warning"} className="text-[9px]">
+                      {c.tier === "gold" ? "ذهبي" : c.tier === "silver" ? "فضي" : "عادي"}
+                    </StatusBadge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-4 gap-3 mb-5">

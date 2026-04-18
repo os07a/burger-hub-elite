@@ -269,6 +269,54 @@ export type Database = {
           },
         ]
       }
+      loyalty_customers: {
+        Row: {
+          created_at: string
+          email: string | null
+          first_visit: string | null
+          id: string
+          last_visit: string | null
+          loyverse_customer_id: string
+          name: string | null
+          phone: string | null
+          synced_at: string
+          tier: string
+          total_points: number
+          total_spent: number
+          total_visits: number
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          first_visit?: string | null
+          id?: string
+          last_visit?: string | null
+          loyverse_customer_id: string
+          name?: string | null
+          phone?: string | null
+          synced_at?: string
+          tier?: string
+          total_points?: number
+          total_spent?: number
+          total_visits?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          first_visit?: string | null
+          id?: string
+          last_visit?: string | null
+          loyverse_customer_id?: string
+          name?: string | null
+          phone?: string | null
+          synced_at?: string
+          tier?: string
+          total_points?: number
+          total_spent?: number
+          total_visits?: number
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
