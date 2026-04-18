@@ -296,6 +296,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pos_receipts: {
+        Row: {
+          card: number
+          cash: number
+          created_at: string
+          created_at_pos: string | null
+          delivery: number
+          id: string
+          receipt_date: string
+          receipt_number: string
+          receipt_type: string
+          synced_at: string
+          total: number
+        }
+        Insert: {
+          card?: number
+          cash?: number
+          created_at?: string
+          created_at_pos?: string | null
+          delivery?: number
+          id?: string
+          receipt_date: string
+          receipt_number: string
+          receipt_type?: string
+          synced_at?: string
+          total?: number
+        }
+        Update: {
+          card?: number
+          cash?: number
+          created_at?: string
+          created_at_pos?: string | null
+          delivery?: number
+          id?: string
+          receipt_date?: string
+          receipt_number?: string
+          receipt_type?: string
+          synced_at?: string
+          total?: number
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string | null
