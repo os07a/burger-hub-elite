@@ -1,71 +1,51 @@
 
-المستخدم وافق على خطة ربط Loyverse POS. أحتاج أسأله سؤالين سريعين قبل التنفيذ:
-1. كيف يفرّق بين بيع داخل المحل والتوصيل في Loyverse
-2. مزامنة يدوية أم تلقائية
+المستخدم يبي يظهر رقم الإيصال (receipt_number) من Loyverse في الداشبورد لكل طلب. حالياً النظام يخزّن فقط الإجماليات اليومية في `daily_sales` بدون تفاصيل الإيصالات الفردية.
 
-لكن الأفضل أقدّم خطة تنفيذية مرنة تتعامل مع الحالتين، وأطلب التوكن فقط، وأضع الإعدادات قابلة للتعديل لاحقاً.
+## الخطة: حفظ وعرض أرقام إيصالات Loyverse
 
-## خطة التنفيذ: ربط Loyverse POS
+### 1. جدول جديد `pos_receipts`
+migration ينشئ جدول لحفظ كل إيصال على حدة:
+- `id` uuid PK
+- `receipt_number` text UNIQUE NOT NULL
+- `receipt_date` date NOT NULL
+- `created_at_pos` timestamptz (وقت الإيصال من Loyverse)
+- `receipt_type` text (SALE/REFUND)
+- `total` numeric
+- `cash` numeric, `card` numeric, `delivery` numeric
+- `synced_at` timestamptz default now()
+- RLS: SELECT للمصادقين، INSERT/UPDATE/DELETE للأدمن
+- index على `receipt_date`
 
-### 1. السرّ المطلوب
-- `LOYVERSE_API_TOKEN` — تنسخه من Loyverse Back Office → Settings → Access tokens → Add access token
+### 2. تحديث `sync-loyverse-sales`
+- بعد التجميع، نعمل `upsert` بكل إيصال في `pos_receipts` بمفتاح `receipt_number` (`onConflict: "receipt_number"`)
+- نضيف `console.log("receipts", receipts.length)` للتحقق
+- نُرجع `receipts_saved` في الاستجابة
 
-### 2. Edge Function: `sync-loyverse-sales`
-ملف جديد: `supabase/functions/sync-loyverse-sales/index.ts`
-- يتحقق من JWT + صلاحية admin
-- ينادي `GET https://api.loyverse.com/v1.0/receipts?created_at_min=YYYY-MM-DDT00:00:00.000Z&created_at_max=...&limit=250` لليوم الحالي (مع pagination عبر `cursor`)
-- لكل إيصال: يجمع `payments[].money_amount` ويصنّفه:
-  - `payment_type.type = "CASH"` → كاش
-  - `payment_type.type = "CARD"` → شبكة
-  - أي شيء آخر (OTHER/store تابع للتوصيل) → توصيل
-- يستخدم `service_role` لـ `upsert` في `daily_sales` بمفتاح `date`
-- يُرجع: `{ orders, cash, card, delivery, total }`
+### 3. عرض في Dashboard
+- hook جديد `usePosReceipts(date)` يجلب آخر إيصالات اليوم من `pos_receipts` مرتبة DESC
+- بطاقة جديدة تحت بطاقة الدخل اليومي: **"إيصالات اليوم من الكاشير"**
+  - جدول مختصر: `رقم الإيصال | الوقت | النوع | الإجمالي`
+  - يعرض `receipt_number` (مثل `1-1234`) بدلاً من id داخلي
+  - حد أقصى 20 سطر مع scroll
 
-### 3. تعديل قاعدة البيانات
-- إضافة `unique constraint` على `daily_sales.date` لدعم upsert نظيف
-- (لا migrations أخرى لازمة)
-
-### 4. تحديث Dashboard (`src/pages/Dashboard.tsx`)
-- زر جديد بجانب "إضافة": **"🔄 مزامنة من الكاشير"**
-- عند الضغط: `supabase.functions.invoke("sync-loyverse-sales")` → toast بالنتيجة → invalidate الكاش
-- شريط حالة صغير أسفل البطاقة: "آخر مزامنة: 12:34" (من `localStorage`)
-
-### 5. صفحة إعدادات صغيرة (اختيارية لكن مفيدة)
-بدل صفحة جديدة، أضيف dialog "إعدادات الكاشير" يفتح من زر صغير في Dashboard:
-- حالة الاتصال (اختبار + استدعاء `/v1.0/merchant`)
-- زر "مزامنة الآن"
-- شرح بسيط لكيفية الحصول على التوكن
-
-### تدفق العمل
+### تدفق
 ```text
-المستخدم  →  زر "مزامنة من الكاشير"
-              │
-              ▼
-       Edge Function (admin only)
-              │
-              ▼
-     Loyverse API: /receipts?today
-              │
-              ▼
-   تصنيف: cash / card / delivery
-              │
-              ▼
-     UPSERT daily_sales (date)
-              │
-              ▼
-      Dashboard يحدّث الأرقام
+Loyverse /receipts
+      │
+      ▼
+sync-loyverse-sales:
+  - aggregate → daily_sales
+  - upsert each → pos_receipts (receipt_number)
+      │
+      ▼
+Dashboard:
+  - بطاقات إجمالية (كما هي)
+  - جدول الإيصالات الجديد ← receipt_number
 ```
 
-### ملاحظات
-- **التوصيل**: حالياً سأعتبر أي payment_type ≠ CASH/CARD = توصيل. لو كان عندك متجر منفصل في Loyverse للتوصيل، أحتاج `store_id` لاحقاً لتصنيف أدق.
-- **الأمان**: التوكن يبقى في secrets فقط، ما يوصل للفرونت.
-- **مزامنة تلقائية**: أتركها للمرحلة الثانية (نضيف pg_cron لاحقاً لو حبيت).
-
-### الخطوات بالترتيب
-1. طلب `LOYVERSE_API_TOKEN` منك
-2. migration: unique constraint على `daily_sales.date`
-3. إنشاء `supabase/functions/sync-loyverse-sales/index.ts`
-4. إضافة زر المزامنة + Dialog الإعدادات في Dashboard
-5. اختبار: مزامنة → التحقق من الأرقام في البطاقات
-
-جاهز أبدأ بمجرد ما توافق وتعطيني التوكن.
+### الملفات
+- migration: إنشاء `pos_receipts` + RLS + index
+- `supabase/functions/sync-loyverse-sales/index.ts` — إضافة upsert الإيصالات
+- `src/hooks/usePosReceipts.ts` — جديد
+- `src/components/dashboard/PosReceiptsTable.tsx` — جديد
+- `src/pages/Dashboard.tsx` — إدراج الجدول
