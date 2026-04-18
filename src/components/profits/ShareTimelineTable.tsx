@@ -1,4 +1,5 @@
 import { ShareMilestone, computeMilestoneState } from "@/hooks/useShareMilestones";
+import { fmt } from "@/lib/format";
 
 interface Props {
   initialAchieved: number; // 70 done previously
