@@ -14,7 +14,7 @@ const IncomeDistributionEngine = ({ incomes, paidShares, remainingCapital }: Pro
   const projection = projectCapitalCompletion(remainingCapital, avg);
 
   return (
-    <div className="bg-surface border rounded-lg p-4 border-r-[3px] border-r-primary border-gray-50">
+    <div className="bg-surface border border-border rounded-lg p-4">
       <div className="flex justify-between items-center mb-3">
         <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider">
           محرّك توزيع الدخل
