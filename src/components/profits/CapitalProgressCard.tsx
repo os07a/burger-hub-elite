@@ -56,7 +56,7 @@ const CapitalProgressCard = ({ totalCapital, raisedCapital, nextMilestoneDate, n
         <div className="mt-3 pt-3 border-t border-border flex justify-between text-[11px]">
           <span className="text-gray-light">الدفعة القادمة</span>
           <span className="text-foreground font-semibold">
-            {nextMilestoneShares} سهم — {new Date(nextMilestoneDate).toLocaleDateString("ar-SA", { day: "numeric", month: "long" })}
+            {nextMilestoneShares} سهم — {new Date(nextMilestoneDate).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}
           </span>
         </div>
       )}
