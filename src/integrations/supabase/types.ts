@@ -344,6 +344,75 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_distributions: {
+        Row: {
+          created_at: string
+          id: string
+          month: string
+          per_share_amount: number
+          reserved_amount: number
+          shares_generated: number
+          total_revenue: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: string
+          per_share_amount?: number
+          reserved_amount?: number
+          shares_generated?: number
+          total_revenue?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: string
+          per_share_amount?: number
+          reserved_amount?: number
+          shares_generated?: number
+          total_revenue?: number
+        }
+        Relationships: []
+      }
+      partner_shares: {
+        Row: {
+          category: string
+          committed_date: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          paid_date: string | null
+          partner_name: string
+          share_value: number
+          shares_count: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          committed_date?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_date?: string | null
+          partner_name: string
+          share_value?: number
+          shares_count?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          committed_date?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_date?: string | null
+          partner_name?: string
+          share_value?: number
+          shares_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pos_receipts: {
         Row: {
           card: number
@@ -449,6 +518,33 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      share_milestones: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string
+          id: string
+          shares_required: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          shares_required: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          shares_required?: number
+          status?: string
         }
         Relationships: []
       }
