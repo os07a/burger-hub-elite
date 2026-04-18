@@ -5,7 +5,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import RiyalIcon from "@/components/ui/RiyalIcon";
-import { Plus, X, Check, RefreshCw, Settings2 } from "lucide-react";
+import { Plus, X, Check, RefreshCw, Settings2, Undo2, TicketPercent, Wallet, Banknote, CreditCard, Bike } from "lucide-react";
 import { toast } from "sonner";
 import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
 import PosReceiptsTable from "@/components/dashboard/PosReceiptsTable";
