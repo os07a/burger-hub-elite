@@ -63,7 +63,7 @@ const Behavior = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-surface border border-border rounded-lg p-4 border-r-[3px] border-r-primary">
+        <div className="bg-surface border rounded-lg p-4 border-r-[3px] border-r-primary border-gray-50">
           <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">ترتيب الأصناف — بناءً على المبيعات الفعلية</div>
           {rankings.map((item) => (
             <div key={item.rank} className="flex items-center gap-3 py-2.5 border-b border-border last:border-b-0">
