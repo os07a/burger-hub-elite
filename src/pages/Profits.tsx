@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import CapitalProgressCard from "@/components/profits/CapitalProgressCard";
@@ -6,6 +7,9 @@ import PartnerShareCard from "@/components/profits/PartnerShareCard";
 import IncomeDistributionEngine from "@/components/profits/IncomeDistributionEngine";
 import SmartProfitInsights from "@/components/profits/SmartProfitInsights";
 import RestaurantCostVsRevenueCard from "@/components/profits/RestaurantCostVsRevenueCard";
+import { Button } from "@/components/ui/button";
+import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { usePartnerShares, summarizeShares } from "@/hooks/usePartnerShares";
 import { useShareMilestones, computeMilestoneState } from "@/hooks/useShareMilestones";
 import { useMonthlyIncomes } from "@/hooks/useIncomeDistribution";
@@ -136,10 +140,62 @@ const Profits = () => {
     text: "يوجد 7,185 ر.س مصروفات غير موثقة في التأسيس — تحتاج مراجعة وتصنيف",
   });
 
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!reportRef.current) return;
+    setExporting(true);
+    const t = toast.loading("جاري تجهيز تقرير PDF...");
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position = heightLeft - imgH;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+      const monthLabel = new Date().toLocaleDateString("en-GB", { year: "numeric", month: "long" });
+      pdf.save(`تقرير-الأرباح-${monthLabel}.pdf`);
+      toast.success("تم تصدير التقرير بنجاح", { id: t });
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل تصدير PDF", { id: t });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
-      <PageHeader title="الأرباح والنسب" subtitle="نظرة شاملة: تكلفة المطعم، نظام الأسهم، توزيع الدخل، ومستحقات الشركاء" />
+      <div className="flex justify-between items-start gap-3 mb-2">
+        <PageHeader title="الأرباح والنسب" subtitle="نظرة شاملة: تكلفة المطعم، نظام الأسهم، توزيع الدخل، ومستحقات الشركاء" />
+        <Button onClick={handleExportPDF} disabled={exporting} size="sm" className="mt-1 shrink-0">
+          {exporting ? <Loader2 className="h-4 w-4 ml-1.5 animate-spin" /> : <Download className="h-4 w-4 ml-1.5" />}
+          تصدير PDF
+        </Button>
+      </div>
 
+      <div ref={reportRef}>
       {/* Top KPIs */}
       <div className="grid grid-cols-4 gap-3 mb-5">
         <MetricCard
@@ -338,6 +394,7 @@ const Profits = () => {
           </div>
         );
       })()}
+      </div>
     </div>
   );
 };
