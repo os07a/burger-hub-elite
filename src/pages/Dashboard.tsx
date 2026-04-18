@@ -223,12 +223,14 @@ const Dashboard = () => {
         {adding && (
           <div className="mb-4 grid grid-cols-3 gap-3">
             {[
-              { label: "💵 كاش", value: cashInput, set: setCashInput },
-              { label: "💳 شبكة", value: cardInput, set: setCardInput },
-              { label: "🛵 توصيل", value: deliveryInput, set: setDeliveryInput },
+              { label: "كاش", icon: Banknote, value: cashInput, set: setCashInput },
+              { label: "شبكة", icon: CreditCard, value: cardInput, set: setCardInput },
+              { label: "توصيل", icon: Bike, value: deliveryInput, set: setDeliveryInput },
             ].map((item) => (
               <div key={item.label} className="rounded-xl bg-background p-3">
-                <div className="mb-2 text-[10px] font-medium text-muted-foreground">{item.label}</div>
+                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                  <item.icon size={12} /> {item.label}
+                </div>
                 <input
                   type="number"
                   placeholder="0"
