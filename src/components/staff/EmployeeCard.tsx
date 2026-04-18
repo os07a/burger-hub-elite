@@ -1,11 +1,54 @@
-import { useState } from "react";
-import { ChevronDown, FileText, Shield, HeartPulse, ScrollText, Calendar, Pencil, Trash2, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronDown, FileText, Shield, HeartPulse, ScrollText, Calendar, Pencil, Trash2, Plus, Image as ImageIcon, Maximize2 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import type { EmployeeWithDocs, EmployeeDoc } from "@/hooks/useEmployees";
 import { useDeleteEmployee, useDeleteEmployeeDoc } from "@/hooks/useEmployees";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Lazy signed-URL preview for a private doc image
+const DocImagePreview = ({ path }: { path: string }) => {
+  const [url, setUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    supabase.storage.from("employee-docs").createSignedUrl(path, 3600).then(({ data }) => {
+      if (active && data?.signedUrl) setUrl(data.signedUrl);
+    });
+    return () => { active = false; };
+  }, [path]);
+
+  if (!url) {
+    return (
+      <div className="mt-3 h-32 bg-background rounded-lg flex items-center justify-center text-muted-foreground text-[11px] border border-border">
+        <ImageIcon size={16} className="ml-1" /> جاري تحميل الصورة...
+      </div>
+    );
+  }
+  return (
+    <>
+      <div className="mt-3 relative group">
+        <img src={url} alt="doc" className="w-full max-h-48 object-contain rounded-lg border border-border bg-background" />
+        <button
+          type="button"
+          onClick={() => setZoom(true)}
+          className="absolute top-2 left-2 bg-background/90 border border-border rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <Maximize2 size={12} />
+        </button>
+      </div>
+      <Dialog open={zoom} onOpenChange={setZoom}>
+        <DialogContent className="max-w-4xl p-2">
+          <img src={url} alt="doc-zoom" className="w-full max-h-[85vh] object-contain rounded-md" />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
 
 const docIcons: Record<string, React.ReactNode> = {
   iqama: <Shield size={14} />,
@@ -194,6 +237,7 @@ const EmployeeCard = ({ employee: emp, isAdmin, onEdit, onAddDoc }: Props) => {
                               💡 {doc.details}
                             </div>
                           )}
+                          {(doc as any).image_url && <DocImagePreview path={(doc as any).image_url} />}
                         </div>
                       )}
                     </div>
