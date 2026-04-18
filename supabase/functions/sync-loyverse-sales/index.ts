@@ -16,6 +16,16 @@ interface LoyversePayment {
   type?: string;
 }
 
+interface LoyverseLineItem {
+  item_name?: string;
+  variant_name?: string;
+  quantity?: number;
+  total_money?: number;
+  gross_total_money?: number;
+  cost_total?: number;
+  total_discount?: number;
+}
+
 interface LoyverseReceipt {
   receipt_number: string;
   created_at: string;
@@ -28,6 +38,7 @@ interface LoyverseReceipt {
   tax_money?: number;
   total_cost_money?: number;
   cost_money?: number;
+  line_items?: LoyverseLineItem[];
 }
 
 interface PaymentType {
