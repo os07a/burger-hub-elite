@@ -214,7 +214,7 @@ const Profits = () => {
       </div>
 
       {/* Partners cards */}
-      <div className="bg-surface border rounded-lg p-4 border-r-[3px] border-r-primary border-gray-50 mb-5">
+      <div className="bg-surface border border-border rounded-lg p-4 mb-5">
         <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">
           مستحقات الشركاء (محسوبة من نظام الأسهم)
         </div>
@@ -249,39 +249,95 @@ const Profits = () => {
         <ShareTimelineTable initialAchieved={70} reservedShares={16} milestones={milestones} />
       </div>
 
-      {/* Founding expenses */}
-      <div className="bg-surface border rounded-lg p-4 border-r-[3px] border-r-primary border-gray-50 mb-5">
-        <div className="flex justify-between items-center mb-3">
-          <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider">
-            توزيع المصروفات التأسيسية
-          </div>
-          <div className="flex gap-1">
-            <span className="text-[9px] px-1.5 py-0.5 rounded border bg-primary/10 text-primary border-primary/30">محل 108k</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded border bg-success/10 text-success border-success/30">تشغيل 70k</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded border bg-warning/10 text-warning border-warning/30">فكرة 30k</span>
-          </div>
-        </div>
+      {/* Founding expenses — smarter breakdown */}
+      {(() => {
+        const totalExp = expenses.reduce((s, e) => s + e.value, 0);
+        const buckets = expenses.reduce<Record<string, { value: number; count: number }>>((acc, e) => {
+          acc[e.bucket] = acc[e.bucket] || { value: 0, count: 0 };
+          acc[e.bucket].value += e.value;
+          acc[e.bucket].count += 1;
+          return acc;
+        }, {});
+        const bucketEntries = Object.entries(buckets).sort((a, b) => b[1].value - a[1].value);
+        const top3 = [...expenses].sort((a, b) => b.value - a.value).slice(0, 3);
+        const top3Pct = (top3.reduce((s, e) => s + e.value, 0) / totalExp) * 100;
+        const unknown = expenses.find((e) => e.bucket === "غير محدد");
 
-        {expenses.map((item) => (
-          <div key={item.label} className="mb-3 last:mb-0">
-            <div className="flex justify-between mb-1">
-              <span className="text-[11px] text-gray font-medium flex items-center gap-1.5">
-                {item.label}
-                <span className={`text-[9px] px-1.5 py-0.5 rounded border ${bucketBadge[item.bucket]}`}>
-                  {item.bucket}
-                </span>
-              </span>
-              <span>
-                <span className="text-[10px] text-gray-light ml-1">{item.pct}%</span>
-                <span className="text-[12px] font-bold text-foreground">{fmt(item.value)} ر</span>
-              </span>
+        return (
+          <div className="bg-surface border border-border rounded-lg p-4 mb-5">
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider">
+                  توزيع المصروفات التأسيسية
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  إجمالي {fmt(totalExp)} ر.س — موزّعة على {expenses.length} بنداً
+                </div>
+              </div>
+              <div className="flex gap-1 flex-wrap justify-end">
+                {bucketEntries.map(([name, b]) => (
+                  <span key={name} className={`text-[9px] px-1.5 py-0.5 rounded border ${bucketBadge[name]}`}>
+                    {name} {fmt(b.value)} ({((b.value / totalExp) * 100).toFixed(0)}%)
+                  </span>
+                ))}
+              </div>
             </div>
-            <div className="h-[4px] bg-background rounded-sm overflow-hidden">
-              <div className={`h-full rounded-sm ${item.color}`} style={{ width: `${item.pct * 4}%` }} />
+
+            {/* Stacked bucket bar */}
+            <div className="flex h-2 w-full rounded-full overflow-hidden mb-4 border border-border">
+              {bucketEntries.map(([name, b]) => {
+                const w = (b.value / totalExp) * 100;
+                const cls =
+                  name === "محل" ? "bg-primary"
+                  : name === "تشغيل" ? "bg-success"
+                  : name === "فكرة" ? "bg-warning"
+                  : "bg-danger";
+                return <div key={name} className={cls} style={{ width: `${w}%` }} title={`${name}: ${fmt(b.value)}`} />;
+              })}
+            </div>
+
+            {expenses.map((item) => (
+              <div key={item.label} className="mb-3 last:mb-0">
+                <div className="flex justify-between mb-1">
+                  <span className="text-[11px] text-gray font-medium flex items-center gap-1.5">
+                    {item.label}
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded border ${bucketBadge[item.bucket]}`}>
+                      {item.bucket}
+                    </span>
+                  </span>
+                  <span>
+                    <span className="text-[10px] text-gray-light ml-1">{item.pct}%</span>
+                    <span className="text-[12px] font-bold text-foreground">{fmt(item.value)} ر</span>
+                  </span>
+                </div>
+                <div className="h-[4px] bg-background rounded-sm overflow-hidden">
+                  <div className={`h-full rounded-sm ${item.color}`} style={{ width: `${item.pct * 4}%` }} />
+                </div>
+              </div>
+            ))}
+
+            {/* Smart footer insights */}
+            <div className="mt-4 pt-3 border-t border-border space-y-1.5">
+              <div className="text-[10px] text-gray-light flex justify-between">
+                <span>🏆 أعلى 3 بنود ({top3.map((e) => e.label).join("، ")})</span>
+                <span className="text-foreground font-semibold">{top3Pct.toFixed(1)}% من الإجمالي</span>
+              </div>
+              {unknown && (
+                <div className="text-[10px] text-warning flex justify-between">
+                  <span>⚠️ مصروفات غير موثّقة تحتاج مراجعة وتصنيف</span>
+                  <span className="font-semibold">{fmt(unknown.value)} ر ({unknown.pct}%)</span>
+                </div>
+              )}
+              <div className="text-[10px] text-gray-light flex justify-between">
+                <span>💡 نسبة المصروفات الرأسمالية (محل) إلى التشغيلية</span>
+                <span className="text-foreground font-semibold">
+                  {(((buckets["محل"]?.value || 0) / (buckets["تشغيل"]?.value || 1))).toFixed(2)}× 
+                </span>
+              </div>
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })()}
     </div>
   );
 };
