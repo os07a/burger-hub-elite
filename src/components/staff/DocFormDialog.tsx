@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAddEmployeeDoc } from "@/hooks/useEmployees";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { Upload, X, Loader2, Image as ImageIcon, Sparkles } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -19,8 +19,10 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
   const addDoc = useAddEmployeeDoc();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [lastFileBase64, setLastFileBase64] = useState<string | null>(null);
   const [form, setForm] = useState({
     label: "",
     doc_type: "iqama",
@@ -39,7 +41,16 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
     });
     setImagePath(null);
     setPreviewUrl(null);
+    setLastFileBase64(null);
   };
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -57,15 +68,51 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
         upsert: false,
       });
       if (error) throw error;
-      // Local preview from blob (bucket is private)
       const blobUrl = URL.createObjectURL(file);
+      const b64 = await fileToBase64(file);
       setImagePath(path);
       setPreviewUrl(blobUrl);
+      setLastFileBase64(b64);
       toast.success("تم رفع الصورة");
+      // Auto-scan
+      handleScan(b64);
     } catch (err: any) {
       toast.error(err.message || "فشل رفع الصورة");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleScan = async (b64?: string) => {
+    const imageBase64 = b64 || lastFileBase64;
+    if (!imageBase64) {
+      toast.error("ارفع صورة أولاً");
+      return;
+    }
+    setScanning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-iqama-data", {
+        body: { imageBase64 },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const ex = data.data;
+      setForm(f => ({
+        ...f,
+        doc_type: ex.doc_type || f.doc_type,
+        label: ex.label || f.label,
+        doc_number: ex.doc_number || f.doc_number,
+        issue_date: ex.issue_date || f.issue_date,
+        expiry_date: ex.expiry_date || f.expiry_date,
+        status: ex.status_text || f.status,
+        status_variant: ex.status_variant || f.status_variant,
+        details: ex.holder_name ? `صاحب الوثيقة: ${ex.holder_name}` : f.details,
+      }));
+      toast.success("✨ تم استخراج البيانات تلقائياً");
+    } catch (err: any) {
+      toast.error(err.message || "فشل استخراج البيانات");
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -76,6 +123,7 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
     setImagePath(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
+    setLastFileBase64(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -113,18 +161,33 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
           <div className="space-y-2">
             <Label>📎 صورة الوثيقة (اختياري)</Label>
             {previewUrl ? (
-              <div className="relative border border-border rounded-lg overflow-hidden bg-background">
-                <img src={previewUrl} alt="preview" className="w-full h-48 object-contain" />
+              <>
+                <div className="relative border border-border rounded-lg overflow-hidden bg-background">
+                  <img src={previewUrl} alt="preview" className="w-full h-48 object-contain" />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-2 left-2 h-7 w-7"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
                 <Button
                   type="button"
-                  size="icon"
-                  variant="destructive"
-                  className="absolute top-2 left-2 h-7 w-7"
-                  onClick={handleRemoveImage}
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => handleScan()}
+                  disabled={scanning || !lastFileBase64}
                 >
-                  <X className="h-4 w-4" />
+                  {scanning ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> جاري قراءة البيانات...</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4" /> ✨ استخراج البيانات بالذكاء الاصطناعي</>
+                  )}
                 </Button>
-              </div>
+              </>
             ) : (
               <button
                 type="button"
