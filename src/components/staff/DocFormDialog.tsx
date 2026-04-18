@@ -161,18 +161,33 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
           <div className="space-y-2">
             <Label>📎 صورة الوثيقة (اختياري)</Label>
             {previewUrl ? (
-              <div className="relative border border-border rounded-lg overflow-hidden bg-background">
-                <img src={previewUrl} alt="preview" className="w-full h-48 object-contain" />
+              <>
+                <div className="relative border border-border rounded-lg overflow-hidden bg-background">
+                  <img src={previewUrl} alt="preview" className="w-full h-48 object-contain" />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-2 left-2 h-7 w-7"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
                 <Button
                   type="button"
-                  size="icon"
-                  variant="destructive"
-                  className="absolute top-2 left-2 h-7 w-7"
-                  onClick={handleRemoveImage}
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => handleScan()}
+                  disabled={scanning || !lastFileBase64}
                 >
-                  <X className="h-4 w-4" />
+                  {scanning ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> جاري قراءة البيانات...</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4" /> ✨ استخراج البيانات بالذكاء الاصطناعي</>
+                  )}
                 </Button>
-              </div>
+              </>
             ) : (
               <button
                 type="button"
