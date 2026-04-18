@@ -9,12 +9,43 @@ import { Plus, X, Check, RefreshCw, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
 import PosReceiptsTable from "@/components/dashboard/PosReceiptsTable";
+import DailySalesSummaryTable from "@/components/dashboard/DailySalesSummaryTable";
 import { supabase as sb } from "@/integrations/supabase/client";
+import { fmt, fmtPct } from "@/lib/format";
 
 const totalSalaries = 10400;
 const avgDaily = 696;
+const todayStr = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Riyadh",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
+const todayLabel = new Intl.DateTimeFormat("ar-SA", {
+  timeZone: "Asia/Riyadh",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+}).format(new Date());
 
-const todayStr = new Date().toISOString().split("T")[0];
+interface DashboardSalesRow {
+  id: string;
+  date: string;
+  cash_sales: number;
+  card_sales: number;
+  delivery_sales: number;
+  total_sales: number;
+  orders_count: number;
+  gross_sales: number;
+  refunds: number;
+  discounts: number;
+  net_sales: number;
+  cogs: number;
+  gross_profit: number;
+  margin: number;
+  taxes: number;
+}
 
 const Dashboard = () => {
   const queryClient = useQueryClient();
@@ -26,6 +57,12 @@ const Dashboard = () => {
   const [syncing, setSyncing] = useState(false);
   const lastSync = typeof window !== "undefined" ? localStorage.getItem("pos_last_sync") : null;
 
+  const invalidateSalesQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["daily_sales"] });
+    queryClient.invalidateQueries({ queryKey: ["daily-sales-summary"] });
+    queryClient.invalidateQueries({ queryKey: ["pos_receipts"] });
+  };
+
   const quickSync = async () => {
     setSyncing(true);
     const { data, error } = await sb.functions.invoke("sync-loyverse-sales", { body: {} });
@@ -34,21 +71,17 @@ const Dashboard = () => {
       toast.error(data?.error || error?.message || "فشلت المزامنة");
       return;
     }
-    toast.success(`تمت المزامنة: ${data.orders} طلب · ${data.receipts_saved ?? 0} إيصال محفوظ`);
+    toast.success(`تمت المزامنة: ${fmt(Number(data.total ?? 0), { maximumFractionDigits: 2 })} ريال · ${data.receipts_saved ?? 0} إيصال`);
     localStorage.setItem("pos_last_sync", new Date().toISOString());
-    queryClient.invalidateQueries({ queryKey: ["daily_sales", todayStr] });
-    queryClient.invalidateQueries({ queryKey: ["pos_receipts", todayStr] });
+    invalidateSalesQueries();
   };
 
   const { data: todaySales } = useQuery({
     queryKey: ["daily_sales", todayStr],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("daily_sales")
-        .select("*")
-        .eq("date", todayStr)
-        .maybeSingle();
-      return data;
+    queryFn: async (): Promise<DashboardSalesRow | null> => {
+      const { data, error } = await supabase.from("daily_sales").select("*").eq("date", todayStr).maybeSingle();
+      if (error) throw error;
+      return (data as unknown as DashboardSalesRow | null) ?? null;
     },
   });
 
@@ -56,34 +89,44 @@ const Dashboard = () => {
     mutationFn: async ({ cash, card, delivery }: { cash: number; card: number; delivery: number }) => {
       const total = cash + card + delivery;
       if (todaySales) {
-        const newCash = todaySales.cash_sales + cash;
-        const newCard = todaySales.card_sales + card;
-        const newDelivery = todaySales.delivery_sales + delivery;
-        const { error } = await supabase
-          .from("daily_sales")
-          .update({
-            cash_sales: newCash,
-            card_sales: newCard,
-            delivery_sales: newDelivery,
-            total_sales: newCash + newCard + newDelivery,
-            orders_count: todaySales.orders_count + 1,
-          })
-          .eq("id", todaySales.id);
+        const newCash = Number(todaySales.cash_sales || 0) + cash;
+        const newCard = Number(todaySales.card_sales || 0) + card;
+        const newDelivery = Number(todaySales.delivery_sales || 0) + delivery;
+        const newTotal = newCash + newCard + newDelivery;
+        const payload = {
+          cash_sales: newCash,
+          card_sales: newCard,
+          delivery_sales: newDelivery,
+          total_sales: newTotal,
+          gross_sales: Number(todaySales.gross_sales ?? todaySales.total_sales ?? 0) + total,
+          net_sales: Number(todaySales.net_sales ?? todaySales.total_sales ?? 0) + total,
+          gross_profit: Number(todaySales.gross_profit ?? todaySales.total_sales ?? 0) + total,
+          margin: 100,
+          orders_count: Number(todaySales.orders_count || 0) + 1,
+        };
+
+        const { error } = await supabase.from("daily_sales").update(payload as never).eq("id", todaySales.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("daily_sales").insert({
+        const payload = {
           date: todayStr,
           cash_sales: cash,
           card_sales: card,
           delivery_sales: delivery,
           total_sales: total,
+          gross_sales: total,
+          net_sales: total,
+          gross_profit: total,
+          margin: 100,
           orders_count: 1,
-        });
+        };
+
+        const { error } = await supabase.from("daily_sales").insert(payload as never);
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["daily_sales", todayStr] });
+      invalidateSalesQueries();
       toast.success("تم تحديث الدخل اليومي");
       setAdding(false);
       setCashInput("");
@@ -107,28 +150,41 @@ const Dashboard = () => {
   const cashVal = Number(todaySales?.cash_sales ?? 0);
   const cardVal = Number(todaySales?.card_sales ?? 0);
   const deliveryVal = Number(todaySales?.delivery_sales ?? 0);
-  const totalToday = cashVal + cardVal + deliveryVal;
+  const channelTotal = cashVal + cardVal + deliveryVal;
+  const grossVal = Number(todaySales?.gross_sales ?? 0);
+  const refundsVal = Number(todaySales?.refunds ?? 0);
+  const discountsVal = Number(todaySales?.discounts ?? 0);
+  const netVal = Number(todaySales?.net_sales ?? todaySales?.total_sales ?? 0);
+  const marginVal = Number(todaySales?.margin ?? (netVal > 0 ? 100 : 0));
+  const totalToday = channelTotal > 0 ? channelTotal : netVal;
+  const hasChannelBreakdown = channelTotal > 0;
 
   return (
     <div className="animate-fade-in">
       <PosSyncDialog
         open={posOpen}
         onOpenChange={setPosOpen}
-        onSynced={() => queryClient.invalidateQueries({ queryKey: ["daily_sales", todayStr] })}
+        onSynced={() => {
+          invalidateSalesQueries();
+        }}
       />
-      <PageHeader title="لوحة التحكم" subtitle="السبت، 11 أبريل 2026" badge="مباشر" />
+      <PageHeader title="لوحة التحكم" subtitle={todayLabel} badge="مباشر" />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <MetricCard label="📊 متوسط الإيرادات اليومية" value={avgDaily.toString()} sub="بناءً على البيانات الفعلية" subColor="success" showRiyal />
-        <MetricCard label="💰 دخل اليوم" value={totalToday.toLocaleString()} sub={todayStr} showRiyal />
-        <MetricCard label="💵 كاش اليوم" value={cashVal.toLocaleString()} sub="نقد مباشر" subColor="success" showRiyal />
+      <div className="mb-6 grid grid-cols-4 gap-4">
+        <MetricCard label="📊 متوسط الإيرادات اليومية" value={fmt(avgDaily)} sub="بناءً على البيانات الفعلية" subColor="success" showRiyal />
+        <MetricCard label="💰 دخل اليوم" value={fmt(totalToday)} sub={todayStr} showRiyal />
+        <MetricCard
+          label={hasChannelBreakdown ? "💵 كاش اليوم" : "🧾 صافي اليوم"}
+          value={fmt(hasChannelBreakdown ? cashVal : netVal)}
+          sub={hasChannelBreakdown ? "نقد مباشر" : `هامش ${fmtPct(marginVal, 1)}`}
+          subColor={hasChannelBreakdown ? "success" : "gray"}
+          showRiyal
+        />
         <MetricCard label="🚨 تنبيهات المخزون" value="4" sub="خبز + مايونيز + بيبسي + زيت" subColor="danger" />
       </div>
 
-      {/* الدخل اليومي */}
       <div className="ios-card mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <div className="text-[11px] font-medium text-muted-foreground">
             💰 الدخل اليومي — {todayStr}
             {lastSync && (
@@ -142,21 +198,21 @@ const Dashboard = () => {
               <button
                 onClick={quickSync}
                 disabled={syncing}
-                className="flex items-center gap-1 text-[11px] font-semibold text-success bg-success/10 rounded-lg px-3 py-1.5 hover:bg-success/20 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 rounded-lg bg-success/10 px-3 py-1.5 text-[11px] font-semibold text-success transition-colors hover:bg-success/20 disabled:opacity-50"
               >
                 <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
                 {syncing ? "جاري المزامنة..." : "مزامنة من الكاشير"}
               </button>
               <button
                 onClick={() => setPosOpen(true)}
-                className="flex items-center justify-center text-muted-foreground bg-muted rounded-lg p-1.5 hover:bg-muted/80 transition-colors"
+                className="flex items-center justify-center rounded-lg bg-muted p-1.5 text-muted-foreground transition-colors hover:bg-muted/80"
                 title="إعدادات الكاشير"
               >
                 <Settings2 size={14} />
               </button>
               <button
                 onClick={() => setAdding(true)}
-                className="flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 rounded-lg px-3 py-1.5 hover:bg-primary/20 transition-colors"
+                className="flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/20"
               >
                 <Plus size={14} /> إضافة
               </button>
@@ -164,103 +220,125 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Input row */}
         {adding && (
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="mb-4 grid grid-cols-3 gap-3">
             {[
               { label: "💵 كاش", value: cashInput, set: setCashInput },
               { label: "💳 شبكة", value: cardInput, set: setCardInput },
               { label: "🛵 توصيل", value: deliveryInput, set: setDeliveryInput },
             ].map((item) => (
-              <div key={item.label} className="bg-background rounded-xl p-3">
-                <div className="text-[10px] text-muted-foreground font-medium mb-2">{item.label}</div>
+              <div key={item.label} className="rounded-xl bg-background p-3">
+                <div className="mb-2 text-[10px] font-medium text-muted-foreground">{item.label}</div>
                 <input
                   type="number"
                   placeholder="0"
                   value={item.value}
                   onChange={(e) => item.set(e.target.value)}
-                  className="w-full bg-transparent text-[18px] font-bold text-foreground text-center outline-none border-b border-border pb-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full border-b border-border bg-transparent pb-1 text-center text-[18px] font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
             ))}
           </div>
         )}
+
         {adding && (
-          <div className="flex gap-2 mb-4">
-            <button onClick={handleSave} className="flex-1 flex items-center justify-center gap-1.5 text-[12px] font-semibold bg-primary text-primary-foreground rounded-xl py-2.5 hover:bg-primary/90 transition-colors">
+          <div className="mb-4 flex gap-2">
+            <button onClick={handleSave} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-[12px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
               <Check size={14} /> حفظ
             </button>
-            <button onClick={() => setAdding(false)} className="flex items-center justify-center gap-1 text-[12px] font-medium text-muted-foreground bg-muted rounded-xl px-4 py-2.5 hover:bg-muted/80 transition-colors">
+            <button onClick={() => setAdding(false)} className="flex items-center justify-center gap-1 rounded-xl bg-muted px-4 py-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted/80">
               <X size={14} /> إلغاء
             </button>
           </div>
         )}
 
-        {/* Display boxes */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "💵 كاش", value: cashVal, color: "text-success" },
-            { label: "💳 شبكة", value: cardVal, color: "text-primary" },
-            { label: "🛵 توصيل", value: deliveryVal, color: "text-warning" },
+            { label: "إجمالي البيع", value: grossVal },
+            { label: "المرتجع", value: refundsVal },
+            { label: "الخصومات", value: discountsVal },
+            { label: "صافي المبيعات", value: netVal },
           ].map((item) => (
-            <div key={item.label} className="bg-background rounded-xl p-4 text-center">
-              <div className="text-[11px] text-muted-foreground font-medium mb-1.5">{item.label}</div>
-              <div className={`text-[22px] font-bold tracking-tight ${item.color}`}>{item.value.toLocaleString()}</div>
-              <div className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1"><RiyalIcon size={10} /></div>
+            <div key={item.label} className="rounded-xl bg-background p-4 text-center">
+              <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">{item.label}</div>
+              <div className="text-[22px] font-bold tracking-tight text-foreground">{fmt(item.value, { maximumFractionDigits: 2 })}</div>
+              <div className="mt-1 flex items-center justify-center gap-1 text-[10px] text-muted-foreground"><RiyalIcon size={10} /></div>
             </div>
           ))}
         </div>
 
-        {/* Total bar */}
-        {totalToday > 0 && (
+        {hasChannelBreakdown ? (
           <>
-            <div className="h-2 bg-background rounded-full overflow-hidden flex mt-4">
-              <div className="h-full bg-success/70 rounded-r-full" style={{ width: `${(cashVal / totalToday * 100).toFixed(0)}%` }} />
-              <div className="h-full bg-primary/60" style={{ width: `${(cardVal / totalToday * 100).toFixed(0)}%` }} />
-              <div className="h-full bg-warning/60 rounded-l-full" style={{ width: `${(deliveryVal / totalToday * 100).toFixed(0)}%` }} />
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              {[
+                { label: "💵 كاش", value: cashVal, color: "text-success" },
+                { label: "💳 شبكة", value: cardVal, color: "text-primary" },
+                { label: "🛵 توصيل", value: deliveryVal, color: "text-warning" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl bg-background p-4 text-center">
+                  <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">{item.label}</div>
+                  <div className={`text-[22px] font-bold tracking-tight ${item.color}`}>{fmt(item.value, { maximumFractionDigits: 2 })}</div>
+                  <div className="mt-1 flex items-center justify-center gap-1 text-[10px] text-muted-foreground"><RiyalIcon size={10} /></div>
+                </div>
+              ))}
             </div>
-            <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
-              <span>الإجمالي: <b className="text-foreground">{totalToday.toLocaleString()}</b> <RiyalIcon size={9} /></span>
-              <span>الطلبات: <b className="text-foreground">{todaySales?.orders_count ?? 0}</b></span>
-            </div>
+
+            {totalToday > 0 && (
+              <>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-background flex">
+                  <div className="h-full rounded-r-full bg-success/70" style={{ width: `${((cashVal / totalToday) * 100).toFixed(0)}%` }} />
+                  <div className="h-full bg-primary/60" style={{ width: `${((cardVal / totalToday) * 100).toFixed(0)}%` }} />
+                  <div className="h-full rounded-l-full bg-warning/60" style={{ width: `${((deliveryVal / totalToday) * 100).toFixed(0)}%` }} />
+                </div>
+                <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+                  <span>
+                    الإجمالي: <b className="text-foreground">{fmt(totalToday, { maximumFractionDigits: 2 })}</b> <RiyalIcon size={9} />
+                  </span>
+                  <span>
+                    الطلبات: <b className="text-foreground">{todaySales?.orders_count ?? 0}</b>
+                  </span>
+                </div>
+              </>
+            )}
           </>
+        ) : (
+          <div className="mt-4 rounded-xl border border-border bg-background p-3 text-[11px] text-muted-foreground">
+            هذا التقرير يعرض ملخص Loyverse اليومي بشكل صحيح، لكن تقسيم طرق الدفع (كاش/شبكة/توصيل) غير متوفر إلا إذا رجعت الإيصالات نفسها من المزامنة.
+          </div>
         )}
       </div>
 
-      {/* جدول إيصالات اليوم من الكاشير */}
+      <DailySalesSummaryTable limit={30} />
       <PosReceiptsTable date={todayStr} />
 
-      {/* Two Column */}
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        {/* أعلى المنتجات */}
+      <div className="mb-5 grid grid-cols-2 gap-4">
         <div className="ios-card">
-          <div className="text-[11px] font-medium text-muted-foreground mb-4">أكثر المنتجات مبيعاً</div>
+          <div className="mb-4 text-[11px] font-medium text-muted-foreground">أكثر المنتجات مبيعاً</div>
           {[
             { label: "آنجوس لحم", value: "34% من الطلبات", emoji: "🥩" },
             { label: "وجبة كاملة", value: "25% من الطلبات", emoji: "🍔" },
             { label: "كريسبي الدجاج", value: "19% من الطلبات", emoji: "🍗" },
             { label: "ناشفيل الدجاج", value: "12% من الطلبات", emoji: "🌶️" },
           ].map((item, i) => (
-            <div key={item.label} className={`flex justify-between items-center py-3 text-[13px] ${i < 3 ? "border-b border-border" : ""}`}>
+            <div key={item.label} className={`flex items-center justify-between py-3 text-[13px] ${i < 3 ? "border-b border-border" : ""}`}>
               <span className="text-muted-foreground">{item.emoji} {item.label}</span>
-              <span className="text-foreground font-semibold">{item.value}</span>
+              <span className="font-semibold text-foreground">{item.value}</span>
             </div>
           ))}
         </div>
 
-        {/* تنبيهات المخزون */}
         <div className="ios-card">
-          <div className="text-[11px] font-medium text-muted-foreground mb-4">تنبيهات المخزون</div>
+          <div className="mb-4 text-[11px] font-medium text-muted-foreground">تنبيهات المخزون</div>
           {[
             { label: "زيت الرائد تنك 17لتر", status: "حرج", variant: "danger" as const, supplier: "السلال المنتجة" },
             { label: "خبز البرجر", status: "منخفض", variant: "warning" as const, supplier: "مورد محلي" },
             { label: "مايونيز هاينز", status: "منخفض", variant: "warning" as const, supplier: "الحلول المساندة" },
             { label: "بيبسي قوارير", status: "منخفض", variant: "warning" as const, supplier: "السلال المنتجة" },
           ].map((item, i) => (
-            <div key={item.label} className={`flex justify-between items-center py-3 text-[13px] ${i < 3 ? "border-b border-border" : ""}`}>
+            <div key={item.label} className={`flex items-center justify-between py-3 text-[13px] ${i < 3 ? "border-b border-border" : ""}`}>
               <div>
                 <span className="text-muted-foreground">{item.label}</span>
-                <span className="text-[10px] text-gray-light mr-1.5">({item.supplier})</span>
+                <span className="mr-1.5 text-[10px] text-gray-light">({item.supplier})</span>
               </div>
               <StatusBadge variant={item.variant}>{item.status}</StatusBadge>
             </div>
@@ -268,9 +346,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* حالة الطاقم */}
       <div className="ios-card">
-        <div className="text-[11px] font-medium text-muted-foreground mb-4">👥 حالة الطاقم اليوم</div>
+        <div className="mb-4 text-[11px] font-medium text-muted-foreground">👥 حالة الطاقم اليوم</div>
         <div className="grid grid-cols-4 gap-3">
           {[
             { name: "يونس", role: "كاشير", status: "حاضر", variant: "success" as const },
@@ -278,15 +355,15 @@ const Dashboard = () => {
             { name: "ميراج", role: "تحضير", status: "تأخر 22د", variant: "warning" as const },
             { name: "ريان", role: "مساعد", status: "حاضر", variant: "success" as const },
           ].map((emp) => (
-            <div key={emp.name} className="bg-background rounded-xl p-4 text-center">
+            <div key={emp.name} className="rounded-xl bg-background p-4 text-center">
               <div className="text-[13px] font-semibold text-foreground">{emp.name}</div>
-              <div className="text-[10px] text-muted-foreground mb-2">{emp.role}</div>
+              <div className="mb-2 text-[10px] text-muted-foreground">{emp.role}</div>
               <StatusBadge variant={emp.variant}>{emp.status}</StatusBadge>
             </div>
           ))}
         </div>
-        <div className="mt-4 pt-3 border-t border-border flex justify-between text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1">الرواتب الشهرية: <b className="text-foreground flex items-center gap-1">{totalSalaries.toLocaleString()} <RiyalIcon size={9} /></b></span>
+        <div className="mt-4 flex justify-between border-t border-border pt-3 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1">الرواتب الشهرية: <b className="flex items-center gap-1 text-foreground">{fmt(totalSalaries)} <RiyalIcon size={9} /></b></span>
           <span>نسبة العمالة: <b className={totalSalaries / (avgDaily * 30) > 0.35 ? "text-danger" : "text-success"}>{((totalSalaries / (avgDaily * 30)) * 100).toFixed(1)}%</b></span>
         </div>
       </div>

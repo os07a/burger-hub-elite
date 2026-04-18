@@ -59,34 +59,58 @@ export type Database = {
         Row: {
           card_sales: number
           cash_sales: number
+          cogs: number
           created_at: string
           date: string
           delivery_sales: number
+          discounts: number
+          gross_profit: number
+          gross_sales: number
           id: string
+          margin: number
+          net_sales: number
           notes: string | null
           orders_count: number
+          refunds: number
+          taxes: number
           total_sales: number
         }
         Insert: {
           card_sales?: number
           cash_sales?: number
+          cogs?: number
           created_at?: string
           date?: string
           delivery_sales?: number
+          discounts?: number
+          gross_profit?: number
+          gross_sales?: number
           id?: string
+          margin?: number
+          net_sales?: number
           notes?: string | null
           orders_count?: number
+          refunds?: number
+          taxes?: number
           total_sales?: number
         }
         Update: {
           card_sales?: number
           cash_sales?: number
+          cogs?: number
           created_at?: string
           date?: string
           delivery_sales?: number
+          discounts?: number
+          gross_profit?: number
+          gross_sales?: number
           id?: string
+          margin?: number
+          net_sales?: number
           notes?: string | null
           orders_count?: number
+          refunds?: number
+          taxes?: number
           total_sales?: number
         }
         Relationships: []
