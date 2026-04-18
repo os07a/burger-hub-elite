@@ -100,6 +100,7 @@ export type Database = {
           employee_id: string
           expiry_date: string | null
           id: string
+          image_url: string | null
           issue_date: string | null
           label: string
           status: string
@@ -113,6 +114,7 @@ export type Database = {
           employee_id: string
           expiry_date?: string | null
           id?: string
+          image_url?: string | null
           issue_date?: string | null
           label: string
           status: string
@@ -126,6 +128,7 @@ export type Database = {
           employee_id?: string
           expiry_date?: string | null
           id?: string
+          image_url?: string | null
           issue_date?: string | null
           label?: string
           status?: string
