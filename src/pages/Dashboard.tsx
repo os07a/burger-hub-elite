@@ -5,7 +5,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import RiyalIcon from "@/components/ui/RiyalIcon";
-import { Plus, X, Check, RefreshCw, Settings2 } from "lucide-react";
+import { Plus, X, Check, RefreshCw, Settings2, Undo2, TicketPercent, Wallet, Banknote, CreditCard, Bike } from "lucide-react";
 import { toast } from "sonner";
 import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
 import PosReceiptsTable from "@/components/dashboard/PosReceiptsTable";
@@ -223,12 +223,14 @@ const Dashboard = () => {
         {adding && (
           <div className="mb-4 grid grid-cols-3 gap-3">
             {[
-              { label: "💵 كاش", value: cashInput, set: setCashInput },
-              { label: "💳 شبكة", value: cardInput, set: setCardInput },
-              { label: "🛵 توصيل", value: deliveryInput, set: setDeliveryInput },
+              { label: "كاش", icon: Banknote, value: cashInput, set: setCashInput },
+              { label: "شبكة", icon: CreditCard, value: cardInput, set: setCardInput },
+              { label: "توصيل", icon: Bike, value: deliveryInput, set: setDeliveryInput },
             ].map((item) => (
               <div key={item.label} className="rounded-xl bg-background p-3">
-                <div className="mb-2 text-[10px] font-medium text-muted-foreground">{item.label}</div>
+                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                  <item.icon size={12} /> {item.label}
+                </div>
                 <input
                   type="number"
                   placeholder="0"
@@ -252,33 +254,40 @@ const Dashboard = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "إجمالي البيع", value: grossVal },
-            { label: "المرتجع", value: refundsVal },
-            { label: "الخصومات", value: discountsVal },
-            { label: "صافي المبيعات", value: netVal },
+            { label: "المرتجع", value: refundsVal, icon: Undo2, tone: "text-muted-foreground" },
+            { label: "الخصومات", value: discountsVal, icon: TicketPercent, tone: "text-muted-foreground" },
+            { label: "صافي المبيعات", value: netVal, icon: Wallet, tone: "text-foreground" },
           ].map((item) => (
-            <div key={item.label} className="rounded-xl bg-background p-4 text-center">
-              <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">{item.label}</div>
-              <div className="text-[22px] font-bold tracking-tight text-foreground">{fmt(item.value, { maximumFractionDigits: 2 })}</div>
-              <div className="mt-1 flex items-center justify-center gap-1 text-[10px] text-muted-foreground"><RiyalIcon size={10} /></div>
+            <div key={item.label} className="rounded-xl bg-background px-3 py-2.5">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                <item.icon size={11} /> {item.label}
+              </div>
+              <div className={`flex items-center gap-1 text-[16px] font-bold tracking-tight ${item.tone}`}>
+                {fmt(item.value, { maximumFractionDigits: 2 })}
+                <RiyalIcon size={10} />
+              </div>
             </div>
           ))}
         </div>
 
         {hasChannelBreakdown ? (
           <>
-            <div className="mt-4 grid grid-cols-3 gap-4">
+            <div className="mt-3 grid grid-cols-3 gap-3">
               {[
-                { label: "💵 كاش", value: cashVal, color: "text-success" },
-                { label: "💳 شبكة", value: cardVal, color: "text-primary" },
-                { label: "🛵 توصيل", value: deliveryVal, color: "text-warning" },
+                { label: "كاش", value: cashVal, icon: Banknote, color: "text-success" },
+                { label: "شبكة", value: cardVal, icon: CreditCard, color: "text-primary" },
+                { label: "توصيل", value: deliveryVal, icon: Bike, color: "text-warning" },
               ].map((item) => (
-                <div key={item.label} className="rounded-xl bg-background p-4 text-center">
-                  <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">{item.label}</div>
-                  <div className={`text-[22px] font-bold tracking-tight ${item.color}`}>{fmt(item.value, { maximumFractionDigits: 2 })}</div>
-                  <div className="mt-1 flex items-center justify-center gap-1 text-[10px] text-muted-foreground"><RiyalIcon size={10} /></div>
+                <div key={item.label} className="rounded-xl bg-background px-3 py-2.5">
+                  <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                    <item.icon size={11} /> {item.label}
+                  </div>
+                  <div className={`flex items-center gap-1 text-[16px] font-bold tracking-tight ${item.color}`}>
+                    {fmt(item.value, { maximumFractionDigits: 2 })}
+                    <RiyalIcon size={10} />
+                  </div>
                 </div>
               ))}
             </div>
