@@ -16,6 +16,16 @@ interface LoyversePayment {
   type?: string;
 }
 
+interface LoyverseLineItem {
+  item_name?: string;
+  variant_name?: string;
+  quantity?: number;
+  total_money?: number;
+  gross_total_money?: number;
+  cost_total?: number;
+  total_discount?: number;
+}
+
 interface LoyverseReceipt {
   receipt_number: string;
   created_at: string;
@@ -28,6 +38,7 @@ interface LoyverseReceipt {
   tax_money?: number;
   total_cost_money?: number;
   cost_money?: number;
+  line_items?: LoyverseLineItem[];
 }
 
 interface PaymentType {
@@ -132,6 +143,7 @@ Deno.serve(async (req) => {
 
     const syncedAt = new Date().toISOString();
     const receiptRows: Array<Record<string, unknown>> = [];
+    const itemRows: Array<Record<string, unknown>> = [];
 
     for (const rec of receipts) {
       const isRefund = (rec.receipt_type ?? "SALE") === "REFUND";
@@ -173,10 +185,12 @@ Deno.serve(async (req) => {
         }
       }
 
+      const recDate = toRiyadhDate(rec.created_at) ?? targetDate;
+
       if (rec.receipt_number) {
         receiptRows.push({
           receipt_number: rec.receipt_number,
-          receipt_date: toRiyadhDate(rec.created_at) ?? targetDate,
+          receipt_date: recDate,
           created_at_pos: rec.created_at,
           receipt_type: rec.receipt_type ?? "SALE",
           total: sign * absoluteTotal,
@@ -185,6 +199,24 @@ Deno.serve(async (req) => {
           delivery: rDelivery,
           synced_at: syncedAt,
         });
+
+        for (const li of rec.line_items ?? []) {
+          const name = (li.item_name ?? "غير معروف").toString();
+          const qty = sign * Number(li.quantity ?? 0);
+          const gross = sign * Number(li.gross_total_money ?? li.total_money ?? 0);
+          const lineDiscount = Number(li.total_discount ?? 0);
+          const net = gross - sign * lineDiscount;
+          itemRows.push({
+            receipt_number: rec.receipt_number,
+            receipt_date: recDate,
+            item_name: name,
+            variant_name: li.variant_name ?? null,
+            quantity: qty,
+            gross_total: gross,
+            net_total: net,
+            cost_total: sign * Number(li.cost_total ?? 0),
+          });
+        }
       }
     }
 
@@ -203,6 +235,14 @@ Deno.serve(async (req) => {
       } else {
         receiptsSaved = count ?? receiptRows.length;
       }
+    }
+
+    if (itemRows.length > 0) {
+      // Replace items for the day to keep counts accurate
+      const dates = Array.from(new Set(itemRows.map((r) => r.receipt_date as string)));
+      await admin.from("pos_receipt_items").delete().in("receipt_date", dates);
+      const { error: itemsErr } = await admin.from("pos_receipt_items").insert(itemRows);
+      if (itemsErr) console.error("pos_receipt_items insert error", itemsErr);
     }
 
     const { error: upsertErr } = await admin.from("daily_sales").upsert(

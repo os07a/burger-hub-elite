@@ -440,6 +440,45 @@ export type Database = {
         }
         Relationships: []
       }
+      pos_receipt_items: {
+        Row: {
+          cost_total: number
+          created_at: string
+          gross_total: number
+          id: string
+          item_name: string
+          net_total: number
+          quantity: number
+          receipt_date: string
+          receipt_number: string
+          variant_name: string | null
+        }
+        Insert: {
+          cost_total?: number
+          created_at?: string
+          gross_total?: number
+          id?: string
+          item_name: string
+          net_total?: number
+          quantity?: number
+          receipt_date: string
+          receipt_number: string
+          variant_name?: string | null
+        }
+        Update: {
+          cost_total?: number
+          created_at?: string
+          gross_total?: number
+          id?: string
+          item_name?: string
+          net_total?: number
+          quantity?: number
+          receipt_date?: string
+          receipt_number?: string
+          variant_name?: string | null
+        }
+        Relationships: []
+      }
       pos_receipts: {
         Row: {
           card: number
