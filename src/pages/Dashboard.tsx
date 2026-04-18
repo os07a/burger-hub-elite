@@ -5,8 +5,10 @@ import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import RiyalIcon from "@/components/ui/RiyalIcon";
-import { Plus, X, Check } from "lucide-react";
+import { Plus, X, Check, RefreshCw, Settings2 } from "lucide-react";
 import { toast } from "sonner";
+import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
+import { supabase as sb } from "@/integrations/supabase/client";
 
 const totalSalaries = 10400;
 const avgDaily = 696;
@@ -19,6 +21,22 @@ const Dashboard = () => {
   const [cashInput, setCashInput] = useState("");
   const [cardInput, setCardInput] = useState("");
   const [deliveryInput, setDeliveryInput] = useState("");
+  const [posOpen, setPosOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const lastSync = typeof window !== "undefined" ? localStorage.getItem("pos_last_sync") : null;
+
+  const quickSync = async () => {
+    setSyncing(true);
+    const { data, error } = await sb.functions.invoke("sync-loyverse-sales", { body: {} });
+    setSyncing(false);
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "فشلت المزامنة");
+      return;
+    }
+    toast.success(`تمت المزامنة: ${data.orders} طلب`);
+    localStorage.setItem("pos_last_sync", new Date().toISOString());
+    queryClient.invalidateQueries({ queryKey: ["daily_sales", todayStr] });
+  };
 
   const { data: todaySales } = useQuery({
     queryKey: ["daily_sales", todayStr],
@@ -91,6 +109,11 @@ const Dashboard = () => {
 
   return (
     <div className="animate-fade-in">
+      <PosSyncDialog
+        open={posOpen}
+        onOpenChange={setPosOpen}
+        onSynced={() => queryClient.invalidateQueries({ queryKey: ["daily_sales", todayStr] })}
+      />
       <PageHeader title="لوحة التحكم" subtitle="السبت، 11 أبريل 2026" badge="مباشر" />
 
       {/* KPI Cards */}
@@ -104,14 +127,38 @@ const Dashboard = () => {
       {/* الدخل اليومي */}
       <div className="ios-card mb-6">
         <div className="flex items-center justify-between mb-4">
-          <div className="text-[11px] font-medium text-muted-foreground">💰 الدخل اليومي — {todayStr}</div>
+          <div className="text-[11px] font-medium text-muted-foreground">
+            💰 الدخل اليومي — {todayStr}
+            {lastSync && (
+              <span className="mr-2 text-[10px] text-gray-light">
+                · آخر مزامنة: {new Date(lastSync).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
           {!adding && (
-            <button
-              onClick={() => setAdding(true)}
-              className="flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 rounded-lg px-3 py-1.5 hover:bg-primary/20 transition-colors"
-            >
-              <Plus size={14} /> إضافة
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={quickSync}
+                disabled={syncing}
+                className="flex items-center gap-1 text-[11px] font-semibold text-success bg-success/10 rounded-lg px-3 py-1.5 hover:bg-success/20 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+                {syncing ? "جاري المزامنة..." : "مزامنة من الكاشير"}
+              </button>
+              <button
+                onClick={() => setPosOpen(true)}
+                className="flex items-center justify-center text-muted-foreground bg-muted rounded-lg p-1.5 hover:bg-muted/80 transition-colors"
+                title="إعدادات الكاشير"
+              >
+                <Settings2 size={14} />
+              </button>
+              <button
+                onClick={() => setAdding(true)}
+                className="flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 rounded-lg px-3 py-1.5 hover:bg-primary/20 transition-colors"
+              >
+                <Plus size={14} /> إضافة
+              </button>
+            </div>
           )}
         </div>
 
