@@ -151,26 +151,68 @@ Deno.serve(async (req) => {
       safety++;
     } while (cursor && safety < 50);
 
-    // 3) Aggregate
+    // 3) Aggregate + per-receipt rows
+    console.log("receipts", receipts.length);
     let cash = 0;
     let card = 0;
     let delivery = 0;
     let orders = 0;
 
+    const receiptRows: Array<Record<string, unknown>> = [];
+
     for (const rec of receipts) {
       const sign = rec.receipt_type === "REFUND" ? -1 : 1;
       if (rec.receipt_type !== "REFUND") orders += 1;
+
+      let rCash = 0;
+      let rCard = 0;
+      let rDelivery = 0;
+
       for (const pay of rec.payments ?? []) {
         const pt = ptMap.get(pay.payment_type_id);
         const type = (pt?.type ?? "OTHER").toUpperCase();
         const amount = sign * Number(pay.money_amount ?? 0);
-        if (type === "CASH") cash += amount;
-        else if (type === "CARD") card += amount;
-        else delivery += amount;
+        if (type === "CASH") {
+          cash += amount;
+          rCash += amount;
+        } else if (type === "CARD") {
+          card += amount;
+          rCard += amount;
+        } else {
+          delivery += amount;
+          rDelivery += amount;
+        }
+      }
+
+      if (rec.receipt_number) {
+        receiptRows.push({
+          receipt_number: rec.receipt_number,
+          receipt_date: targetDate,
+          created_at_pos: rec.created_at,
+          receipt_type: rec.receipt_type ?? "SALE",
+          total: sign * Number(rec.total_money ?? 0),
+          cash: rCash,
+          card: rCard,
+          delivery: rDelivery,
+          synced_at: new Date().toISOString(),
+        });
       }
     }
 
     const total = cash + card + delivery;
+
+    // 3.5) Upsert each receipt by receipt_number
+    let receiptsSaved = 0;
+    if (receiptRows.length > 0) {
+      const { error: recErr, count } = await admin
+        .from("pos_receipts")
+        .upsert(receiptRows, { onConflict: "receipt_number", count: "exact" });
+      if (recErr) {
+        console.error("pos_receipts upsert error", recErr);
+      } else {
+        receiptsSaved = count ?? receiptRows.length;
+      }
+    }
 
     // 4) Upsert daily_sales by date
     const { error: upsertErr } = await admin
@@ -200,6 +242,7 @@ Deno.serve(async (req) => {
       delivery,
       total,
       receipts_fetched: receipts.length,
+      receipts_saved: receiptsSaved,
     });
   } catch (e) {
     console.error("sync-loyverse-sales error", e);

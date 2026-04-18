@@ -8,6 +8,7 @@ import RiyalIcon from "@/components/ui/RiyalIcon";
 import { Plus, X, Check, RefreshCw, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
+import PosReceiptsTable from "@/components/dashboard/PosReceiptsTable";
 import { supabase as sb } from "@/integrations/supabase/client";
 
 const totalSalaries = 10400;
@@ -33,9 +34,10 @@ const Dashboard = () => {
       toast.error(data?.error || error?.message || "فشلت المزامنة");
       return;
     }
-    toast.success(`تمت المزامنة: ${data.orders} طلب`);
+    toast.success(`تمت المزامنة: ${data.orders} طلب · ${data.receipts_saved ?? 0} إيصال محفوظ`);
     localStorage.setItem("pos_last_sync", new Date().toISOString());
     queryClient.invalidateQueries({ queryKey: ["daily_sales", todayStr] });
+    queryClient.invalidateQueries({ queryKey: ["pos_receipts", todayStr] });
   };
 
   const { data: todaySales } = useQuery({
