@@ -41,7 +41,16 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
     });
     setImagePath(null);
     setPreviewUrl(null);
+    setLastFileBase64(null);
   };
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,15 +68,51 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
         upsert: false,
       });
       if (error) throw error;
-      // Local preview from blob (bucket is private)
       const blobUrl = URL.createObjectURL(file);
+      const b64 = await fileToBase64(file);
       setImagePath(path);
       setPreviewUrl(blobUrl);
+      setLastFileBase64(b64);
       toast.success("تم رفع الصورة");
+      // Auto-scan
+      handleScan(b64);
     } catch (err: any) {
       toast.error(err.message || "فشل رفع الصورة");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleScan = async (b64?: string) => {
+    const imageBase64 = b64 || lastFileBase64;
+    if (!imageBase64) {
+      toast.error("ارفع صورة أولاً");
+      return;
+    }
+    setScanning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-iqama-data", {
+        body: { imageBase64 },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const ex = data.data;
+      setForm(f => ({
+        ...f,
+        doc_type: ex.doc_type || f.doc_type,
+        label: ex.label || f.label,
+        doc_number: ex.doc_number || f.doc_number,
+        issue_date: ex.issue_date || f.issue_date,
+        expiry_date: ex.expiry_date || f.expiry_date,
+        status: ex.status_text || f.status,
+        status_variant: ex.status_variant || f.status_variant,
+        details: ex.holder_name ? `صاحب الوثيقة: ${ex.holder_name}` : f.details,
+      }));
+      toast.success("✨ تم استخراج البيانات تلقائياً");
+    } catch (err: any) {
+      toast.error(err.message || "فشل استخراج البيانات");
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -78,6 +123,7 @@ const DocFormDialog = ({ open, onOpenChange, employeeId }: Props) => {
     setImagePath(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
+    setLastFileBase64(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
