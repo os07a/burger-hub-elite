@@ -177,7 +177,7 @@ const Dashboard = () => {
           label={hasChannelBreakdown ? "💵 كاش اليوم" : "🧾 صافي اليوم"}
           value={fmt(hasChannelBreakdown ? cashVal : netVal)}
           sub={hasChannelBreakdown ? "نقد مباشر" : `هامش ${fmtPct(marginVal, 1)}`}
-          subColor={hasChannelBreakdown ? "success" : "default"}
+          subColor={hasChannelBreakdown ? "success" : "gray"}
           showRiyal
         />
         <MetricCard label="🚨 تنبيهات المخزون" value="4" sub="خبز + مايونيز + بيبسي + زيت" subColor="danger" />
