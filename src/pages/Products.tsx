@@ -119,7 +119,7 @@ const Products = () => {
               onClick={() => setTypeFilter("all")}
               className="h-7 text-[11px] gap-1"
             >
-              <Package size={12} /> الكل ({products.length})
+              الكل ({products.length}) <Package size={12} />
             </Button>
             <Button
               size="sm"
@@ -127,7 +127,7 @@ const Products = () => {
               onClick={() => setTypeFilter("primary")}
               className="h-7 text-[11px] gap-1"
             >
-              <Beef size={12} /> أساسي ({primaryCount})
+              أساسي ({primaryCount}) <Beef size={12} />
             </Button>
             <Button
               size="sm"
@@ -135,7 +135,7 @@ const Products = () => {
               onClick={() => setTypeFilter("ready_made")}
               className="h-7 text-[11px] gap-1"
             >
-              <GlassWater size={12} /> جاهز ({readyCount})
+              جاهز ({readyCount}) <GlassWater size={12} />
             </Button>
           </div>
 

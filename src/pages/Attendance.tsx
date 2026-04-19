@@ -121,7 +121,7 @@ const Attendance = () => {
 
       <div className="flex gap-2 mb-4 justify-end">
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setPermEmpId(undefined); setPermOpen(true); }}>
-          <Plus size={14} /> تسجيل استئذان
+          تسجيل استئذان <Plus size={14} />
         </Button>
       </div>
 
