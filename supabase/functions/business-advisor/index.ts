@@ -1,74 +1,136 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PROJECT_CONTEXT = `
+const BASE_CONTEXT = `
 أنت مستشار ريادة أعمال خبير ومتخصص في المطاعم والمشاريع الصغيرة في السعودية.
-اسم المشروع: برجرهم (BURGERHUM) — مطعم برجر في المدينة المنورة.
-بدأ التشغيل: ديسمبر 2025.
-
-═══ البيانات المالية الحقيقية ═══
-
-📊 المبيعات (من الكاشير — 132 يوم):
-- إجمالي المبيعات: 97,640 ر.س
-- صافي المبيعات: 91,870 ر.س (بعد خصومات 5,477 ر.س)
-- متوسط يومي: 696 ر.س
-- أعلى يوم: 2,030 ر.س (2 يناير)
-- أدنى يوم فعلي: 97 ر.س (18 فبراير)
-
-📅 الأداء الشهري:
-- ديسمبر 2025: صافي 15,292 ر.س (31 يوم، متوسط 493 ر.س/يوم)
-- يناير 2026: صافي 27,470 ر.س (31 يوم، متوسط 886 ر.س/يوم) — خصومات افتتاح كبيرة 4,709 ر.س
-- فبراير 2026: صافي 15,055 ر.س (28 يوم، متوسط 538 ر.س/يوم) — أضعف شهر
-- مارس 2026: صافي 24,728 ر.س (31 يوم، متوسط 798 ر.س/يوم) — أفضل أداء حقيقي
-- أبريل 2026 (حتى 11): صافي 9,325 ر.س (11 يوم، متوسط 848 ر.س/يوم)
-
-📆 أداء أيام الأسبوع (متوسط):
-- الجمعة: 810 ر.س (الأقوى)
-- الخميس: 707 | السبت: 704 | الأحد: 681
-- الثلاثاء: 674 | الأربعاء: 668
-- الاثنين: 627 ر.س (الأضعف)
-
-🏦 كشف البنك (الراجحي):
-- إجمالي الإيرادات البنكية: 68,270 ر.س
-- إجمالي المصروفات البنكية: 66,163 ر.س
-- الرصيد الحالي: 2,107 ر.س
-- فجوة بين الكاشير والبنك: ~23,600 ر.س (كاش غير مودع)
-
-💰 الاستثمار الكلي: 292,405 ر.س
-- ديكور: 69,585 | آلات: 84,100 | إيجار سنوي: 40,000 | تشغيل: 84,000
-
-🔴 نقاط الضعف:
-1. فبراير أضعف شهر (538 ر.س/يوم)
-2. الاثنين أضعف يوم (627 ر.س)
-3. تذبذب عالي بين أعلى وأدنى يوم
-4. خصومات يناير مبالغة (14.6%)
-5. سيولة منخفضة جداً (2,107 ر.س = يوم واحد)
-6. تكلفة البضاعة المباعة غير مسجلة في النظام
+اسم المشروع: برجرهم (BURGERHUM) — مطعم برجر في المدينة المنورة. بدأ التشغيل: ديسمبر 2025.
 
 ═══ تعليمات المستشار ═══
 - تكلم بالعامية السعودية بأسلوب ودود ومباشر
 - كن صريح — إذا المشروع ماشي غلط قول بصراحة
-- قدم نصائح عملية قابلة للتنفيذ
-- استخدم الأرقام الحقيقية في تحليلك
-- إذا سألك صاحب المشروع "هل أنا ماشي صح؟" — قيّم بناءً على البيانات
-- ركز على: السيولة، النمو، التكاليف، استرداد رأس المال
-- اقترح حلول للمشاكل اللي تشوفها
+- قدم نصائح عملية قابلة للتنفيذ مبنية على البيانات الحقيقية المعطاة لك
+- إذا أُرفق صورة (فاتورة، إيصال، شاشة) — حلّلها واستخرج الأرقام والمعلومات
+- إذا أُرفق PDF أو ملف نصي — اقرأه واستفد منه في الإجابة
+- إذا أُرسل تسجيل صوتي مفرّغ — تعامل معه كسؤال عادي
+- ركز على: السيولة، النمو، التكاليف، استرداد رأس المال، نقاط الضعف
 - استخدم إيموجي بشكل معتدل
 `;
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+async function buildLiveSnapshot(supabase: any): Promise<string> {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const d30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+    const [receipts, employees, attendance, inventory, suppliers, products, distributions, shares, dailySales] = await Promise.all([
+      supabase.from("pos_receipts").select("receipt_date,total,cash,card,delivery").gte("receipt_date", d30),
+      supabase.from("employees").select("name,role,salary,basic_salary,status"),
+      supabase.from("attendance").select("date,status,late_minutes,overtime_minutes").gte("date", d30),
+      supabase.from("inventory_items").select("name,quantity,min_quantity,unit,cost_per_unit"),
+      supabase.from("suppliers").select("name,category,rating"),
+      supabase.from("products").select("name,price,cost,is_active"),
+      supabase.from("monthly_distributions").select("month,total_revenue,shares_generated,per_share_amount").order("month", { ascending: false }).limit(6),
+      supabase.from("partner_shares").select("partner_name,shares_count,share_value,category"),
+      supabase.from("daily_sales").select("date,net_sales,cash_sales,card_sales,delivery_sales,discounts").gte("date", d30),
+    ]);
+
+    const r = receipts.data ?? [];
+    const totalRev30 = r.reduce((s: number, x: any) => s + Number(x.total || 0), 0);
+    const cash30 = r.reduce((s: number, x: any) => s + Number(x.cash || 0), 0);
+    const card30 = r.reduce((s: number, x: any) => s + Number(x.card || 0), 0);
+    const delivery30 = r.reduce((s: number, x: any) => s + Number(x.delivery || 0), 0);
+    const days = new Set(r.map((x: any) => x.receipt_date)).size || 1;
+
+    const emp = employees.data ?? [];
+    const totalSalaries = emp.reduce((s: number, x: any) => s + Number(x.salary || x.basic_salary || 0), 0);
+
+    const att = attendance.data ?? [];
+    const lateCount = att.filter((x: any) => Number(x.late_minutes) > 0).length;
+    const absentCount = att.filter((x: any) => x.status === "غائب" || x.status === "absent").length;
+
+    const inv = inventory.data ?? [];
+    const lowStock = inv.filter((x: any) => Number(x.quantity) <= Number(x.min_quantity));
+
+    const prod = products.data ?? [];
+    const activeProducts = prod.filter((x: any) => x.is_active);
+    const avgMargin = activeProducts.length
+      ? activeProducts.reduce((s: number, x: any) => s + (Number(x.price) - Number(x.cost)), 0) / activeProducts.length
+      : 0;
+
+    const dist = distributions.data ?? [];
+    const sh = shares.data ?? [];
+    const totalShares = sh.reduce((s: number, x: any) => s + Number(x.shares_count || 0), 0);
+
+    return `
+═══ بيانات حية (آخر 30 يوم — حتى ${today}) ═══
+
+📊 المبيعات (POS):
+- إجمالي الإيرادات: ${totalRev30.toFixed(0)} ر.س عبر ${days} يوم
+- متوسط يومي: ${(totalRev30 / days).toFixed(0)} ر.س
+- نقدي: ${cash30.toFixed(0)} | شبكة: ${card30.toFixed(0)} | توصيل: ${delivery30.toFixed(0)}
+- عدد الإيصالات: ${r.length}
+
+👥 الموظفون (${emp.length}):
+- إجمالي الرواتب الشهرية: ${totalSalaries.toFixed(0)} ر.س
+- نسبة العمالة من الإيرادات: ${totalRev30 > 0 ? ((totalSalaries / totalRev30) * 100).toFixed(1) : "—"}%
+
+⏰ الحضور (آخر 30 يوم):
+- عدد سجلات: ${att.length} | تأخيرات: ${lateCount} | غياب: ${absentCount}
+
+📦 المخزون (${inv.length} صنف):
+- نواقص حرجة (${lowStock.length}): ${lowStock.slice(0, 5).map((x: any) => `${x.name} (${x.quantity}${x.unit})`).join(", ") || "لا يوجد"}
+
+🍔 المنتجات (${activeProducts.length} نشط):
+- متوسط هامش الربح: ${avgMargin.toFixed(2)} ر.س للمنتج
+
+🏭 الموردون: ${suppliers.data?.length ?? 0}
+
+💰 توزيعات الأسهم (آخر ${dist.length} شهور):
+${dist.slice(0, 3).map((x: any) => `- ${x.month}: إيراد ${Number(x.total_revenue).toFixed(0)} | أسهم ${x.shares_generated} | للسهم ${Number(x.per_share_amount).toFixed(0)}`).join("\n") || "لا يوجد"}
+- إجمالي الأسهم الموزعة: ${totalShares} / 200
+
+📅 المبيعات اليومية المسجلة: ${dailySales.data?.length ?? 0} يوم
+`;
+  } catch (e) {
+    console.error("snapshot error", e);
+    return "\n(تعذر جلب البيانات الحية حالياً)\n";
   }
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages } = await req.json();
+    const { messages, attachments } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    const liveData = await buildLiveSnapshot(supabase);
+    const systemContent = BASE_CONTEXT + liveData;
+
+    // Build last user message with multimodal content if attachments exist
+    const msgs = [...messages];
+    if (attachments && Array.isArray(attachments) && attachments.length > 0 && msgs.length > 0) {
+      const last = msgs[msgs.length - 1];
+      const parts: any[] = [{ type: "text", text: last.content || "حلل المرفقات" }];
+      for (const a of attachments) {
+        if (a.type === "image" && a.dataUrl) {
+          parts.push({ type: "image_url", image_url: { url: a.dataUrl } });
+        } else if (a.type === "text" && a.text) {
+          parts.push({ type: "text", text: `\n\n[محتوى ملف ${a.name || ""}]:\n${a.text}` });
+        }
+      }
+      msgs[msgs.length - 1] = { role: "user", content: parts };
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -77,11 +139,8 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: PROJECT_CONTEXT },
-          ...messages,
-        ],
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "system", content: systemContent }, ...msgs],
         stream: true,
       }),
     });
