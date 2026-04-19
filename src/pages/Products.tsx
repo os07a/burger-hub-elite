@@ -105,9 +105,9 @@ const Products = () => {
 
       <Tabs defaultValue="list" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-md mb-4">
-          <TabsTrigger value="list" className="text-[12px] gap-1.5"><MenuIcon size={13} /> القائمة</TabsTrigger>
-          <TabsTrigger value="movement" className="text-[12px] gap-1.5"><BarChart3 size={13} /> الحركة</TabsTrigger>
-          <TabsTrigger value="calculator" className="text-[12px] gap-1.5"><Calculator size={13} /> الحاسبة</TabsTrigger>
+          <TabsTrigger value="list" className="text-[12px] gap-1.5">القائمة <MenuIcon size={13} /></TabsTrigger>
+          <TabsTrigger value="movement" className="text-[12px] gap-1.5">الحركة <BarChart3 size={13} /></TabsTrigger>
+          <TabsTrigger value="calculator" className="text-[12px] gap-1.5">الحاسبة <Calculator size={13} /></TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
