@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Pencil, Trash2, Plus, FileText, GraduationCap, Calendar, AlertTriangle, Award, Star, Calculator, Phone, Hash, Briefcase, Building2 } from "lucide-react";
+import { ChevronDown, Pencil, Trash2, Plus, GraduationCap, Calendar, AlertTriangle, Award, Star, Calculator } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { EmployeeFull } from "@/hooks/useEmployees";
 import { useDeleteEmployee, useDeleteEmployeeRecord, useDeleteEmployeeDoc } from "@/hooks/useEmployees";
 import { toast } from "sonner";
-import { formatTenure, contractDaysLeft, allowancesTotal, computePayroll, currentMonthYM } from "@/lib/hr";
+import { formatTenure, contractDaysLeft, computePayroll, currentMonthYM } from "@/lib/hr";
 import { QualificationDialog, LeaveDialog, PenaltyDialog, RewardDialog, EvaluationDialog } from "./HrRecordDialogs";
 
 interface Props {
@@ -22,12 +22,12 @@ const leaveLabels: Record<string, string> = { annual: "سنوية", sick: "مر�
 const leaveStatus: Record<string, { l: string; v: "success" | "warning" | "danger" | "info" }> = {
   approved: { l: "معتمدة", v: "success" }, pending: { l: "معلقة", v: "warning" }, rejected: { l: "مرفوضة", v: "danger" },
 };
-const sevColors: Record<string, string> = { warning: "text-warning", deduction: "text-danger", final_warning: "text-danger" };
 const sevLabels: Record<string, string> = { warning: "تنبيه", deduction: "خصم", final_warning: "إنذار نهائي" };
 
 const EmployeeProfileCard = ({ employee: emp, attendance, isAdmin, onEdit, onAddDoc }: Props) => {
   const [expanded, setExpanded] = useState(false);
   const [openDialog, setOpenDialog] = useState<null | "qualification" | "leave" | "penalty" | "reward" | "evaluation">(null);
+  const [activitySub, setActivitySub] = useState<"leaves" | "penalties" | "rewards" | "evaluations">("leaves");
 
   const deleteEmp = useDeleteEmployee();
   const deleteDoc = useDeleteEmployeeDoc();
@@ -41,16 +41,43 @@ const EmployeeProfileCard = ({ employee: emp, attendance, isAdmin, onEdit, onAdd
   const payroll = computePayroll(emp, empAttendance, currentMonthYM());
 
   const docs = emp.employee_docs || [];
+  const quals = emp.employee_qualifications || [];
+  const leaves = emp.employee_leaves || [];
+  const penalties = emp.employee_penalties || [];
+  const rewards = emp.employee_rewards || [];
+  const evals = emp.employee_evaluations || [];
+
   const dangerDocs = docs.filter(d => d.status_variant === "danger").length;
   const warnDocs = docs.filter(d => d.status_variant === "warning").length;
   const contractLeft = contractDaysLeft(emp.contract_end);
 
-  // Profile alerts
+  const recordsCount = docs.length + quals.length;
+  const activitiesCount = leaves.length + penalties.length + rewards.length + evals.length;
+
   const alerts: { text: string; v: "success" | "warning" | "danger" }[] = [];
   if (dangerDocs > 0) alerts.push({ text: `${dangerDocs} وثيقة منتهية`, v: "danger" });
   if (warnDocs > 0) alerts.push({ text: `${warnDocs} وثيقة قاربت`, v: "warning" });
   if (contractLeft !== null && contractLeft <= 30 && contractLeft >= 0) alerts.push({ text: `العقد ينتهي بعد ${contractLeft} يوم`, v: "warning" });
   if (contractLeft !== null && contractLeft < 0) alerts.push({ text: "العقد منتهي", v: "danger" });
+
+  // Profile fields (hide empty)
+  const idContact = [
+    { l: "الهوية", v: emp.national_id },
+    { l: "الجنسية", v: emp.nationality },
+    { l: "الميلاد", v: emp.birth_date },
+    { l: "الجوال", v: emp.phone },
+    { l: "طوارئ", v: emp.emergency_contact },
+    { l: "العنوان", v: emp.address },
+  ].filter(f => f.v);
+
+  const contractFinance = [
+    { l: "نوع العقد", v: emp.contract_type },
+    { l: "بداية العقد", v: emp.contract_start },
+    { l: "نهاية العقد", v: emp.contract_end ? `${emp.contract_end}${contractLeft !== null ? ` (${contractLeft} يوم)` : ""}` : null },
+    { l: "تاريخ التوظيف", v: emp.hire_date },
+    { l: "البنك", v: emp.bank_name },
+    { l: "IBAN", v: emp.iban },
+  ].filter(f => f.v);
 
   const handleDelete = async () => {
     try { await deleteEmp.mutateAsync(emp.id); toast.success("تم حذف الموظف"); }
@@ -61,47 +88,41 @@ const EmployeeProfileCard = ({ employee: emp, attendance, isAdmin, onEdit, onAdd
     mut.mutate(id, { onSuccess: () => toast.success(`تم حذف ${label}`), onError: () => toast.error("فشل الحذف") });
   };
 
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
   return (
     <>
       <div className="ios-card !p-0 overflow-hidden">
-        {/* Header */}
-        <div onClick={() => setExpanded(!expanded)} className="flex items-center gap-4 p-5 cursor-pointer hover:bg-muted/30 transition-colors">
-          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-lg font-bold border-2 border-border flex-shrink-0">
+        {/* Header — slim */}
+        <div onClick={() => setExpanded(!expanded)} className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-base font-bold border-2 border-border flex-shrink-0">
             {emp.name.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-              <span className="text-[15px] font-bold">{emp.name}</span>
+              <span className="text-[14px] font-bold">{emp.name}</span>
               <StatusBadge variant={emp.status_variant as any}>{emp.status}</StatusBadge>
-              {emp.department && <StatusBadge variant="info">{emp.department}</StatusBadge>}
             </div>
-            <div className="text-[12px] text-muted-foreground">
-              {emp.role}{emp.hire_date && ` · مدة الخدمة: ${formatTenure(emp.hire_date)}`} · {(emp.salary || 0).toLocaleString()} ر/شهر
+            <div className="text-[11px] text-muted-foreground truncate">
+              {emp.role}{emp.hire_date && ` · ${formatTenure(emp.hire_date)}`} · {(emp.salary || 0).toLocaleString()} ر/شهر
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {alerts.slice(0, 2).map((a, i) => (
-              <span key={i} className={`text-[10px] font-semibold px-2 py-1 rounded-full bg-${a.v}/10 text-${a.v}`}>● {a.text}</span>
+              <span key={i} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full bg-${a.v}/10 text-${a.v}`}>● {a.text}</span>
             ))}
-            <ChevronDown size={18} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
-          </div>
-        </div>
-
-        {expanded && (
-          <div className="border-t border-border animate-fade-in">
-            {/* Admin actions */}
-            {isAdmin && (
-              <div className="px-5 py-2.5 border-b border-border flex gap-2 bg-muted/10 flex-wrap">
-                <Button size="sm" variant="outline" className="text-[11px] h-7 gap-1" onClick={(e) => { e.stopPropagation(); onEdit(emp); }}>
-                  <Pencil size={12} /> تعديل البيانات
-                </Button>
+            {isAdmin && expanded && (
+              <>
+                <button onClick={(e) => { stop(e); onEdit(emp); }} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="تعديل">
+                  <Pencil size={14} />
+                </button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="text-[11px] h-7 gap-1 text-danger border-danger/30 hover:bg-danger/10">
-                      <Trash2 size={12} /> حذف الموظف
-                    </Button>
+                    <button onClick={stop} className="p-1.5 rounded-md hover:bg-danger/10 text-muted-foreground hover:text-danger transition-colors" title="حذف">
+                      <Trash2 size={14} />
+                    </button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent dir="rtl">
+                  <AlertDialogContent dir="rtl" onClick={stop}>
                     <AlertDialogHeader>
                       <AlertDialogTitle>حذف {emp.name}؟</AlertDialogTitle>
                       <AlertDialogDescription>سيُحذف الموظف وجميع سجلاته (وثائق، إجازات، جزاءات...) نهائياً.</AlertDialogDescription>
@@ -112,160 +133,139 @@ const EmployeeProfileCard = ({ employee: emp, attendance, isAdmin, onEdit, onAdd
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </div>
+              </>
             )}
+            <ChevronDown size={18} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </div>
+        </div>
 
-            <Tabs defaultValue="overview" className="p-5">
-              <TabsList className="grid grid-cols-7 mb-4">
-                <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
-                <TabsTrigger value="docs">وثائق</TabsTrigger>
-                <TabsTrigger value="qualifications">مؤهلات</TabsTrigger>
-                <TabsTrigger value="leaves">إجازات</TabsTrigger>
-                <TabsTrigger value="penalties">جزاءات/مكافآت</TabsTrigger>
-                <TabsTrigger value="evaluations">تقييمات</TabsTrigger>
-                <TabsTrigger value="payroll">الراتب</TabsTrigger>
+        {expanded && (
+          <div className="border-t border-border animate-fade-in">
+            <Tabs defaultValue="profile" className="p-4">
+              <TabsList className="grid grid-cols-4 mb-4">
+                <TabsTrigger value="profile" className="text-[12px]">الملف</TabsTrigger>
+                <TabsTrigger value="records" className="text-[12px]">السجلات{recordsCount > 0 && ` (${recordsCount})`}</TabsTrigger>
+                <TabsTrigger value="activities" className="text-[12px]">الأنشطة{activitiesCount > 0 && ` (${activitiesCount})`}</TabsTrigger>
+                <TabsTrigger value="payroll" className="text-[12px]">الراتب</TabsTrigger>
               </TabsList>
 
-              {/* Overview */}
-              <TabsContent value="overview" className="space-y-3">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <InfoTile icon={<Hash size={12} />} label="رقم الهوية" value={emp.national_id} />
-                  <InfoTile icon={<Building2 size={12} />} label="الجنسية" value={emp.nationality} />
-                  <InfoTile icon={<Calendar size={12} />} label="تاريخ الميلاد" value={emp.birth_date} />
-                  <InfoTile icon={<Phone size={12} />} label="الجوال" value={emp.phone} />
-                  <InfoTile icon={<Phone size={12} />} label="طوارئ" value={emp.emergency_contact} />
-                  <InfoTile icon={<Briefcase size={12} />} label="نوع العقد" value={emp.contract_type} />
-                  <InfoTile icon={<Calendar size={12} />} label="تاريخ التوظيف" value={emp.hire_date} />
-                  <InfoTile icon={<Calendar size={12} />} label="نهاية العقد" value={emp.contract_end ? `${emp.contract_end}${contractLeft !== null ? ` (${contractLeft} يوم)` : ""}` : null} />
-                  <InfoTile icon={<Building2 size={12} />} label="القسم" value={emp.department} />
+              {/* Profile */}
+              <TabsContent value="profile" className="space-y-4">
+                {idContact.length === 0 && contractFinance.length === 0 ? (
+                  <div className="text-center py-6">
+                    <div className="text-[12px] text-muted-foreground mb-3">📝 لا توجد معلومات مفصّلة بعد</div>
+                    {isAdmin && (
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => onEdit(emp)}>
+                        <Pencil size={12} /> أكمل الملف
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <ProfileGroup title="هوية وتواصل" fields={idContact} />
+                    <ProfileGroup title="تعاقد ومالي" fields={contractFinance} />
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Records: Documents + Qualifications */}
+              <TabsContent value="records" className="space-y-4">
+                <Section
+                  title="الوثائق الرسمية"
+                  count={docs.length}
+                  addLabel="إضافة وثيقة"
+                  onAdd={isAdmin ? () => onAddDoc(emp.id) : undefined}
+                  emptyText="لا توجد وثائق"
+                >
+                  {docs.map(d => (
+                    <Row key={d.id}
+                      title={d.label} sub={`${d.doc_number || ""}${d.expiry_date ? ` · ينتهي ${d.expiry_date}` : ""}`}
+                      badge={{ text: d.status, v: d.status_variant as any }}
+                      onDelete={isAdmin ? () => remove(deleteDoc, "الوثيقة")(d.id) : undefined}
+                    />
+                  ))}
+                </Section>
+
+                <Section
+                  title="المؤهلات والشهادات"
+                  count={quals.length}
+                  addLabel="إضافة مؤهل"
+                  onAdd={isAdmin ? () => setOpenDialog("qualification") : undefined}
+                  emptyText="لا توجد مؤهلات"
+                >
+                  {quals.map(q => (
+                    <Row key={q.id}
+                      icon={<GraduationCap size={14} className="text-primary" />}
+                      title={q.title}
+                      sub={`${q.qualification_type === "degree" ? "شهادة" : q.qualification_type === "certificate" ? "شهادة مهنية" : q.qualification_type === "course" ? "دورة" : "خبرة"}${q.institution ? ` · ${q.institution}` : ""}${q.year ? ` · ${q.year}` : ""}`}
+                      onDelete={isAdmin ? () => remove(deleteQual, "المؤهل")(q.id) : undefined}
+                    />
+                  ))}
+                </Section>
+              </TabsContent>
+
+              {/* Activities: sub-tabs */}
+              <TabsContent value="activities" className="space-y-3">
+                <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+                  {([
+                    { k: "leaves", l: "الإجازات", c: leaves.length },
+                    { k: "penalties", l: "الجزاءات", c: penalties.length },
+                    { k: "rewards", l: "المكافآت", c: rewards.length },
+                    { k: "evaluations", l: "التقييمات", c: evals.length },
+                  ] as const).map(s => (
+                    <button key={s.k}
+                      onClick={() => setActivitySub(s.k)}
+                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-md transition-colors ${activitySub === s.k ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                      {s.l}{s.c > 0 && ` (${s.c})`}
+                    </button>
+                  ))}
                 </div>
-                {emp.address && (
-                  <div className="text-[11px] text-muted-foreground bg-muted/30 rounded-lg p-3">📍 {emp.address}</div>
-                )}
-                {alerts.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {alerts.map((a, i) => (
-                      <span key={i} className={`text-[10px] font-semibold px-2.5 py-1 rounded-full bg-${a.v}/10 text-${a.v}`}>● {a.text}</span>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
 
-              {/* Documents */}
-              <TabsContent value="docs" className="space-y-2">
-                {isAdmin && (
-                  <Button size="sm" variant="outline" className="gap-1 mb-2" onClick={() => onAddDoc(emp.id)}>
-                    <Plus size={12} /> إضافة وثيقة
-                  </Button>
-                )}
-                {docs.length === 0 ? <Empty text="لا توجد وثائق" /> : (
-                  <div className="space-y-2">
-                    {docs.map(d => (
-                      <Row key={d.id}
-                        title={d.label} sub={`${d.doc_number || ""}${d.expiry_date ? ` · ينتهي ${d.expiry_date}` : ""}`}
-                        badge={{ text: d.status, v: d.status_variant as any }}
-                        onDelete={isAdmin ? () => remove(deleteDoc, "الوثيقة")(d.id) : undefined}
-                      />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Qualifications */}
-              <TabsContent value="qualifications" className="space-y-2">
-                {isAdmin && (
-                  <Button size="sm" variant="outline" className="gap-1 mb-2" onClick={() => setOpenDialog("qualification")}>
-                    <Plus size={12} /> إضافة مؤهل
-                  </Button>
-                )}
-                {emp.employee_qualifications?.length === 0 ? <Empty text="لا توجد مؤهلات" /> : (
-                  <div className="space-y-2">
-                    {emp.employee_qualifications?.map(q => (
-                      <Row key={q.id}
-                        title={q.title}
-                        sub={`${q.qualification_type === "degree" ? "شهادة" : q.qualification_type === "certificate" ? "شهادة مهنية" : q.qualification_type === "course" ? "دورة" : "خبرة"}${q.institution ? ` · ${q.institution}` : ""}${q.year ? ` · ${q.year}` : ""}`}
-                        icon={<GraduationCap size={14} className="text-primary" />}
-                        onDelete={isAdmin ? () => remove(deleteQual, "المؤهل")(q.id) : undefined}
-                      />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Leaves */}
-              <TabsContent value="leaves" className="space-y-2">
-                {isAdmin && (
-                  <Button size="sm" variant="outline" className="gap-1 mb-2" onClick={() => setOpenDialog("leave")}>
-                    <Plus size={12} /> تسجيل إجازة
-                  </Button>
-                )}
-                {emp.employee_leaves?.length === 0 ? <Empty text="لا توجد إجازات" /> : (
-                  <div className="space-y-2">
-                    {emp.employee_leaves?.map(l => (
+                {activitySub === "leaves" && (
+                  <Section addLabel="تسجيل إجازة" onAdd={isAdmin ? () => setOpenDialog("leave") : undefined} emptyText="لا توجد إجازات" count={leaves.length}>
+                    {leaves.map(l => (
                       <Row key={l.id}
+                        icon={<Calendar size={14} className="text-info" />}
                         title={`${leaveLabels[l.leave_type] || l.leave_type} · ${l.days_count} يوم`}
                         sub={`${l.start_date} ← ${l.end_date}${l.notes ? ` · ${l.notes}` : ""}`}
                         badge={{ text: leaveStatus[l.status]?.l || l.status, v: leaveStatus[l.status]?.v || "info" }}
-                        icon={<Calendar size={14} className="text-info" />}
                         onDelete={isAdmin ? () => remove(deleteLeave, "الإجازة")(l.id) : undefined}
                       />
                     ))}
-                  </div>
+                  </Section>
                 )}
-              </TabsContent>
 
-              {/* Penalties + Rewards */}
-              <TabsContent value="penalties" className="space-y-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-[12px] font-semibold flex items-center gap-1.5"><AlertTriangle size={13} className="text-danger" /> الجزاءات</h4>
-                      {isAdmin && <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px]" onClick={() => setOpenDialog("penalty")}><Plus size={10} /> إضافة</Button>}
-                    </div>
-                    {emp.employee_penalties?.length === 0 ? <Empty text="لا توجد جزاءات" /> : (
-                      <div className="space-y-1.5">
-                        {emp.employee_penalties?.map(p => (
-                          <Row key={p.id}
-                            title={p.reason}
-                            sub={`${p.penalty_date} · ${(Number(p.amount) || 0).toLocaleString()} ر.س`}
-                            badge={{ text: sevLabels[p.severity] || p.severity, v: p.severity === "warning" ? "warning" : "danger" }}
-                            onDelete={isAdmin ? () => remove(deletePenalty, "الجزاء")(p.id) : undefined}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-[12px] font-semibold flex items-center gap-1.5"><Award size={13} className="text-success" /> المكافآت</h4>
-                      {isAdmin && <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px]" onClick={() => setOpenDialog("reward")}><Plus size={10} /> إضافة</Button>}
-                    </div>
-                    {emp.employee_rewards?.length === 0 ? <Empty text="لا توجد مكافآت" /> : (
-                      <div className="space-y-1.5">
-                        {emp.employee_rewards?.map(r => (
-                          <Row key={r.id}
-                            title={r.reason}
-                            sub={`${r.reward_date} · ${(Number(r.amount) || 0).toLocaleString()} ر.س`}
-                            badge={{ text: r.reward_type === "cash" ? "نقدي" : "معنوي", v: "success" }}
-                            onDelete={isAdmin ? () => remove(deleteReward, "المكافأة")(r.id) : undefined}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* Evaluations */}
-              <TabsContent value="evaluations" className="space-y-2">
-                {isAdmin && (
-                  <Button size="sm" variant="outline" className="gap-1 mb-2" onClick={() => setOpenDialog("evaluation")}>
-                    <Plus size={12} /> إضافة تقييم
-                  </Button>
+                {activitySub === "penalties" && (
+                  <Section addLabel="إضافة جزاء" onAdd={isAdmin ? () => setOpenDialog("penalty") : undefined} emptyText="لا توجد جزاءات" count={penalties.length}>
+                    {penalties.map(p => (
+                      <Row key={p.id}
+                        icon={<AlertTriangle size={14} className="text-danger" />}
+                        title={p.reason}
+                        sub={`${p.penalty_date} · ${(Number(p.amount) || 0).toLocaleString()} ر.س`}
+                        badge={{ text: sevLabels[p.severity] || p.severity, v: p.severity === "warning" ? "warning" : "danger" }}
+                        onDelete={isAdmin ? () => remove(deletePenalty, "الجزاء")(p.id) : undefined}
+                      />
+                    ))}
+                  </Section>
                 )}
-                {emp.employee_evaluations?.length === 0 ? <Empty text="لا توجد تقييمات بعد" /> : (
-                  <div className="space-y-2">
-                    {emp.employee_evaluations?.sort((a, b) => b.evaluation_date.localeCompare(a.evaluation_date)).map(ev => (
+
+                {activitySub === "rewards" && (
+                  <Section addLabel="إضافة مكافأة" onAdd={isAdmin ? () => setOpenDialog("reward") : undefined} emptyText="لا توجد مكافآت" count={rewards.length}>
+                    {rewards.map(r => (
+                      <Row key={r.id}
+                        icon={<Award size={14} className="text-success" />}
+                        title={r.reason}
+                        sub={`${r.reward_date} · ${(Number(r.amount) || 0).toLocaleString()} ر.س`}
+                        badge={{ text: r.reward_type === "cash" ? "نقدي" : "معنوي", v: "success" }}
+                        onDelete={isAdmin ? () => remove(deleteReward, "المكافأة")(r.id) : undefined}
+                      />
+                    ))}
+                  </Section>
+                )}
+
+                {activitySub === "evaluations" && (
+                  <Section addLabel="إضافة تقييم" onAdd={isAdmin ? () => setOpenDialog("evaluation") : undefined} emptyText="لا توجد تقييمات بعد" count={evals.length}>
+                    {evals.sort((a, b) => b.evaluation_date.localeCompare(a.evaluation_date)).map(ev => (
                       <div key={ev.id} className="border border-border rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
@@ -289,7 +289,7 @@ const EmployeeProfileCard = ({ employee: emp, attendance, isAdmin, onEdit, onAdd
                         )}
                       </div>
                     ))}
-                  </div>
+                  </Section>
                 )}
               </TabsContent>
 
@@ -327,10 +327,36 @@ const EmployeeProfileCard = ({ employee: emp, attendance, isAdmin, onEdit, onAdd
   );
 };
 
-const InfoTile = ({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string | null }) => (
-  <div className="bg-background border border-border rounded-lg p-2.5">
-    <div className="text-[9px] text-muted-foreground font-medium mb-1 flex items-center gap-1">{icon} {label}</div>
-    <div className="text-[12px] font-semibold text-foreground truncate">{value || "—"}</div>
+const ProfileGroup = ({ title, fields }: { title: string; fields: { l: string; v: string | null | undefined }[] }) => {
+  if (fields.length === 0) return null;
+  return (
+    <div className="bg-muted/20 rounded-lg p-3 space-y-1.5">
+      <div className="text-[10px] font-bold text-muted-foreground mb-2">{title}</div>
+      {fields.map((f, i) => (
+        <div key={i} className="flex items-center justify-between gap-3 text-[12px]">
+          <span className="text-muted-foreground">{f.l}</span>
+          <span className="font-semibold text-foreground truncate text-left" dir="ltr">{f.v}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const Section = ({ title, count, addLabel, onAdd, emptyText, children }: {
+  title?: string; count: number; addLabel: string; onAdd?: () => void; emptyText: string; children: React.ReactNode;
+}) => (
+  <div className="space-y-2">
+    {(title || onAdd) && (
+      <div className="flex items-center justify-between">
+        {title ? <h4 className="text-[12px] font-semibold text-muted-foreground">{title}{count > 0 && ` (${count})`}</h4> : <span />}
+        {onAdd && (
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={onAdd}>
+            <Plus size={12} /> {addLabel}
+          </Button>
+        )}
+      </div>
+    )}
+    {count === 0 ? <Empty text={emptyText} /> : <div className="space-y-2">{children}</div>}
   </div>
 );
 
@@ -355,7 +381,7 @@ const Row = ({ title, sub, badge, icon, onDelete }: {
 );
 
 const Empty = ({ text }: { text: string }) => (
-  <div className="text-[12px] text-muted-foreground text-center py-6">{text}</div>
+  <div className="text-[12px] text-muted-foreground text-center py-5 bg-muted/20 rounded-lg">{text}</div>
 );
 
 const PayrollRow = ({ label, value, positive, negative }: { label: string; value: number; positive?: boolean; negative?: boolean }) => (
