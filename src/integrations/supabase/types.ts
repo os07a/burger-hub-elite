@@ -625,32 +625,47 @@ export type Database = {
       }
       invoices: {
         Row: {
+          account: string | null
           amount: number
           created_at: string
           date: string
+          doc_type: string | null
           id: string
+          image_url: string | null
           invoice_number: string | null
+          month_label: string | null
           notes: string | null
+          recipient: string | null
           status: string
           supplier_id: string | null
         }
         Insert: {
+          account?: string | null
           amount?: number
           created_at?: string
           date?: string
+          doc_type?: string | null
           id?: string
+          image_url?: string | null
           invoice_number?: string | null
+          month_label?: string | null
           notes?: string | null
+          recipient?: string | null
           status?: string
           supplier_id?: string | null
         }
         Update: {
+          account?: string | null
           amount?: number
           created_at?: string
           date?: string
+          doc_type?: string | null
           id?: string
+          image_url?: string | null
           invoice_number?: string | null
+          month_label?: string | null
           notes?: string | null
+          recipient?: string | null
           status?: string
           supplier_id?: string | null
         }
