@@ -99,8 +99,11 @@ const DailySalesSummaryTable = ({ limit = 30 }: DailySalesSummaryTableProps) => 
                 <th className="w-8 px-2 py-2"></th>
                 <th className="px-3 py-2 text-right font-medium">التاريخ</th>
                 <th className="px-3 py-2 text-left font-medium">إجمالي البيع</th>
-                <th className="px-3 py-2 text-left font-medium">المرتجع</th>
+                <th className="px-3 py-2 text-left font-medium">الشبكة</th>
+                <th className="px-3 py-2 text-left font-medium">الكاش</th>
+                <th className="px-3 py-2 text-left font-medium">التوصيل</th>
                 <th className="px-3 py-2 text-left font-medium">الخصومات</th>
+                <th className="px-3 py-2 text-left font-medium">المرتجع</th>
                 <th className="px-3 py-2 text-left font-medium">صافي المبيعات</th>
                 <th className="px-3 py-2 text-left font-medium">التكلفة</th>
                 <th className="px-3 py-2 text-left font-medium">إجمالي الربح</th>
