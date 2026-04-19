@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
 
     let cash = 0;
     let card = 0;
-    let delivery = 0;
+    const delivery = 0; // Delivery is NOT tracked in Loyverse — manual entry only
     let orders = 0;
     let grossSales = 0;
     let refunds = 0;
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
 
       let rCash = 0;
       let rCard = 0;
-      let rDelivery = 0;
+      const rDelivery = 0; // delivery never comes from Loyverse
 
       for (const pay of rec.payments ?? []) {
         const pt = ptMap.get(pay.payment_type_id);
@@ -176,12 +176,10 @@ Deno.serve(async (req) => {
         if (type === "CASH") {
           cash += amount;
           rCash += amount;
-        } else if (type === "CARD") {
+        } else {
+          // Everything else (CARD, OTHER, custom types like Mada/ApplePay) = Network/Card
           card += amount;
           rCard += amount;
-        } else {
-          delivery += amount;
-          rDelivery += amount;
         }
       }
 
@@ -245,13 +243,21 @@ Deno.serve(async (req) => {
       if (itemsErr) console.error("pos_receipt_items insert error", itemsErr);
     }
 
+    // Preserve manual delivery_sales entry (delivery is not synced from Loyverse)
+    const { data: existingDay } = await admin
+      .from("daily_sales")
+      .select("delivery_sales")
+      .eq("date", targetDate)
+      .maybeSingle();
+    const existingDelivery = Number(existingDay?.delivery_sales ?? 0);
+
     const { error: upsertErr } = await admin.from("daily_sales").upsert(
       {
         date: targetDate,
         cash_sales: cash,
         card_sales: card,
-        delivery_sales: delivery,
-        total_sales: netSales,
+        delivery_sales: existingDelivery,
+        total_sales: netSales + existingDelivery,
         orders_count: orders,
         gross_sales: grossSales,
         refunds,
