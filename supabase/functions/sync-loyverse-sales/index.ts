@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
 
     let cash = 0;
     let card = 0;
-    let delivery = 0;
+    const delivery = 0; // Delivery is NOT tracked in Loyverse — manual entry only
     let orders = 0;
     let grossSales = 0;
     let refunds = 0;
