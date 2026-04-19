@@ -75,7 +75,7 @@ const ItemsRow = ({ date, colSpan }: { date: string; colSpan: number }) => {
 const DailySalesSummaryTable = ({ limit = 30 }: DailySalesSummaryTableProps) => {
   const { data: rows, isLoading } = useDailySalesSummary({ limit });
   const [expanded, setExpanded] = useState<string | null>(null);
-  const colSpan = 10;
+  const colSpan = 13;
 
   return (
     <div className="ios-card mb-6">
