@@ -53,7 +53,7 @@ const EmployeeFormDialog = ({ open, onOpenChange, employee }: Props) => {
     // Financial
     basic_salary: "", bank_name: "", iban: "",
     // Work
-    shift_hours: "8",
+    shift_hours: "8", shift_start_time: "", shift_end_time: "",
   });
   const [allowances, setAllowances] = useState<Allowance[]>([]);
   const [workDays, setWorkDays] = useState<string[]>(["sun", "mon", "tue", "wed", "thu"]);
@@ -85,6 +85,8 @@ const EmployeeFormDialog = ({ open, onOpenChange, employee }: Props) => {
         bank_name: employee.bank_name ?? "",
         iban: employee.iban ?? "",
         shift_hours: (employee.shift_hours ?? 8).toString(),
+        shift_start_time: (employee as any).shift_start_time ?? "",
+        shift_end_time: (employee as any).shift_end_time ?? "",
       });
       setAllowances(Array.isArray(employee.allowances) ? (employee.allowances as any) : []);
       setWorkDays(Array.isArray(employee.work_days) ? (employee.work_days as any) : ["sun", "mon", "tue", "wed", "thu"]);
@@ -97,7 +99,7 @@ const EmployeeFormDialog = ({ open, onOpenChange, employee }: Props) => {
         hire_date: "", contract_type: "expat", contract_start: "", contract_end: "",
         department: "", job_title: "", direct_manager_id: "",
         basic_salary: "", bank_name: "", iban: "",
-        shift_hours: "8",
+        shift_hours: "8", shift_start_time: "", shift_end_time: "",
       });
       setAllowances([]);
       setWorkDays(["sun", "mon", "tue", "wed", "thu"]);
@@ -138,6 +140,8 @@ const EmployeeFormDialog = ({ open, onOpenChange, employee }: Props) => {
         iban: form.iban || null,
         work_days: workDays,
         shift_hours: parseFloat(form.shift_hours) || null,
+        shift_start_time: form.shift_start_time || null,
+        shift_end_time: form.shift_end_time || null,
       };
 
       if (isEdit && employee) {
@@ -343,11 +347,21 @@ const EmployeeFormDialog = ({ open, onOpenChange, employee }: Props) => {
                   })}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label>ساعات الوردية</Label>
                   <Input type="number" step="0.5" value={form.shift_hours} onChange={e => setForm(f => ({ ...f, shift_hours: e.target.value }))} />
                 </div>
+                <div className="space-y-2">
+                  <Label>بداية الدوام</Label>
+                  <Input type="time" value={form.shift_start_time} onChange={e => setForm(f => ({ ...f, shift_start_time: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>نهاية الدوام</Label>
+                  <Input type="time" value={form.shift_end_time} onChange={e => setForm(f => ({ ...f, shift_end_time: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>الحالة الحالية</Label>
                   <Select value={form.status} onValueChange={v => {
