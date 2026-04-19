@@ -1,85 +1,82 @@
 
-المستخدم وافق على المواصفات: **Phase 1 فقط + GPS إلزامي 200م + خصم غياب فقط + تسجيل استئذان مباشر بدون اعتماد**. كل الشغل يتركّز في قسم "الحضور والانصراف" (`/attendance`).
+## مراجعة شاملة — ما اكتشفته
 
-## نطاق التنفيذ المعتمد
+### 🔴 مشاكل توافقية حقيقية
 
-### 1) قاعدة البيانات (Migration)
-**توسيع `attendance`:**
-- `check_in_lat, check_in_lng, check_in_verified` (boolean)
-- `check_out_lat, check_out_lng, check_out_verified`
-- `late_minutes, early_leave_minutes, overtime_minutes` (محسوبة عند البصمة)
-- `request_type` (none/permission/sick/emergency) — افتراضي none
-- `edited_by, edited_at` (لمعرفة آخر تعديل)
+**1) صفحة `/payroll` ما تزال mock data بالكامل**
+- تستخدم 4 موظفين ثابتين، مفصولة تماماً عن `useEmployees` و `useAttendance`.
+- الخصم التلقائي للغياب اللي اتفقنا عليه **مش مربوط** بالصفحة الرئيسية للرواتب.
+- `computePayroll` موجودة ومستخدمة في `Staff.tsx` و `EmployeeProfileCard` فقط، لكن صفحة الرواتب نفسها لا تستفيد منها.
 
-**توسيع `employees`:**
-- `shift_start_time` (time)، `shift_end_time` (time)
+**2) `Attendance.tsx` ما يجيب بيانات الشهر الكامل للحساب**
+- يجيب فقط `useTodayAttendance` + `useWeekAttendance` (آخر 7 أيام)، بينما `computePayroll` يحتاج بيانات الشهر كامل لحساب الغياب.
+- يحتاج hook جديد `useMonthAttendance(monthYM)` أو توسيع الموجود.
 
-**جدول جديد `restaurant_settings`** (سطر واحد): `latitude, longitude, radius_meters` (افتراضي 200).
+**3) جدول حضور اليوم — عمود فارغ في الهيدر**
+- في `Attendance.tsx` السطر 134: العمود الأخير عنوانه `""` (فاضي). يبين كزحمة بصرية بدون عنوان. لازم يكون `"إجراء"` أو يتشال بالكامل.
+- نفس السطر يستخدم `(_, i) => key={i}` — مفتاح غير ثابت لازم يستخدم النص.
 
-**جدول جديد `attendance_audit`:** `attendance_id, changed_by, field_name, old_value, new_value, changed_at` — يسجّل كل تعديل بعد الإدخال الأولي.
+**4) قاعدة الموظف الغائب يُكمل الـ count حتى لو اليوم ما خلص**
+- `absentCount` في السطر 53 يحسب أي موظف مجدول ما بصم بعد كغائب — حتى الساعة 8 صباحاً قبل بداية الدوام. لازم يحسب فقط بعد انتهاء وقت بداية الدوام بساعة (grace period) أو في نهاية اليوم.
 
-RLS: الموظف المصادَق يقدر يبصم لنفسه فقط، الأدمن يعدّل أي شيء، الكل يقرأ.
+**5) RestaurantLocationSettings — حقل Radius يبدأ فاضي**
+- `useState(settings?.radius_meters?.toString() || "200")` يشتغل مرة وحدة قبل وصول البيانات → يبقى "200" حتى لو المخزن مختلف. يحتاج `useEffect` للمزامنة.
 
-### 2) المنطق (lib + hooks)
-- `src/lib/geo.ts` — Haversine distance.
-- `src/lib/attendanceCalc.ts` — يحسب `late/early/overtime` من check_in/out × shift.
-- `src/hooks/useAttendance.ts` — قراءة + إضافة + تعديل + audit + إعدادات المحل.
+**6) Status mapping ينقصه حالة "تأخر" التلقائية**
+- في `usePunchIn` يحسب الـ`status = "تأخر" إذا late > 0`. ✅ تمام.
+- لكن `variantOf` في Attendance.tsx فيه فقط 4 حالات. يحتاج "استئذان" / "إجازة مرضية" / "طارئ" → يرجعون `info` افتراضياً ✅ مغطّى.
 
-### 3) الواجهة — صفحة `/attendance` كاملة
-استبدال البيانات الوهمية الحالية ببيانات حقيقية مع:
+**7) خطأ console موجود (مش متعلق بالحضور)**
+- `MetricCard` و `StatusBadge` يستقبلون refs بدون `forwardRef` في صفحة Payroll. تحذير React بس مش يكسر شي. نتجاهله الآن (ليس من نطاق المهمة).
 
-**A) شريط تنبيهات فوري (أعلى الصفحة):**
-🔴 غائبون اليوم • 🟡 متأخرون • 🟢 ساعات إضافية • 🔵 استئذانات اليوم.
+**8) ملف Memory ضاع بين الإصدارات**
+- في الـsummary مذكور `created .lovable/memory/features/attendance-system.md` لكن في `mem://index.md` ما زال يظهر النسخة القديمة الموجزة. يحتاج تحديث الـindex بنفس الفقرة الجديدة.
 
-**B) زر "بصمة سريعة" بارز:**
-- يطلب GPS من المتصفح → يقيس المسافة من إحداثيات المحل.
-- داخل 200م: يسجّل دخول/خروج + يحسب التأخير/الإضافي تلقائياً + شارة 📍 خضراء.
-- خارج 200م: رفض + رسالة "خارج نطاق المحل" + خيار "تسجيل استئذان".
+### ✅ ما يعمل بشكل صحيح
+- RLS لكل الجداول الجديدة ✅
+- ربط `useAttendance` مع `useEmployees` للتحقق من `shift_start/end` ✅
+- `attendance_audit` يكتب تلقائياً عند التعديل من `useUpdateAttendance` ✅
+- GPS Haversine + رسائل خطأ عربية ✅
+- Tab "إعدادات" و"سجل التعديلات" محميين بـ`isAdmin` ✅
 
-**C) جدول حضور اليوم (حقيقي):**
-أعمدة: الموظف • الدوام • دخول • خروج • ساعات • تأخير • انصراف مبكر • إضافي • موقع 📍 • الحالة • [✏️ تعديل أدمن].
+---
 
-**D) زر "تسجيل استئذان"** (لأي موظف بدون اعتماد):
-نموذج: نوع (إذن/مرضي/طارئ) + التاريخ + ملاحظة → يدخل مباشرة في `attendance` بـ`request_type`.
+## خطة الإصلاح (تركّز فقط على نطاق الحضور والتوافقية)
 
-**E) تاب "سجل التعديلات" (للأدمن):**
-يعرض من `attendance_audit`: من، متى، أي حقل، القيمة قبل/بعد. شفافية كاملة anti-tampering.
+### 1) ربط صفحة الرواتب بالنظام الحقيقي
+- استبدال البيانات الوهمية في `src/pages/Payroll.tsx` بـ`useEmployees()` + `useMonthAttendance(currentMonthYM())`.
+- حساب الراتب لكل موظف عبر `computePayroll` (يستفيد من خصم الغياب التلقائي اللي اتفقنا عليه).
+- عرض عمود "الغياب" + "الخصم" + "الصافي" بدل ما هو موجود حالياً.
+- المؤشرات العلوية تُحسب من قيم حقيقية (إجمالي الرواتب، نسبة العمالة من إيرادات الشهر الفعلي من `daily_sales`).
 
-**F) قسم "إعدادات المحل" داخل الصفحة (للأدمن):**
-زر صغير "📍 تحديث موقع المحل" → يلتقط GPS الحالي + يحفظ في `restaurant_settings`. يُضبط مرة واحدة.
+### 2) إضافة hook `useMonthAttendance`
+- في `src/hooks/useAttendance.ts` — دالة جديدة تجيب صفوف الحضور لشهر معيّن (`gte` و `lt`).
 
-**G) ملخص الأسبوع:**
-يبقى لكن من بيانات حقيقية + إضافة عمود "ساعات إضافية".
+### 3) إصلاح صغير لـAttendance.tsx
+- إعطاء عنوان للعمود الأخير ("إجراء" للأدمن، يُخفى لغير الأدمن).
+- مفاتيح ثابتة في `map`.
+- تحسين منطق `absentCount`: نحسب الموظف غائب فقط لو الوقت الحالي > `shift_start_time` + 30 د (grace period) أو إذا اليوم انتهى.
 
-### 4) ربط بحاسبة الراتب
-`computePayroll` في `src/lib/hr.ts` يبقى **زي ما هو** (خصم غياب فقط حسب اختيارك). نضيف فقط عرض الإضافي/التأخير في تاب الراتب للمتابعة بدون خصم تلقائي.
+### 4) إصلاح RestaurantLocationSettings
+- إضافة `useEffect` لمزامنة قيمة `radius` مع `settings.radius_meters` بعد التحميل.
 
-### 5) Memory
-تحديث `mem://features/attendance-system` بالنظام الجديد.
+### 5) تحديث `mem://index.md`
+- تحديث وصف "Attendance System" ليعكس النظام الذكي الجديد (GPS، حسابات تلقائية، audit، استئذان مباشر).
 
-## ما لن نبنيه (مؤجل صراحة)
-- ❌ workflow اعتماد الاستئذان (تسجيل مباشر).
-- ❌ خصم التأخير/الانصراف المبكر التلقائي (يُعرض فقط).
-- ❌ علاوة الإضافي ×1.5 (تُعرض فقط).
-- ❌ ربط بالمهام/الإنتاجية، فروع، تطبيق Capacitor.
+### الملفات المعدّلة
+- `src/pages/Payroll.tsx` (استبدال mock بالكامل)
+- `src/pages/Attendance.tsx` (إصلاحات صغيرة)
+- `src/hooks/useAttendance.ts` (إضافة `useMonthAttendance`)
+- `src/components/attendance/RestaurantLocationSettings.tsx` (مزامنة radius)
+- `mem://index.md` (تحديث وصف الميزة)
 
-## الملفات
-**Migration:** توسيع `attendance` + `employees` + جدولين جديدين + RLS.
-**جديد:**
-- `src/lib/geo.ts`
-- `src/lib/attendanceCalc.ts`
-- `src/hooks/useAttendance.ts`
-- `src/hooks/useRestaurantSettings.ts`
-- `src/components/attendance/QuickPunchButton.tsx`
-- `src/components/attendance/PermissionRequestDialog.tsx`
-- `src/components/attendance/AttendanceEditDialog.tsx`
-- `src/components/attendance/AttendanceAuditTab.tsx`
-- `src/components/attendance/RestaurantLocationSettings.tsx`
-- `src/components/attendance/AttendanceAlertsBar.tsx`
+### ما لن نلمسه (بقصد)
+- ❌ الـ`MetricCard`/`StatusBadge` ref warning — خارج نطاق "ربط الأقسام".
+- ❌ تطوير سجل تعديلات إضافي أو اعتمادات (مؤجل بقرارك السابق).
+- ❌ خصم تأخير/علاوة إضافي (قرارك: غياب فقط).
 
-**معدّل:**
-- `src/pages/Attendance.tsx` (استبدال mock كامل)
-- `src/components/staff/EmployeeFormDialog.tsx` (إضافة حقلَي shift_start/end)
+### النتيجة
+- صفحة الرواتب تصبح "مرآة" حقيقية للنظام المالي للموظفين، مربوطة بالحضور.
+- زوال آخر بيانات وهمية في القسم.
+- توحيد منطق الحساب (مكان واحد: `computePayroll`).
 
-## ملاحظة مهمة قبل البدء
-GPS يحتاج **HTTPS** للعمل في المتصفح — البريفيو والنشر على Lovable يدعمونه افتراضياً ✅.
