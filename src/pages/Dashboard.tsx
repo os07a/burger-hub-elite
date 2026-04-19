@@ -223,8 +223,8 @@ const Dashboard = () => {
         {adding && (
           <div className="mb-4 grid grid-cols-3 gap-3">
             {[
-              { label: "كاش", icon: Banknote, value: cashInput, set: setCashInput },
               { label: "شبكة", icon: CreditCard, value: cardInput, set: setCardInput },
+              { label: "كاش", icon: Banknote, value: cashInput, set: setCashInput },
               { label: "توصيل", icon: Bike, value: deliveryInput, set: setDeliveryInput },
             ].map((item) => (
               <div key={item.label} className="rounded-xl bg-background p-3">
@@ -254,11 +254,31 @@ const Dashboard = () => {
           </div>
         )}
 
+        {hasChannelBreakdown && (
+          <div className="mb-3 grid grid-cols-3 gap-3">
+            {[
+              { label: "شبكة", value: cardVal, icon: CreditCard, color: "text-primary" },
+              { label: "كاش", value: cashVal, icon: Banknote, color: "text-success" },
+              { label: "توصيل", value: deliveryVal, icon: Bike, color: "text-warning" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl bg-background px-3 py-2.5">
+                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                  <item.icon size={11} /> {item.label}
+                </div>
+                <div className={`flex items-center gap-1 text-[16px] font-bold tracking-tight ${item.color}`}>
+                  {fmt(item.value, { maximumFractionDigits: 2 })}
+                  <RiyalIcon size={10} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "المرتجع", value: refundsVal, icon: Undo2, tone: "text-muted-foreground" },
-            { label: "الخصومات", value: discountsVal, icon: TicketPercent, tone: "text-muted-foreground" },
             { label: "صافي المبيعات", value: netVal, icon: Wallet, tone: "text-foreground" },
+            { label: "الخصومات", value: discountsVal, icon: TicketPercent, tone: "text-muted-foreground" },
+            { label: "المرتجع", value: refundsVal, icon: Undo2, tone: "text-muted-foreground" },
           ].map((item) => (
             <div key={item.label} className="rounded-xl bg-background px-3 py-2.5">
               <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
@@ -274,29 +294,11 @@ const Dashboard = () => {
 
         {hasChannelBreakdown ? (
           <>
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              {[
-                { label: "كاش", value: cashVal, icon: Banknote, color: "text-success" },
-                { label: "شبكة", value: cardVal, icon: CreditCard, color: "text-primary" },
-                { label: "توصيل", value: deliveryVal, icon: Bike, color: "text-warning" },
-              ].map((item) => (
-                <div key={item.label} className="rounded-xl bg-background px-3 py-2.5">
-                  <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
-                    <item.icon size={11} /> {item.label}
-                  </div>
-                  <div className={`flex items-center gap-1 text-[16px] font-bold tracking-tight ${item.color}`}>
-                    {fmt(item.value, { maximumFractionDigits: 2 })}
-                    <RiyalIcon size={10} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {totalToday > 0 && (
               <>
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-background flex">
-                  <div className="h-full rounded-r-full bg-success/70" style={{ width: `${((cashVal / totalToday) * 100).toFixed(0)}%` }} />
-                  <div className="h-full bg-primary/60" style={{ width: `${((cardVal / totalToday) * 100).toFixed(0)}%` }} />
+                  <div className="h-full rounded-r-full bg-primary/60" style={{ width: `${((cardVal / totalToday) * 100).toFixed(0)}%` }} />
+                  <div className="h-full bg-success/70" style={{ width: `${((cashVal / totalToday) * 100).toFixed(0)}%` }} />
                   <div className="h-full rounded-l-full bg-warning/60" style={{ width: `${((deliveryVal / totalToday) * 100).toFixed(0)}%` }} />
                 </div>
                 <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">

@@ -75,7 +75,7 @@ const ItemsRow = ({ date, colSpan }: { date: string; colSpan: number }) => {
 const DailySalesSummaryTable = ({ limit = 30 }: DailySalesSummaryTableProps) => {
   const { data: rows, isLoading } = useDailySalesSummary({ limit });
   const [expanded, setExpanded] = useState<string | null>(null);
-  const colSpan = 10;
+  const colSpan = 13;
 
   return (
     <div className="ios-card mb-6">
@@ -93,14 +93,17 @@ const DailySalesSummaryTable = ({ limit = 30 }: DailySalesSummaryTableProps) => 
         <div className="py-8 text-center text-[12px] text-muted-foreground">لا توجد بيانات ملخص حتى الآن.</div>
       ) : (
         <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-border bg-background/40">
-          <table className="w-full min-w-[980px] text-[12px]">
+          <table className="w-full min-w-[1200px] text-[12px]">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-[10px] text-muted-foreground">
                 <th className="w-8 px-2 py-2"></th>
                 <th className="px-3 py-2 text-right font-medium">التاريخ</th>
                 <th className="px-3 py-2 text-left font-medium">إجمالي البيع</th>
-                <th className="px-3 py-2 text-left font-medium">المرتجع</th>
+                <th className="px-3 py-2 text-left font-medium">الشبكة</th>
+                <th className="px-3 py-2 text-left font-medium">الكاش</th>
+                <th className="px-3 py-2 text-left font-medium">التوصيل</th>
                 <th className="px-3 py-2 text-left font-medium">الخصومات</th>
+                <th className="px-3 py-2 text-left font-medium">المرتجع</th>
                 <th className="px-3 py-2 text-left font-medium">صافي المبيعات</th>
                 <th className="px-3 py-2 text-left font-medium">التكلفة</th>
                 <th className="px-3 py-2 text-left font-medium">إجمالي الربح</th>
@@ -134,11 +137,20 @@ const DailySalesSummaryTable = ({ limit = 30 }: DailySalesSummaryTableProps) => 
                       <td className="px-3 py-2.5 text-left font-semibold text-foreground">
                         <span className="inline-flex items-center gap-1">{money(Number(row.gross_sales))}<RiyalIcon size={10} /></span>
                       </td>
-                      <td className="px-3 py-2.5 text-left text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">{money(Number(row.refunds))}<RiyalIcon size={10} /></span>
+                      <td className="px-3 py-2.5 text-left font-medium text-primary">
+                        <span className="inline-flex items-center gap-1">{money(Number(row.card_sales))}<RiyalIcon size={10} /></span>
+                      </td>
+                      <td className="px-3 py-2.5 text-left font-medium text-success">
+                        <span className="inline-flex items-center gap-1">{money(Number(row.cash_sales))}<RiyalIcon size={10} /></span>
+                      </td>
+                      <td className="px-3 py-2.5 text-left font-medium text-warning">
+                        <span className="inline-flex items-center gap-1">{money(Number(row.delivery_sales))}<RiyalIcon size={10} /></span>
                       </td>
                       <td className="px-3 py-2.5 text-left text-muted-foreground">
                         <span className="inline-flex items-center gap-1">{money(Number(row.discounts))}<RiyalIcon size={10} /></span>
+                      </td>
+                      <td className="px-3 py-2.5 text-left text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">{money(Number(row.refunds))}<RiyalIcon size={10} /></span>
                       </td>
                       <td className="px-3 py-2.5 text-left font-bold text-foreground">
                         <span className="inline-flex items-center gap-1">{money(Number(row.net_sales || row.total_sales))}<RiyalIcon size={10} /></span>
