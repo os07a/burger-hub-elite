@@ -93,7 +93,7 @@ const DailySalesSummaryTable = ({ limit = 30 }: DailySalesSummaryTableProps) => 
         <div className="py-8 text-center text-[12px] text-muted-foreground">لا توجد بيانات ملخص حتى الآن.</div>
       ) : (
         <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-border bg-background/40">
-          <table className="w-full min-w-[980px] text-[12px]">
+          <table className="w-full min-w-[1200px] text-[12px]">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-[10px] text-muted-foreground">
                 <th className="w-8 px-2 py-2"></th>
