@@ -1,49 +1,60 @@
 
-المستخدم يبي حاسبة منتج مبنية على المكونات (Recipe / BOM): يختار مكونات من المخزون + الكمية بالجرام/الوحدة، والنظام يحسب التكلفة الإجمالية ويقترح السعر والهامش.
+المستخدم اختار **WhatsApp Cloud API من Meta** بدل Twilio. الخطة: نستبدل واجهة Twilio بواجهة Meta، نضيف Edge Function للإرسال، ونطلب الأسرار اللازمة.
 
 ## الخطة
 
-### الفكرة
-في تبويب **حاسبة المنتجات** أضيف **وضع رابع**: "حاسبة المكونات" — يكون الافتراضي بدل "تسعير ذكي".
+### 1) الأسرار المطلوبة من المستخدم
+بعد الموافقة، نطلب عبر `add_secret`:
+- `WHATSAPP_ACCESS_TOKEN` — توكن دائم من Meta Business (System User Token).
+- `WHATSAPP_PHONE_NUMBER_ID` — معرّف رقم واتساب من Meta WhatsApp Manager.
+- `WHATSAPP_BUSINESS_ACCOUNT_ID` — اختياري، لجلب القوالب المعتمدة لاحقاً.
 
-### واجهة الحاسبة الجديدة
-1. **اختيار مكونات من المخزون**: المستخدم يضغط "+ إضافة مكوّن" → يختار من قائمة `inventory_items` (مثلاً: خبز برجر، لحم آنجوس، جبنة شيدر، صوص...).
-2. **لكل مكوّن**: 
-   - حقل "الكمية" مع الوحدة الذكية (إذا الـ inventory unit = "كجم" → نعرض جرام بالحقل ونحوّل تلقائياً، إذا "لتر" → مللي، إذا "حبة" → عدد).
-   - يحسب تلقائياً: `cost = (quantity_in_base_unit) × cost_per_unit`.
-   - زر حذف.
-3. **النتائج تحت في بطاقة ملخص**:
-   - **التكلفة الإجمالية** (مجموع كل المكونات)
-   - **هامش مرغوب** (سلايدر/إنبوت 30%-80%)
-   - **السعر المقترح** (تلقائي = cost / (1 - margin))
-   - **الربح/وحدة** = السعر − التكلفة
-   - **مقارنة ذكية**: لو المنتج موجود في `products` بنفس الاسم/تصنيف، نعرض الفرق بين سعره الحالي والسعر المقترح.
-4. **زر اختياري**: "حفظ كمنتج جديد" → يفتح ProductFormDialog مع التكلفة معبّأة.
+سأشرح للمستخدم في الشات (قبل add_secret) خطوات الحصول على القيم:
+1. business.facebook.com → WhatsApp → API Setup.
+2. ينشئ App + WhatsApp Product.
+3. ياخذ Phone Number ID والـ Access Token.
 
-### تحويل الوحدات الذكي
-- وحدة المخزون "كجم" → input بالجرام، التحويل: `qty_kg = grams / 1000`.
-- "لتر" → input بالمللي، `qty_l = ml / 1000`.
-- "حبة"/"قطعة"/"كرتون" → نفس الوحدة مباشرة.
-- نعرض tooltip صغير يوضح: "100 جرام × 60 ر.س/كجم = 6 ر.س".
+### 2) Edge Function جديدة: `send-whatsapp`
+`supabase/functions/send-whatsapp/index.ts`:
+- تستقبل: `{ to: string, message: string, template_name?: string, template_params?: string[] }`.
+- تتحقق JWT.
+- تنادي Meta Graph API:
+  ```
+  POST https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages
+  ```
+- نوعان:
+  - **Free-form text** (يشتغل فقط داخل نافذة 24 ساعة من رد العميل).
+  - **Template message** (للإرسال الابتدائي — يحتاج قالب معتمد من Meta).
+- تسجّل الرسالة في جدول جديد `whatsapp_messages`.
+- إرجاع: `{ success, message_id, status }`.
 
-### تفاصيل تقنية
-- **ملف معدّل واحد فقط**: `src/components/products/ProductCalculatorTab.tsx`
-  - إضافة tab جديد `ingredients` كأول تبويب وافتراضي.
-  - استخدام `useInventory()` (الـ hook موجود) لجلب المكونات.
-  - state: `ingredients: { itemId, qty, unit }[]`، `targetMargin: number`.
-  - دالة `convertToBaseUnit(qty, displayUnit, baseUnit)` للتحويل.
-- لا حاجة لتغييرات قاعدة بيانات (الحاسبة لا تحفظ — تجريبية).
-- أيقونات Lucide: `ChefHat`, `Plus`, `Trash2`, `Sparkles`.
+### 3) جدول قاعدة بيانات جديد
+migration: `whatsapp_messages` (id, to_phone, body, template_name, status, meta_message_id, sent_by, sent_at, error) + RLS (admin يقرأ الكل، الموظف يقرأ رسائله فقط).
 
-### مثال عملي يظهر بالواجهة
-```
-خبز برجر    [60] جرام  → 0.60 ر.س   [×]
-لحم آنجوس   [150] جرام → 12.00 ر.س  [×]
-جبنة شيدر   [20] جرام  → 1.40 ر.س   [×]
-صوص خاص     [15] مل   → 0.45 ر.س   [×]
-─────────────────────────────────
-إجمالي التكلفة:  14.45 ر.س
-هامش مرغوب: [60%] ─────●────
-السعر المقترح:   36.13 ر.س
-الربح/وحدة:      21.68 ر.س ✓
-```
+### 4) تحديث صفحة الرسائل (`src/pages/Messages.tsx`)
+- تغيير الـ subtitle من "Twilio" إلى "WhatsApp Cloud API · Meta".
+- زر "ربط Twilio الآن" → "تحقّق من ربط واتساب" (يستدعي endpoint اختبار).
+- زر "إرسال واتساب" يستدعي `supabase.functions.invoke('send-whatsapp', { body })`.
+- إزالة زر "إرسال SMS" (Meta لا تدعم SMS) أو إبقاؤه معطّل مع شرح.
+- استبدال `recentMessages` الوهمي بـ query من `whatsapp_messages` عبر hook جديد `useWhatsappMessages`.
+- إضافة toast نجاح/فشل.
+
+### 5) ملاحظة مهمة للمستخدم في الواجهة
+إضافة شارة تنبيه: "للإرسال الابتدائي للعملاء (خارج نافذة 24 ساعة) تحتاج قالب معتمد من Meta. الردود والمحادثات الجارية تشتغل مباشرة بنص حر."
+
+### الملفات
+- جديد: `supabase/functions/send-whatsapp/index.ts`
+- جديد: `src/hooks/useWhatsappMessages.ts`
+- معدّل: `src/pages/Messages.tsx`
+- migration: جدول `whatsapp_messages` + RLS
+- تحديث: `mem://features/messaging-system` (تغيير من Twilio إلى Meta)
+
+### المقارنة السريعة (للتأكيد)
+| | Meta Cloud API | Twilio |
+|---|---|---|
+| سعر أول 1000 محادثة/شهر | **مجاني** | ~40$ |
+| رقم سعودي | ✅ مباشر | محدود |
+| Connector جاهز | ❌ يدوي | ✅ |
+| SMS | ❌ | ✅ |
+
+بعد الموافقة سأطلب الأسرار الثلاثة وأبدأ التنفيذ.
