@@ -105,9 +105,9 @@ const Products = () => {
 
       <Tabs defaultValue="list" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-md mb-4">
-          <TabsTrigger value="list" className="text-[12px] gap-1.5"><MenuIcon size={13} /> القائمة</TabsTrigger>
-          <TabsTrigger value="movement" className="text-[12px] gap-1.5"><BarChart3 size={13} /> الحركة</TabsTrigger>
-          <TabsTrigger value="calculator" className="text-[12px] gap-1.5"><Calculator size={13} /> الحاسبة</TabsTrigger>
+          <TabsTrigger value="list" className="text-[12px] gap-1.5">القائمة <MenuIcon size={13} /></TabsTrigger>
+          <TabsTrigger value="movement" className="text-[12px] gap-1.5">الحركة <BarChart3 size={13} /></TabsTrigger>
+          <TabsTrigger value="calculator" className="text-[12px] gap-1.5">الحاسبة <Calculator size={13} /></TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
@@ -119,7 +119,7 @@ const Products = () => {
               onClick={() => setTypeFilter("all")}
               className="h-7 text-[11px] gap-1"
             >
-              <Package size={12} /> الكل ({products.length})
+              الكل ({products.length}) <Package size={12} />
             </Button>
             <Button
               size="sm"
@@ -127,7 +127,7 @@ const Products = () => {
               onClick={() => setTypeFilter("primary")}
               className="h-7 text-[11px] gap-1"
             >
-              <Beef size={12} /> أساسي ({primaryCount})
+              أساسي ({primaryCount}) <Beef size={12} />
             </Button>
             <Button
               size="sm"
@@ -135,7 +135,7 @@ const Products = () => {
               onClick={() => setTypeFilter("ready_made")}
               className="h-7 text-[11px] gap-1"
             >
-              <GlassWater size={12} /> جاهز ({readyCount})
+              جاهز ({readyCount}) <GlassWater size={12} />
             </Button>
           </div>
 
