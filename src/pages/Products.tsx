@@ -26,7 +26,13 @@ const getRating = (m: number) => {
 };
 
 const categoryEmoji = (c: string) =>
-  c.includes("برجر") ? "🍔" : c.includes("وجب") ? "🍟" : c.includes("جوانب") ? "🧀" : c.includes("مشروب") ? "🥤" : c.includes("صوص") ? "🥫" : c.includes("إضاف") ? "🍟" : "🍽️";
+  c.includes("لحم") ? "🥩" : c.includes("دجاج") ? "🍗" : c.includes("سمك") ? "🐟" : c.includes("برجر") ? "🍔" : c.includes("إضاف") ? "🍟" : c.includes("مشروب") ? "🥤" : c.includes("صوص") ? "🥫" : "🍽️";
+
+const CATEGORY_ORDER = ["برجر لحم", "برجر دجاج", "برجر سمك", "إضافات", "مشروبات", "صوصات"];
+const categoryRank = (c: string) => {
+  const i = CATEGORY_ORDER.indexOf(c);
+  return i === -1 ? 999 : i;
+};
 
 type TypeFilter = "all" | "primary" | "ready_made";
 
@@ -143,7 +149,7 @@ const Products = () => {
           )}
 
           <div className="space-y-4">
-            {Object.entries(grouped).map(([cat, items]) => {
+            {Object.entries(grouped).sort((a, b) => categoryRank(a[0]) - categoryRank(b[0])).map(([cat, items]) => {
               const catAvg = items.reduce((s, p) => {
                 const m = Number(p.price) > 0 ? ((Number(p.price) - Number(p.cost)) / Number(p.price)) * 100 : 0;
                 return s + m;
@@ -163,7 +169,7 @@ const Products = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div dir="rtl" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {items.map((p) => {
                       const price = Number(p.price);
                       const cost = Number(p.cost);
