@@ -1,1 +1,7 @@
 project_id = "bjfhrrtajyvvdcsrpwqb"
+
+[functions.business-advisor]
+verify_jwt = false
+
+[functions.transcribe-audio]
+verify_jwt = false
