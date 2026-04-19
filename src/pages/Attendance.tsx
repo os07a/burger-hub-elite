@@ -50,7 +50,20 @@ const Attendance = () => {
   const presentMap = new Map(todayRows.filter(r => r.check_in).map(r => [r.employee_id, r]));
   const permissionRows = todayRows.filter(r => r.request_type && r.request_type !== "none");
 
-  const absentCount = scheduledToday.filter(e => !presentMap.has(e.id) && !permissionRows.some(p => p.employee_id === e.id)).length;
+  // Absent only counts after shift_start + 30min grace, or if no shift defined
+  const now = new Date();
+  const isPastGrace = (shiftStart: string | null | undefined) => {
+    if (!shiftStart) return false;
+    const [h, m] = shiftStart.split(":").map(Number);
+    const start = new Date();
+    start.setHours(h, m + 30, 0, 0);
+    return now >= start;
+  };
+  const absentCount = scheduledToday.filter(e =>
+    !presentMap.has(e.id) &&
+    !permissionRows.some(p => p.employee_id === e.id) &&
+    isPastGrace(e.shift_start_time)
+  ).length;
   const lateCount = todayRows.filter(r => (r.late_minutes || 0) > 0).length;
   const overtimeMin = todayRows.reduce((a, r) => a + (r.overtime_minutes || 0), 0);
 
@@ -131,8 +144,8 @@ const Attendance = () => {
                 <table className="w-full border-collapse min-w-[800px]">
                   <thead>
                     <tr>
-                      {["الموظف", "الدوام", "دخول", "خروج", "ساعات", "تأخير", "إضافي", "موقع", "الحالة", isAdmin ? "" : ""].map((h, i) => (
-                        <th key={i} className="text-[9px] text-gray-light font-semibold uppercase tracking-wide px-2 pb-2.5 text-right border-b-2 border-border">{h}</th>
+                      {["الموظف", "الدوام", "دخول", "خروج", "ساعات", "تأخير", "إضافي", "موقع", "الحالة", ...(isAdmin ? ["إجراء"] : [])].map((h) => (
+                        <th key={h} className="text-[9px] text-gray-light font-semibold uppercase tracking-wide px-2 pb-2.5 text-right border-b-2 border-border">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -177,13 +190,15 @@ const Attendance = () => {
                           <td className="px-2 py-2.5 border-b border-border">
                             <StatusBadge variant={variant}>{status}</StatusBadge>
                           </td>
-                          <td className="px-2 py-2.5 border-b border-border">
-                            {isAdmin && rec && (
-                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTarget(rec)}>
-                                <Pencil size={13} />
-                              </Button>
-                            )}
-                          </td>
+                          {isAdmin && (
+                            <td className="px-2 py-2.5 border-b border-border">
+                              {rec && (
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTarget(rec)}>
+                                  <Pencil size={13} />
+                                </Button>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
