@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,10 @@ const RestaurantLocationSettings = () => {
   const update = useUpdateRestaurantLocation();
   const [loading, setLoading] = useState(false);
   const [radius, setRadius] = useState<string>(settings?.radius_meters?.toString() || "200");
+
+  useEffect(() => {
+    if (settings?.radius_meters != null) setRadius(String(settings.radius_meters));
+  }, [settings?.radius_meters]);
 
   const captureLocation = async () => {
     setLoading(true);

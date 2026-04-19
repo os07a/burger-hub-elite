@@ -58,6 +58,25 @@ export function useWeekAttendance() {
   });
 }
 
+export function useMonthAttendance(monthYM: string) {
+  return useQuery({
+    queryKey: ["attendance", "month", monthYM],
+    queryFn: async () => {
+      const [y, m] = monthYM.split("-").map(Number);
+      const start = `${y}-${String(m).padStart(2, "0")}-01`;
+      const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("*")
+        .gte("date", start)
+        .lt("date", nextMonth)
+        .order("date", { ascending: true });
+      if (error) throw error;
+      return (data || []) as AttendanceRow[];
+    },
+  });
+}
+
 export function usePunchIn() {
   const qc = useQueryClient();
   return useMutation({
