@@ -17,32 +17,68 @@ export type Database = {
       attendance: {
         Row: {
           check_in: string | null
+          check_in_lat: number | null
+          check_in_lng: number | null
+          check_in_verified: boolean | null
           check_out: string | null
+          check_out_lat: number | null
+          check_out_lng: number | null
+          check_out_verified: boolean | null
           created_at: string
           date: string
+          early_leave_minutes: number
+          edited_at: string | null
+          edited_by: string | null
           employee_id: string
           id: string
+          late_minutes: number
           notes: string | null
+          overtime_minutes: number
+          request_type: string
           status: string
         }
         Insert: {
           check_in?: string | null
+          check_in_lat?: number | null
+          check_in_lng?: number | null
+          check_in_verified?: boolean | null
           check_out?: string | null
+          check_out_lat?: number | null
+          check_out_lng?: number | null
+          check_out_verified?: boolean | null
           created_at?: string
           date?: string
+          early_leave_minutes?: number
+          edited_at?: string | null
+          edited_by?: string | null
           employee_id: string
           id?: string
+          late_minutes?: number
           notes?: string | null
+          overtime_minutes?: number
+          request_type?: string
           status?: string
         }
         Update: {
           check_in?: string | null
+          check_in_lat?: number | null
+          check_in_lng?: number | null
+          check_in_verified?: boolean | null
           check_out?: string | null
+          check_out_lat?: number | null
+          check_out_lng?: number | null
+          check_out_verified?: boolean | null
           created_at?: string
           date?: string
+          early_leave_minutes?: number
+          edited_at?: string | null
+          edited_by?: string | null
           employee_id?: string
           id?: string
+          late_minutes?: number
           notes?: string | null
+          overtime_minutes?: number
+          request_type?: string
           status?: string
         }
         Relationships: [
@@ -51,6 +87,44 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_audit: {
+        Row: {
+          attendance_id: string
+          changed_at: string
+          changed_by: string | null
+          field_name: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          attendance_id: string
+          changed_at?: string
+          changed_by?: string | null
+          field_name: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          attendance_id?: string
+          changed_at?: string
+          changed_by?: string | null
+          field_name?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_audit_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance"
             referencedColumns: ["id"]
           },
         ]
@@ -419,7 +493,9 @@ export type Database = {
           role: string
           role_short: string | null
           salary: number
+          shift_end_time: string | null
           shift_hours: number | null
+          shift_start_time: string | null
           status: string
           status_variant: string
           updated_at: string
@@ -452,7 +528,9 @@ export type Database = {
           role: string
           role_short?: string | null
           salary?: number
+          shift_end_time?: string | null
           shift_hours?: number | null
+          shift_start_time?: string | null
           status?: string
           status_variant?: string
           updated_at?: string
@@ -485,7 +563,9 @@ export type Database = {
           role?: string
           role_short?: string | null
           salary?: number
+          shift_end_time?: string | null
           shift_hours?: number | null
+          shift_start_time?: string | null
           status?: string
           status_variant?: string
           updated_at?: string
@@ -875,6 +955,36 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      restaurant_settings: {
+        Row: {
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          radius_meters: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          radius_meters?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          radius_meters?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
