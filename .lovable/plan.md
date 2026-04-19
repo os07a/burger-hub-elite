@@ -1,60 +1,92 @@
 
-المستخدم اختار **WhatsApp Cloud API من Meta** بدل Twilio. الخطة: نستبدل واجهة Twilio بواجهة Meta، نضيف Edge Function للإرسال، ونطلب الأسرار اللازمة.
+المستخدم يبي يطور قسم "الطاقم" ليكون **نظام HR ذكي متكامل** بدل الملف البسيط الحالي.
 
-## الخطة
+## مراجعة الوضع الحالي
+- جدول `employees` فيه فقط: name, role, role_short, salary, status, performance_tasks/rating.
+- جدول `employee_docs` للوثائق.
+- جدول `attendance` للحضور.
+- **الفجوة كبيرة** بين اللي عندنا وقائمة المستخدم (~30 حقل + 5 سجلات تابعة).
 
-### 1) الأسرار المطلوبة من المستخدم
-بعد الموافقة، نطلب عبر `add_secret`:
-- `WHATSAPP_ACCESS_TOKEN` — توكن دائم من Meta Business (System User Token).
-- `WHATSAPP_PHONE_NUMBER_ID` — معرّف رقم واتساب من Meta WhatsApp Manager.
-- `WHATSAPP_BUSINESS_ACCOUNT_ID` — اختياري، لجلب القوالب المعتمدة لاحقاً.
+## تحليل: ايش نضيف، ايش نأجل، ايش ما له داعي
 
-سأشرح للمستخدم في الشات (قبل add_secret) خطوات الحصول على القيم:
-1. business.facebook.com → WhatsApp → API Setup.
-2. ينشئ App + WhatsApp Product.
-3. ياخذ Phone Number ID والـ Access Token.
+### ✅ Phase 1 — توسيع جدول employees بحقول حقيقية تخدم المطعم
+**هوية وتعاقد:**
+- `national_id` (هوية/إقامة) + `nationality` + `birth_date`
+- `hire_date` (يحسب مدة الخدمة تلقائياً)
+- `contract_type` (سعودة/وافد/جزئي) + `contract_start` + `contract_end`
+- `department` (مطبخ/كاشير/توصيل/إدارة) + `direct_manager_id` (FK ذاتي = شجرة تنظيمية)
 
-### 2) Edge Function جديدة: `send-whatsapp`
-`supabase/functions/send-whatsapp/index.ts`:
-- تستقبل: `{ to: string, message: string, template_name?: string, template_params?: string[] }`.
-- تتحقق JWT.
-- تنادي Meta Graph API:
-  ```
-  POST https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages
-  ```
-- نوعان:
-  - **Free-form text** (يشتغل فقط داخل نافذة 24 ساعة من رد العميل).
-  - **Template message** (للإرسال الابتدائي — يحتاج قالب معتمد من Meta).
-- تسجّل الرسالة في جدول جديد `whatsapp_messages`.
-- إرجاع: `{ success, message_id, status }`.
+**مالي ومزايا:**
+- `basic_salary` (نفصله عن الإجمالي)
+- `housing_allowance`, `transport_allowance`, `other_allowances` (jsonb مرن)
+- `bank_name` + `iban`
 
-### 3) جدول قاعدة بيانات جديد
-migration: `whatsapp_messages` (id, to_phone, body, template_name, status, meta_message_id, sent_by, sent_at, error) + RLS (admin يقرأ الكل، الموظف يقرأ رسائله فقط).
+**عمل وتواصل:**
+- `work_days` (jsonb) + `shift_hours`
+- `phone` + `emergency_contact` + `address`
 
-### 4) تحديث صفحة الرسائل (`src/pages/Messages.tsx`)
-- تغيير الـ subtitle من "Twilio" إلى "WhatsApp Cloud API · Meta".
-- زر "ربط Twilio الآن" → "تحقّق من ربط واتساب" (يستدعي endpoint اختبار).
-- زر "إرسال واتساب" يستدعي `supabase.functions.invoke('send-whatsapp', { body })`.
-- إزالة زر "إرسال SMS" (Meta لا تدعم SMS) أو إبقاؤه معطّل مع شرح.
-- استبدال `recentMessages` الوهمي بـ query من `whatsapp_messages` عبر hook جديد `useWhatsappMessages`.
-- إضافة toast نجاح/فشل.
+**حقول محسوبة بالواجهة (لا تخزّن):** مدة الخدمة، أيام متبقية للعقد، إجمالي الراتب.
 
-### 5) ملاحظة مهمة للمستخدم في الواجهة
-إضافة شارة تنبيه: "للإرسال الابتدائي للعملاء (خارج نافذة 24 ساعة) تحتاج قالب معتمد من Meta. الردود والمحادثات الجارية تشتغل مباشرة بنص حر."
+### ✅ Phase 2 — 5 جداول سجلات تابعة (بدل حشرها في employees)
 
-### الملفات
-- جديد: `supabase/functions/send-whatsapp/index.ts`
-- جديد: `src/hooks/useWhatsappMessages.ts`
-- معدّل: `src/pages/Messages.tsx`
-- migration: جدول `whatsapp_messages` + RLS
-- تحديث: `mem://features/messaging-system` (تغيير من Twilio إلى Meta)
+| الجدول | الغرض |
+|---|---|
+| `employee_qualifications` | المؤهلات/الشهادات/الدورات/الخبرات (نوع + عنوان + جهة + سنة + ملف) |
+| `employee_leaves` | الإجازات (نوع + من-إلى + أيام + حالة) |
+| `employee_penalties` | الجزاءات (سبب + مبلغ + شدة) |
+| `employee_rewards` | المكافآت (سبب + مبلغ + نوع) |
+| `employee_evaluations` | التقييمات الدورية (تقييم 1-5 + نقاط قوة/ضعف + أهداف) |
 
-### المقارنة السريعة (للتأكيد)
-| | Meta Cloud API | Twilio |
-|---|---|---|
-| سعر أول 1000 محادثة/شهر | **مجاني** | ~40$ |
-| رقم سعودي | ✅ مباشر | محدود |
-| Connector جاهز | ❌ يدوي | ✅ |
-| SMS | ❌ | ✅ |
+`employee_docs` الموجود يكفي للوثائق الرسمية — نضيف `reminder_days_before` فقط.
 
-بعد الموافقة سأطلب الأسرار الثلاثة وأبدأ التنفيذ.
+### ❌ ما له داعي (Over-engineering لبرجرهم)
+- **الفرع**: محل واحد، نأجله للتوسع.
+- **سجل التطوير المهني** كحقل منفصل: مكرر مع qualifications + evaluations.
+- **وسائل تواصل متعددة** (LinkedIn/إلخ): phone + emergency يكفي.
+- **تفاصيل سكن/نقل نصية**: نختصرها بمبلغ البدل، التفاصيل ملاحظة.
+- **المسمى + المهنة منفصلين**: المهنة = role موجود، نضيف `job_title` فقط.
+
+### 🧠 Phase 3 — الواجهة الذكية (UX)
+1. **بطاقة موظف موسّعة بتابات** بدل البطاقة الحالية البسيطة:  
+   شخصية | تعاقد ومالي | وثائق | إجازات | جزاءات/مكافآت | تقييمات | حضور
+2. **شريط تنبيهات ذكية أعلى الصفحة:**
+   - 🔴 عقود تنتهي خلال 30 يوم
+   - 🟡 وثائق منتهية/قاربت
+   - 🟢 تقييمات مستحقة (>90 يوم)
+3. **حاسبة راتب شهري لكل موظف:**  
+   أساسي + بدلات − جزاءات + مكافآت − خصم غياب → زر "كشف رواتب الشهر CSV"
+4. **بطاقات مؤشرات محدّثة:** متوسط مدة الخدمة، نسبة السعودة، إجازات الشهر، إجمالي جزاءات/مكافآت.
+5. **بحث/فلترة:** بالاسم/الجنسية/القسم/الحالة/نوع العقد.
+6. **نسخ من موظف موجود** لتسريع الإضافة.
+
+### 🔮 Phase 4 (لاحقاً)
+PDF عقود تلقائية، AI insights، ربط الحضور بالخصومات تلقائياً.
+
+## التنفيذ المقترح على مراحل
+```
+Phase 1 (الأساس + النموذج المطوّر)
+Phase 2 (5 جداول السجلات)
+Phase 3 (البطاقة الموسّعة + التنبيهات + حاسبة الراتب)
+Phase 4 (لاحقاً عند الطلب)
+```
+
+## أسئلة قبل التنفيذ
+
+**1) من وين أبدأ؟**
+- (أ) Phase 1+2+3 دفعة واحدة (نظام كامل، يستغرق وقت لكن جاهز)
+- (ب) Phase 1 فقط الآن (توسيع البيانات + النموذج)
+- (ج) Phase 1+2 (قاعدة بيانات كاملة، الواجهة لاحقاً)
+
+**2) البدلات تتسجّل كيف؟**
+- (أ) حقول ثابتة (سكن/نقل/أخرى) — أسرع للإدخال
+- (ب) قائمة مرنة jsonb (تضيف أي بدل باسم وقيمة) — أمرن
+
+**3) الأقسام عندكم في برجرهم؟**
+- (أ) الافتراضية: مطبخ، كاشير، توصيل، إدارة (قائمة منسدلة)
+- (ب) حقل نصي مفتوح
+- (ج) أخبرني الأقسام الفعلية
+
+**4) خصم الغياب في حاسبة الراتب؟**
+- (أ) تلقائي من جدول attendance (يوم غياب = أساسي/30)
+- (ب) يدوي فقط (المدير يدخله في الجزاءات)
+
