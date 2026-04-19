@@ -1,84 +1,66 @@
 
-## الفهم
-المستخدم يبي يختبر النظام كنظام حقيقي على جهازه المحلي (Demo محلي) قبل النشر النهائي. يبي خطوات واضحة لتشغيل المشروع محلياً.
+## السؤال
+المستخدم يسأل: وين تتخزن بيانات النظام؟ هل في SQL؟ هل في ملفات Excel؟ وين الـ APIs؟
 
-## التحليل
-المشروع:
-- **Frontend**: React + Vite + TypeScript + Tailwind
-- **Backend**: Lovable Cloud (Supabase مُدار) — قاعدة البيانات والـ Edge Functions منشورة على السحابة فعلياً
-- **متطلبات التشغيل المحلي**: Node.js + bun (موجود في `bun.lock`) أو npm
-- **ملف `.env`**: محمي ومُولّد تلقائياً من Lovable، يحتوي على:
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_PUBLISHABLE_KEY`
-  - `VITE_SUPABASE_PROJECT_ID`
+هذا سؤال **توضيحي** (مو طلب تنفيذ) — الجواب مباشر بدون خطة تعديل.
 
-**ملاحظة مهمة**: لما تشغّل محلياً، الـ Frontend راح يتصل بـ **نفس قاعدة البيانات السحابية** (Lovable Cloud)، يعني نفس البيانات الحقيقية. هذا مفيد للاختبار الواقعي، لكن انتبه أي تعديل/حذف يأثر على البيانات الفعلية.
+## الجواب
 
-## الخطة (دليل خطوات — مو تعديل كود)
+### 1) قاعدة البيانات — PostgreSQL (SQL حقيقي)
+كل البيانات محفوظة في **قاعدة بيانات PostgreSQL** مُدارة عبر **Lovable Cloud** (المبني على Supabase) في **منطقة أوروبا**.
 
-### الخيار 1: التشغيل المحلي الكامل (Local Demo)
+**الجداول الموجودة فعلياً (24 جدول):**
+- **المبيعات والكاشير**: `daily_sales`, `pos_receipts`, `pos_receipt_items`
+- **الموظفين والـ HR**: `employees`, `employee_docs`, `employee_qualifications`, `employee_leaves`, `employee_penalties`, `employee_rewards`, `employee_evaluations`
+- **الحضور**: `attendance`, `attendance_audit`, `restaurant_settings`
+- **الشركاء والأرباح**: `partner_shares`, `monthly_distributions`, `share_milestones`
+- **المنتجات والمخزون**: `products`, `inventory_items`
+- **الموردين**: `suppliers`, `invoices`
+- **الولاء والرسائل**: `loyalty_customers`, `messages`, `whatsapp_messages`
+- **المستخدمين**: `profiles`, `user_roles` (للصلاحيات Admin/Employee)
 
-**المتطلبات:**
-1. تنصيب **Node.js** (الإصدار 18+) من [nodejs.org](https://nodejs.org)
-2. تنصيب **bun** (اختياري لكن أسرع): `npm install -g bun`
-3. تنصيب **Git**
+كل جدول محمي بسياسات **RLS (Row-Level Security)** — يعني الأدمن يقدر يعدّل، الموظف قراءة فقط.
 
-**الخطوات:**
+### 2) ملفات Excel — ❌ غير مستخدمة في التشغيل
+ملفات الإكسل اللي شاركتها سابقاً (مبيعات، تأسيس، مصاريف) **استُخدمت مرة وحدة فقط كـ Seed Data** (بيانات أولية للتعبئة) — أرقام مثل:
+- تكاليف التأسيس 292,405 ر.س
+- صافي المبيعات 91,870 ر.س
+- نقطة التعادل 15,761 ر.س
 
-```bash
-# 1. اربط المشروع بـ GitHub من Lovable (زر GitHub أعلى يمين)
-# 2. استنسخ المستودع
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+هذي محفوظة الآن **داخل قاعدة البيانات** + بعضها في **ذاكرة المشروع** (`mem://financials/benchmarks`) كمراجع. النظام **لا يقرأ من Excel** أبداً وقت التشغيل.
 
-# 3. نصّب الحزم
-bun install
-# أو: npm install
+### 3) ملفات التخزين (Storage Buckets)
+للملفات الثنائية (صور/PDF):
+- `product-images` (عام) — صور المنتجات
+- `employee-docs` (خاص) — مستندات الموظفين (هويات، عقود)
 
-# 4. أنشئ ملف .env في الجذر بالقيم التالية
-# (انسخها من إعدادات المشروع → Cloud → Database → API)
+### 4) الـ APIs (Edge Functions)
+4 دوال Serverless تعمل على Lovable Cloud:
+| الدالة | الوظيفة |
+|--------|---------|
+| `sync-loyverse-sales` | جلب المبيعات من كاشير Loyverse |
+| `sync-loyverse-customers` | جلب عملاء الولاء |
+| `business-advisor` | المستشار الذكي (Lovable AI) |
+| `extract-iqama-data` | استخراج بيانات الإقامة من الصور |
+| `transcribe-audio` | تحويل الصوت لنص |
+
+### 5) APIs خارجية
+- **Loyverse POS** (عبر `LOYVERSE_API_TOKEN`) — مصدر بيانات المبيعات
+- **Lovable AI Gateway** (`LOVABLE_API_KEY`) — Gemini للذكاء الاصطناعي
+- **Twilio WhatsApp** — للرسائل (مخطط)
+- ❌ **لا يوجد** ربط بنكي مباشر (Open Banking)
+
+### 6) المصادقة (Auth)
+نظام Supabase Auth — أول مستخدم يصير **Admin** تلقائياً عبر دالة `handle_new_user()`، الباقي **Employee**.
+
+## الخلاصة
 ```
-
-**محتوى `.env`:**
+المتصفح (React) ──HTTPS──► Lovable Cloud
+                              ├─ PostgreSQL (24 جدول SQL)
+                              ├─ Storage (صور + PDF)
+                              ├─ Edge Functions (5 APIs)
+                              └─ Auth (تسجيل الدخول)
+                                       │
+                                       └──► Loyverse API + Lovable AI
 ```
-VITE_SUPABASE_URL=https://bjfhrrtajyvvdcsrpwqb.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<anon_key_from_lovable>
-VITE_SUPABASE_PROJECT_ID=bjfhrrtajyvvdcsrpwqb
-```
-
-```bash
-# 5. شغّل الـ dev server
-bun run dev
-# أو: npm run dev
-
-# 6. افتح المتصفح على
-# http://localhost:8080
-```
-
-### الخيار 2: استخدام معاينة Lovable مباشرة (الأسهل)
-بدون أي تنصيب — استخدم رابط المعاينة الحالي:
-- **Preview URL**: `https://id-preview--f213e2ad-7fc0-4054-88cf-b8bdf6a7af5b.lovable.app`
-- يربطك بنفس البيانات والـ Edge Functions
-- يعمل من أي جهاز/جوال
-
-### الخيار 3: نشر تجريبي (Staging)
-اضغط **Publish** أعلى يمين Lovable → يعطيك رابط `*.lovable.app` ثابت تقدر تختبره من أي جهاز كأنه إنتاج.
-
-## نقاط الاختبار المقترحة (Smoke Test)
-1. **تسجيل دخول** بحساب مدير → تحقق من ظهور كل التبويبات
-2. **مزامنة Loyverse** من زر "مزامنة من الكاشير" → تأكد إن إيصال 1-2709 صار تحت **الشبكة** مو التوصيل
-3. **إدخال توصيل يدوي** (HungerStation/Keeta) → تأكد إنه يبقى محفوظ بعد المزامنة
-4. **المستشار الذكي**: ارفع صورة/PDF واختبر التسجيل الصوتي
-5. **الحضور**: جرّب QuickPunch من خارج نطاق GPS → لازم يرفض
-6. **الموظفين**: أضف موظف + مستند → تحقق من تنبيهات انتهاء الصلاحية
-7. **الموردين والأرشيف**: ارفع فاتورة وتأكد من ظهورها
-8. **الأرباح**: تحقق من توزيع الأسهم وحاسبة 200-share
-
-## ملاحظات أمان
-- **لا تشارك** ملف `.env` على GitHub العام (موجود في `.gitignore` تلقائياً)
-- البيانات اللي تختبرها محلياً **هي نفسها** البيانات السحابية
-- لو تبي بيئة منفصلة للاختبار (Staging DB) — نقدر نسوي مشروع Lovable ثاني كنسخة تجريبية
-
-## التوصية
-**للاختبار السريع**: استخدم رابط المعاينة الحالي (الخيار 2) أو انشر staging (الخيار 3) — أسرع وما تحتاج تنصيب.
-**للتطوير المتقدم**: شغّل محلياً (الخيار 1) لو تبي تعدّل الكود وتختبر قبل push.
+**ما فيه ملفات Excel ولا JSON محلية** — كل شي SQL في السحابة.
