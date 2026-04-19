@@ -137,11 +137,20 @@ const DailySalesSummaryTable = ({ limit = 30 }: DailySalesSummaryTableProps) => 
                       <td className="px-3 py-2.5 text-left font-semibold text-foreground">
                         <span className="inline-flex items-center gap-1">{money(Number(row.gross_sales))}<RiyalIcon size={10} /></span>
                       </td>
-                      <td className="px-3 py-2.5 text-left text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">{money(Number(row.refunds))}<RiyalIcon size={10} /></span>
+                      <td className="px-3 py-2.5 text-left font-medium text-primary">
+                        <span className="inline-flex items-center gap-1">{money(Number(row.card_sales))}<RiyalIcon size={10} /></span>
+                      </td>
+                      <td className="px-3 py-2.5 text-left font-medium text-success">
+                        <span className="inline-flex items-center gap-1">{money(Number(row.cash_sales))}<RiyalIcon size={10} /></span>
+                      </td>
+                      <td className="px-3 py-2.5 text-left font-medium text-warning">
+                        <span className="inline-flex items-center gap-1">{money(Number(row.delivery_sales))}<RiyalIcon size={10} /></span>
                       </td>
                       <td className="px-3 py-2.5 text-left text-muted-foreground">
                         <span className="inline-flex items-center gap-1">{money(Number(row.discounts))}<RiyalIcon size={10} /></span>
+                      </td>
+                      <td className="px-3 py-2.5 text-left text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">{money(Number(row.refunds))}<RiyalIcon size={10} /></span>
                       </td>
                       <td className="px-3 py-2.5 text-left font-bold text-foreground">
                         <span className="inline-flex items-center gap-1">{money(Number(row.net_sales || row.total_sales))}<RiyalIcon size={10} /></span>
