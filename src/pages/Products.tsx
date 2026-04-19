@@ -26,7 +26,13 @@ const getRating = (m: number) => {
 };
 
 const categoryEmoji = (c: string) =>
-  c.includes("برجر") ? "🍔" : c.includes("وجب") ? "🍟" : c.includes("جوانب") ? "🧀" : c.includes("مشروب") ? "🥤" : c.includes("صوص") ? "🥫" : c.includes("إضاف") ? "🍟" : "🍽️";
+  c.includes("لحم") ? "🥩" : c.includes("دجاج") ? "🍗" : c.includes("سمك") ? "🐟" : c.includes("برجر") ? "🍔" : c.includes("إضاف") ? "🍟" : c.includes("مشروب") ? "🥤" : c.includes("صوص") ? "🥫" : "🍽️";
+
+const CATEGORY_ORDER = ["برجر لحم", "برجر دجاج", "برجر سمك", "إضافات", "مشروبات", "صوصات"];
+const categoryRank = (c: string) => {
+  const i = CATEGORY_ORDER.indexOf(c);
+  return i === -1 ? 999 : i;
+};
 
 type TypeFilter = "all" | "primary" | "ready_made";
 
