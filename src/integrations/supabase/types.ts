@@ -127,6 +127,7 @@ export type Database = {
           image_url: string | null
           issue_date: string | null
           label: string
+          reminder_days_before: number
           status: string
           status_variant: string
         }
@@ -141,6 +142,7 @@ export type Database = {
           image_url?: string | null
           issue_date?: string | null
           label: string
+          reminder_days_before?: number
           status: string
           status_variant?: string
         }
@@ -155,6 +157,7 @@ export type Database = {
           image_url?: string | null
           issue_date?: string | null
           label?: string
+          reminder_days_before?: number
           status?: string
           status_variant?: string
         }
@@ -168,50 +171,335 @@ export type Database = {
           },
         ]
       }
-      employees: {
+      employee_evaluations: {
         Row: {
           created_at: string
+          employee_id: string
+          evaluation_date: string
+          evaluator: string | null
+          goals: string | null
           id: string
-          image_url: string | null
-          name: string
-          performance_rating: string | null
-          performance_tasks: string | null
-          role: string
-          role_short: string | null
-          salary: number
-          status: string
-          status_variant: string
-          updated_at: string
+          notes: string | null
+          period: string
+          score: number
+          strengths: string | null
+          weaknesses: string | null
         }
         Insert: {
           created_at?: string
+          employee_id: string
+          evaluation_date?: string
+          evaluator?: string | null
+          goals?: string | null
           id?: string
-          image_url?: string | null
-          name: string
-          performance_rating?: string | null
-          performance_tasks?: string | null
-          role: string
-          role_short?: string | null
-          salary?: number
-          status?: string
-          status_variant?: string
-          updated_at?: string
+          notes?: string | null
+          period?: string
+          score: number
+          strengths?: string | null
+          weaknesses?: string | null
         }
         Update: {
           created_at?: string
+          employee_id?: string
+          evaluation_date?: string
+          evaluator?: string | null
+          goals?: string | null
+          id?: string
+          notes?: string | null
+          period?: string
+          score?: number
+          strengths?: string | null
+          weaknesses?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_evaluations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_leaves: {
+        Row: {
+          created_at: string
+          days_count: number
+          employee_id: string
+          end_date: string
+          id: string
+          leave_type: string
+          notes: string | null
+          start_date: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          days_count?: number
+          employee_id: string
+          end_date: string
+          id?: string
+          leave_type: string
+          notes?: string | null
+          start_date: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          days_count?: number
+          employee_id?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          notes?: string | null
+          start_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_leaves_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_penalties: {
+        Row: {
+          amount: number
+          created_at: string
+          employee_id: string
+          id: string
+          notes: string | null
+          penalty_date: string
+          reason: string
+          severity: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          penalty_date?: string
+          reason: string
+          severity?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          penalty_date?: string
+          reason?: string
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_penalties_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_qualifications: {
+        Row: {
+          created_at: string
+          employee_id: string
+          file_url: string | null
+          id: string
+          institution: string | null
+          notes: string | null
+          qualification_type: string
+          title: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          file_url?: string | null
+          id?: string
+          institution?: string | null
+          notes?: string | null
+          qualification_type: string
+          title: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          file_url?: string | null
+          id?: string
+          institution?: string | null
+          notes?: string | null
+          qualification_type?: string
+          title?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_qualifications_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_rewards: {
+        Row: {
+          amount: number
+          created_at: string
+          employee_id: string
+          id: string
+          notes: string | null
+          reason: string
+          reward_date: string
+          reward_type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          reason: string
+          reward_date?: string
+          reward_type?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          reason?: string
+          reward_date?: string
+          reward_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_rewards_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          address: string | null
+          allowances: Json
+          bank_name: string | null
+          basic_salary: number
+          birth_date: string | null
+          contract_end: string | null
+          contract_start: string | null
+          contract_type: string | null
+          created_at: string
+          department: string | null
+          direct_manager_id: string | null
+          emergency_contact: string | null
+          hire_date: string | null
+          iban: string | null
+          id: string
+          image_url: string | null
+          job_title: string | null
+          name: string
+          national_id: string | null
+          nationality: string | null
+          performance_rating: string | null
+          performance_tasks: string | null
+          phone: string | null
+          role: string
+          role_short: string | null
+          salary: number
+          shift_hours: number | null
+          status: string
+          status_variant: string
+          updated_at: string
+          work_days: Json
+        }
+        Insert: {
+          address?: string | null
+          allowances?: Json
+          bank_name?: string | null
+          basic_salary?: number
+          birth_date?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          contract_type?: string | null
+          created_at?: string
+          department?: string | null
+          direct_manager_id?: string | null
+          emergency_contact?: string | null
+          hire_date?: string | null
+          iban?: string | null
           id?: string
           image_url?: string | null
-          name?: string
+          job_title?: string | null
+          name: string
+          national_id?: string | null
+          nationality?: string | null
           performance_rating?: string | null
           performance_tasks?: string | null
-          role?: string
+          phone?: string | null
+          role: string
           role_short?: string | null
           salary?: number
+          shift_hours?: number | null
           status?: string
           status_variant?: string
           updated_at?: string
+          work_days?: Json
         }
-        Relationships: []
+        Update: {
+          address?: string | null
+          allowances?: Json
+          bank_name?: string | null
+          basic_salary?: number
+          birth_date?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          contract_type?: string | null
+          created_at?: string
+          department?: string | null
+          direct_manager_id?: string | null
+          emergency_contact?: string | null
+          hire_date?: string | null
+          iban?: string | null
+          id?: string
+          image_url?: string | null
+          job_title?: string | null
+          name?: string
+          national_id?: string | null
+          nationality?: string | null
+          performance_rating?: string | null
+          performance_tasks?: string | null
+          phone?: string | null
+          role?: string
+          role_short?: string | null
+          salary?: number
+          shift_hours?: number | null
+          status?: string
+          status_variant?: string
+          updated_at?: string
+          work_days?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_direct_manager_id_fkey"
+            columns: ["direct_manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_items: {
         Row: {
