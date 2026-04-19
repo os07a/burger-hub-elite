@@ -223,8 +223,8 @@ const Dashboard = () => {
         {adding && (
           <div className="mb-4 grid grid-cols-3 gap-3">
             {[
-              { label: "كاش", icon: Banknote, value: cashInput, set: setCashInput },
               { label: "شبكة", icon: CreditCard, value: cardInput, set: setCardInput },
+              { label: "كاش", icon: Banknote, value: cashInput, set: setCashInput },
               { label: "توصيل", icon: Bike, value: deliveryInput, set: setDeliveryInput },
             ].map((item) => (
               <div key={item.label} className="rounded-xl bg-background p-3">
