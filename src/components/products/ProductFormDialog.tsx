@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAddProduct, useUpdateProduct, type Product } from "@/hooks/useProducts";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, X, Loader2 } from "lucide-react";
@@ -18,7 +19,7 @@ interface Props {
 const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
   const add = useAddProduct();
   const update = useUpdateProduct();
-  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "" });
+  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "", product_type: "primary" as "primary" | "ready_made" });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,9 +32,10 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
         cost: Number(product.cost),
         description: product.description ?? "",
         image_url: product.image_url ?? "",
+        product_type: ((product as any).product_type ?? "primary") as "primary" | "ready_made",
       });
     } else {
-      setForm({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "" });
+      setForm({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "", product_type: "primary" });
     }
   }, [product, open]);
 
@@ -115,6 +117,16 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
           <div>
             <Label>الاسم</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <Label>نوع المنتج</Label>
+            <Select value={form.product_type} onValueChange={(v) => setForm({ ...form, product_type: v as "primary" | "ready_made" })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="primary">🍔 أساسي (مُصنّع)</SelectItem>
+                <SelectItem value="ready_made">🥤 جاهز (يُباع كما هو)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>التصنيف</Label>
