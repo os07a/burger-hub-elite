@@ -1,56 +1,39 @@
 
-## فهمي
-الصفحة حالياً تعتمد `ios-card` أبيض على أبيض. تبيها تنضرب بنفس هوية برجرهم: قرمزي #B03030، ذهبي #C4A265، فحم داكن #2C2C2C، مع تباين iOS 18 وأيقونات Lucide بدل الإيموجي العشوائي.
+المنيو يحتوي على:
+- **برجر لحم**: آنجوس لحم (22 ر.س، 596 سعرة، تكلفة ~31)
+- **برجر دجاج**: كريسبي الدجاج (19، 790 سعرة، تكلفة 28)، ناشفيل الدجاج (24، 860، تكلفة 33)
+- **برجر سمك**: برجر هامور (24، 130، تكلفة 33)، برجر السلمون (28، 34)
+- **مشروبات جاهزة**: بيبسي (4)، مياه (1)
+- **إضافات**: بطاطس (5)، تشيز فرايز (15)
+- **صوصات**: 4 أنواع (3 ر.س لكل واحد)
 
-## الخطة المختصرة لإعادة بناء `/project-status`
+## الخطة
 
-### 1) لغة بصرية موحّدة (نفس الأقسام الأخرى)
-- خلفيات البطاقات: `bg-card` + `border border-border` + `rounded-2xl` (نفس Profits بعد التوحيد).
-- شريط لوني علوي رفيع (2px) داخل البطاقات الرئيسية باللون الدلالي (primary/accent/success) — ثابت داخل البطاقة، مو إطار أحمر كامل.
-- أيقونات Lucide داخل دائرة ملوّنة خفيفة (`bg-primary/10 text-primary`) بدل الإيموجي 🔴🟢🟠.
-- أرقام لاتينية عبر `fmt()` من `src/lib/format.ts`، عملة عبر `RiyalIcon`.
+### 1) قاعدة البيانات
+أضف عمود `product_type` إلى `products`:
+- `primary` (مُصنّع - برجر، إضافات مُحضّرة)
+- `ready_made` (جاهز - بيبسي، مياه، صوصات معبّأة)
 
-### 2) بنية الصفحة الذكية (4 طبقات)
+افتراضي = `ready_made` للحفاظ على البيانات الحالية.
 
-**Hero KPIs (5 بطاقات)** — كل بطاقة فيها أيقونة دائرية + رقم كبير + Sparkline صغير:
-- إجمالي المبيعات | الصافي | المتوسط اليومي | معدل الخصم | الرصيد البنكي
-- ألوان الـ sub: success/warning/danger حسب الاتجاه
+### 2) صفحة المنتجات (`Products.tsx`)
+أضف **3 تبويبات** أعلى الصفحة:
+- **القائمة** (الواجهة الحالية مع badge للنوع: "أساسي" / "جاهز")
+- **حركة المنتجات**: جدول لكل منتج يعرض (الكمية المباعة آخر 30 يوم، الإيراد، الربح، الترتيب) — مأخوذ من `pos_receipt_items` الموجود.
+- **حاسبة المنتجات**: 3 أوضاع داخل بطاقة واحدة:
+  - **تسعير ذكي**: تدخل التكلفة + الهامش المرغوب → السعر المقترح.
+  - **هامش من سعر**: تدخل السعر + التكلفة → الهامش والربح.
+  - **نقطة التعادل**: تدخل التكلفة الشهرية الثابتة + اختار منتج → كم وحدة لازم تباع.
 
-**شريط الزخم (Momentum Bar)** — بطاقة عريضة فيها:
-- أداء آخر 30 يوم vs الـ 30 قبلها (نسبة + سهم اتجاه)
-- مؤشر "Burn rate" مقابل "Income rate" بشريطين متقابلين
-- توقع تاريخ نفاد السيولة بأيقونة 🕐 → Clock من Lucide
+### 3) فلتر النوع
+في تبويب القائمة: أزرار فلتر (الكل / أساسي / جاهز) + شارة صغيرة على بطاقة المنتج.
 
-**شبكة التحليلات (3 أعمدة)**:
-- *المبيعات الشهرية*: شريط مزدوج (gross شفاف + net قرمزي) لكل شهر + ميني-أيقونة TrendingUp/Down
-- *أيام الأسبوع*: Heatmap عمودي (7 أعمدة) — كثافة لون قرمزي حسب المتوسط، مع تمييز الجمعة بإطار ذهبي
-- *النمو الشهري*: Stepper عمودي بأيقونات ArrowUp/Down وتدرّج لوني
+### 4) Seed المنيو
+إدخال منتجات المنيو الفعلية (8 منتجات أساسية + 2 جاهز + 4 صوصات + 2 إضافات) مع `product_type` الصحيح والتكاليف من الصور.
 
-**التحليل الذكي (3 بطاقات بـ Tabs أو Accordion)**:
-- نقاط الضعف (AlertTriangle قرمزي)
-- الفجوات والعجز (TrendingDown ذهبي)
-- التوقعات (Sparkles success)
-- كل بند فيه أيقونة دائرية + عنوان + رقم بارز + سطر شرح
-
-**القاع**: البنك vs الكاشير في بطاقة واحدة بـ Diverging Bar Chart + توزيع المصروفات بـ Donut/Stacked Bar (نفس نمط Profits).
-
-### 3) الأيقونات (استبدال الإيموجي)
-استخدام Lucide: `TrendingUp/Down`, `AlertTriangle`, `Target`, `Clock`, `Wallet`, `ShoppingCart`, `Zap`, `FileText`, `Truck`, `CreditCard`, `Calendar`, `Sparkles`, `Activity`.
-الأيقونة دايماً داخل `<div className="w-9 h-9 rounded-full bg-{color}/10 flex items-center justify-center">` — نفس نمط MetricCardPro في Delivery.
-
-### 4) ربط ذكي بالبيانات
-- يبقى البيانات الحالية (real numbers) — لكن نستخرج المنطق في hook `useProjectStatusInsights.ts` يحسب: trend, burn rate, runway days, weekday heatmap, anomalies.
-- إضافة بطاقة "Health Score" (0-100) محسوبة من: liquidity + growth + discount control + day distribution.
-
-### 5) الملفات
-- `src/pages/ProjectStatus.tsx` — إعادة بناء كاملة
-- `src/hooks/useProjectStatusInsights.ts` — جديد، منطق التحليل
-- `src/components/project-status/InsightCard.tsx` — بطاقة موحّدة بأيقونة دائرية
-- `src/components/project-status/WeekdayHeatmap.tsx` — heatmap الأيام
-- `src/components/project-status/MomentumBar.tsx` — شريط الزخم
-- `src/components/project-status/HealthScore.tsx` — مؤشر الصحة العام
-
-### 6) القيود
-- بدون ألوان نيون أو تدرّجات صاخبة — فقط القرمزي/الذهبي/الفحم على خلفية card.
-- بدون `border-r-primary` (محظور بعد آخر توحيد).
-- كل الأرقام `fmt(n)` لاتينية، التواريخ `en-GB`.
+### تفاصيل تقنية
+- ملف جديد: `src/components/products/ProductMovementTab.tsx` (يستخدم hook جديد `useProductMovement` يجمّع من `pos_receipt_items` بالاسم).
+- ملف جديد: `src/components/products/ProductCalculatorTab.tsx`.
+- تحديث `ProductFormDialog.tsx` لإضافة select للنوع.
+- migration: `ALTER TABLE products ADD COLUMN product_type TEXT DEFAULT 'ready_made'` + UPDATE للمنتجات الموجودة بناءً على التصنيف + INSERT لمنتجات المنيو الناقصة.
+- استخدام `Tabs` من shadcn، أيقونات Lucide (`Calculator`, `TrendingUp`, `Menu`, `Package`).
