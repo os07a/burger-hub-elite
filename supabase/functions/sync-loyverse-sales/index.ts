@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
 
       let rCash = 0;
       let rCard = 0;
-      let rDelivery = 0;
+      const rDelivery = 0; // delivery never comes from Loyverse
 
       for (const pay of rec.payments ?? []) {
         const pt = ptMap.get(pay.payment_type_id);
@@ -176,12 +176,10 @@ Deno.serve(async (req) => {
         if (type === "CASH") {
           cash += amount;
           rCash += amount;
-        } else if (type === "CARD") {
+        } else {
+          // Everything else (CARD, OTHER, custom types like Mada/ApplePay) = Network/Card
           card += amount;
           rCard += amount;
-        } else {
-          delivery += amount;
-          rDelivery += amount;
         }
       }
 
