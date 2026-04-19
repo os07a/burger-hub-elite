@@ -243,13 +243,21 @@ Deno.serve(async (req) => {
       if (itemsErr) console.error("pos_receipt_items insert error", itemsErr);
     }
 
+    // Preserve manual delivery_sales entry (delivery is not synced from Loyverse)
+    const { data: existingDay } = await admin
+      .from("daily_sales")
+      .select("delivery_sales")
+      .eq("date", targetDate)
+      .maybeSingle();
+    const existingDelivery = Number(existingDay?.delivery_sales ?? 0);
+
     const { error: upsertErr } = await admin.from("daily_sales").upsert(
       {
         date: targetDate,
         cash_sales: cash,
         card_sales: card,
-        delivery_sales: delivery,
-        total_sales: netSales,
+        delivery_sales: existingDelivery,
+        total_sales: netSales + existingDelivery,
         orders_count: orders,
         gross_sales: grossSales,
         refunds,
