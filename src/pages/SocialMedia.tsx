@@ -12,6 +12,9 @@ import AiSuggestionsCard from "@/components/social/AiSuggestionsCard";
 import SocialTrendChart from "@/components/social/SocialTrendChart";
 import MetaConnectionPlaceholder from "@/components/social/MetaConnectionPlaceholder";
 import WeeklyInsightDialog from "@/components/social/WeeklyInsightDialog";
+import EngagementFunnel from "@/components/social/EngagementFunnel";
+import AccountHealthCard from "@/components/social/AccountHealthCard";
+import InteractionsBreakdown from "@/components/social/InteractionsBreakdown";
 
 const PlatformView = ({ platform }: { platform: Platform }) => {
   const { data: insights = [] } = useSocialInsights(platform);
@@ -23,13 +26,18 @@ const PlatformView = ({ platform }: { platform: Platform }) => {
       <InsightHeroCard insight={latest ?? null} />
       <SocialKpiGrid insight={latest ?? null} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <AccountHealthCard insight={latest ?? null} />
+        <EngagementFunnel insight={latest ?? null} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <SocialTrendChart insights={insights} />
+        <InteractionsBreakdown insight={latest ?? null} posts={posts} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <SalesCorrelationCard insights={insights} />
         <AiSuggestionsCard suggestions={latest?.ai_suggestions ?? []} />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <TopPostsTable posts={posts} />
-        <SocialTrendChart insights={insights} />
-      </div>
+      <TopPostsTable posts={posts} />
       <MetaConnectionPlaceholder />
     </div>
   );
