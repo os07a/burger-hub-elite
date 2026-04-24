@@ -41,7 +41,7 @@ const SocialMedia = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto" dir="rtl">
       <PageHeader
-        title="سيكتور سوشل ميديا"
+        title="التواصل الاجتماعي"
         subtitle="تحليلات Meta الذكية مع ربط بالمبيعات الفعلية"
         actions={
           <Button onClick={() => setOpen(true)}>

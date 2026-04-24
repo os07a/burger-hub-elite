@@ -36,7 +36,7 @@ const navGroups = [
       { id: "inventory", label: "المخزون", icon: Package, path: "/inventory" },
       { id: "suppliers", label: "الموردون", icon: Truck, path: "/suppliers" },
       { id: "delivery-apps", label: "تطبيقات التوصيل", icon: Bike, path: "/delivery-apps" },
-      { id: "social-media", label: "سيكتور سوشل ميديا", icon: Share2, path: "/social-media" },
+      { id: "social-media", label: "التواصل الاجتماعي", icon: Share2, path: "/social-media" },
     ],
   },
   {
