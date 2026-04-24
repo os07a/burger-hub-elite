@@ -1071,57 +1071,84 @@ export type Database = {
           ai_suggestions: Json
           ai_summary: string | null
           best_post_time: string | null
+          content_interactions: number
           created_at: string
           engagement_rate: number
           id: string
           impressions: number
+          interactions_change_pct: number
+          link_clicks: number
+          link_clicks_change_pct: number
           new_followers: number
+          period_end: string | null
           platform: string
           posts_count: number
           profile_visits: number
           reach: number
+          reach_change_pct: number
           sales_correlation: Json
           source: string
           total_followers: number
           updated_at: string
+          views: number
+          views_change_pct: number
+          visits_change_pct: number
           week_start: string
         }
         Insert: {
           ai_suggestions?: Json
           ai_summary?: string | null
           best_post_time?: string | null
+          content_interactions?: number
           created_at?: string
           engagement_rate?: number
           id?: string
           impressions?: number
+          interactions_change_pct?: number
+          link_clicks?: number
+          link_clicks_change_pct?: number
           new_followers?: number
+          period_end?: string | null
           platform?: string
           posts_count?: number
           profile_visits?: number
           reach?: number
+          reach_change_pct?: number
           sales_correlation?: Json
           source?: string
           total_followers?: number
           updated_at?: string
+          views?: number
+          views_change_pct?: number
+          visits_change_pct?: number
           week_start: string
         }
         Update: {
           ai_suggestions?: Json
           ai_summary?: string | null
           best_post_time?: string | null
+          content_interactions?: number
           created_at?: string
           engagement_rate?: number
           id?: string
           impressions?: number
+          interactions_change_pct?: number
+          link_clicks?: number
+          link_clicks_change_pct?: number
           new_followers?: number
+          period_end?: string | null
           platform?: string
           posts_count?: number
           profile_visits?: number
           reach?: number
+          reach_change_pct?: number
           sales_correlation?: Json
           source?: string
           total_followers?: number
           updated_at?: string
+          views?: number
+          views_change_pct?: number
+          visits_change_pct?: number
           week_start?: string
         }
         Relationships: []
