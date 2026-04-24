@@ -4,7 +4,7 @@ import { Sun, Moon, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutGrid, TrendingUp, Heart, Users, Calendar, Wallet,
-  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike, MessageSquare
+  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike, MessageSquare, Share2
 } from "lucide-react";
 
 const navGroups = [
@@ -36,6 +36,7 @@ const navGroups = [
       { id: "inventory", label: "المخزون", icon: Package, path: "/inventory" },
       { id: "suppliers", label: "الموردون", icon: Truck, path: "/suppliers" },
       { id: "delivery-apps", label: "تطبيقات التوصيل", icon: Bike, path: "/delivery-apps" },
+      { id: "social-media", label: "سيكتور سوشل ميديا", icon: Share2, path: "/social-media" },
     ],
   },
   {

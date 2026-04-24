@@ -23,6 +23,7 @@ import ProjectStatus from "@/pages/ProjectStatus";
 import SalesIndicator from "@/pages/SalesIndicator";
 import BusinessAdvisor from "@/pages/BusinessAdvisor";
 import DeliveryApps from "@/pages/DeliveryApps";
+import SocialMedia from "@/pages/SocialMedia";
 import Messages from "@/pages/Messages";
 import NotFound from "@/pages/NotFound";
 
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/sales-indicator" element={<SalesIndicator />} />
               <Route path="/advisor" element={<BusinessAdvisor />} />
               <Route path="/delivery-apps" element={<DeliveryApps />} />
+              <Route path="/social-media" element={<SocialMedia />} />
               <Route path="/messages" element={<Messages />} />
             </Route>
             <Route path="*" element={<NotFound />} />
