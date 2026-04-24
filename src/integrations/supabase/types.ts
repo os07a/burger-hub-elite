@@ -754,6 +754,42 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_connection: {
+        Row: {
+          access_token_encrypted: string | null
+          created_at: string
+          fb_page_id: string | null
+          id: string
+          ig_business_id: string | null
+          is_active: boolean
+          last_sync_at: string | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          created_at?: string
+          fb_page_id?: string | null
+          id?: string
+          ig_business_id?: string | null
+          is_active?: boolean
+          last_sync_at?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          created_at?: string
+          fb_page_id?: string | null
+          id?: string
+          ig_business_id?: string | null
+          is_active?: boolean
+          last_sync_at?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monthly_distributions: {
         Row: {
           created_at: string
@@ -1029,6 +1065,128 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      social_insights: {
+        Row: {
+          ai_suggestions: Json
+          ai_summary: string | null
+          best_post_time: string | null
+          created_at: string
+          engagement_rate: number
+          id: string
+          impressions: number
+          new_followers: number
+          platform: string
+          posts_count: number
+          profile_visits: number
+          reach: number
+          sales_correlation: Json
+          source: string
+          total_followers: number
+          updated_at: string
+          week_start: string
+        }
+        Insert: {
+          ai_suggestions?: Json
+          ai_summary?: string | null
+          best_post_time?: string | null
+          created_at?: string
+          engagement_rate?: number
+          id?: string
+          impressions?: number
+          new_followers?: number
+          platform?: string
+          posts_count?: number
+          profile_visits?: number
+          reach?: number
+          sales_correlation?: Json
+          source?: string
+          total_followers?: number
+          updated_at?: string
+          week_start: string
+        }
+        Update: {
+          ai_suggestions?: Json
+          ai_summary?: string | null
+          best_post_time?: string | null
+          created_at?: string
+          engagement_rate?: number
+          id?: string
+          impressions?: number
+          new_followers?: number
+          platform?: string
+          posts_count?: number
+          profile_visits?: number
+          reach?: number
+          sales_correlation?: Json
+          source?: string
+          total_followers?: number
+          updated_at?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
+      social_posts: {
+        Row: {
+          ai_analysis: string | null
+          comments: number
+          created_at: string
+          engagement_score: number
+          id: string
+          insight_id: string | null
+          likes: number
+          platform: string
+          post_text: string | null
+          post_type: string
+          post_url: string | null
+          posted_at: string | null
+          reach: number
+          saves: number
+          shares: number
+        }
+        Insert: {
+          ai_analysis?: string | null
+          comments?: number
+          created_at?: string
+          engagement_score?: number
+          id?: string
+          insight_id?: string | null
+          likes?: number
+          platform?: string
+          post_text?: string | null
+          post_type?: string
+          post_url?: string | null
+          posted_at?: string | null
+          reach?: number
+          saves?: number
+          shares?: number
+        }
+        Update: {
+          ai_analysis?: string | null
+          comments?: number
+          created_at?: string
+          engagement_score?: number
+          id?: string
+          insight_id?: string | null
+          likes?: number
+          platform?: string
+          post_text?: string | null
+          post_type?: string
+          post_url?: string | null
+          posted_at?: string | null
+          reach?: number
+          saves?: number
+          shares?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "social_insights"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {
