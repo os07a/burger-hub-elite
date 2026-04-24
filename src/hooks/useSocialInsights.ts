@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type Platform = "facebook" | "instagram" | "both";
+export type Platform = "facebook" | "instagram" | "both" | "tiktok";
 
 export interface SocialInsight {
   id: string;
@@ -31,6 +31,9 @@ export interface SocialInsight {
   source: "manual" | "meta_api";
   created_at: string;
   updated_at: string;
+  bio?: string | null;
+  total_likes?: number;
+  following_count?: number;
 }
 
 export interface SocialPost {

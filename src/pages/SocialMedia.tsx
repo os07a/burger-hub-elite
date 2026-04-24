@@ -15,6 +15,7 @@ import WeeklyInsightDialog from "@/components/social/WeeklyInsightDialog";
 import EngagementFunnel from "@/components/social/EngagementFunnel";
 import AccountHealthCard from "@/components/social/AccountHealthCard";
 import InteractionsBreakdown from "@/components/social/InteractionsBreakdown";
+import { Music2 } from "lucide-react";
 
 const PlatformView = ({ platform }: { platform: Platform }) => {
   const { data: insights = [] } = useSocialInsights(platform);
@@ -64,11 +65,16 @@ const SocialMedia = () => {
           <TabsTrigger value="both">الكل</TabsTrigger>
           <TabsTrigger value="facebook">فيسبوك</TabsTrigger>
           <TabsTrigger value="instagram">Instagram</TabsTrigger>
+          <TabsTrigger value="tiktok" className="gap-1.5">
+            <Music2 className="w-3.5 h-3.5" />
+            TikTok
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="both" className="mt-5"><PlatformView platform="both" /></TabsContent>
         <TabsContent value="facebook" className="mt-5"><PlatformView platform="facebook" /></TabsContent>
         <TabsContent value="instagram" className="mt-5"><PlatformView platform="instagram" /></TabsContent>
+        <TabsContent value="tiktok" className="mt-5"><PlatformView platform="tiktok" /></TabsContent>
       </Tabs>
 
       <WeeklyInsightDialog open={open} onOpenChange={setOpen} />

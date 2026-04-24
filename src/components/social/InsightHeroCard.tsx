@@ -1,4 +1,4 @@
-import { Sparkles, TrendingDown, TrendingUp, AlertTriangle } from "lucide-react";
+import { Sparkles, TrendingDown, TrendingUp, AlertTriangle, Music2, Users, Heart } from "lucide-react";
 import { SocialInsight } from "@/hooks/useSocialInsights";
 import RiyalIcon from "@/components/ui/RiyalIcon";
 
@@ -36,6 +36,11 @@ const InsightHeroCard = ({ insight }: Props) => {
     : { label: "أداء مستقر", color: "primary", icon: Sparkles };
 
   const StatusIcon = status.icon;
+  const isTikTok = insight.platform === "tiktok";
+  const platformLabel =
+    insight.platform === "instagram" ? "Instagram" :
+    insight.platform === "facebook" ? "Facebook" :
+    insight.platform === "tiktok" ? "TikTok" : "كل المنصات";
 
   return (
     <div className="ios-card animate-fade-in p-6 bg-gradient-to-br from-primary/5 via-card to-accent/5 border-primary/10">
@@ -47,7 +52,7 @@ const InsightHeroCard = ({ insight }: Props) => {
           <div>
             <div className="text-[13px] text-foreground font-semibold">📈 الملخص الذكي</div>
             <div className="text-[10.5px] text-muted-foreground">
-              {insight.week_start} {insight.period_end ? `← ${insight.period_end}` : ""} · {insight.platform === "instagram" ? "Instagram" : insight.platform === "facebook" ? "Facebook" : "كل المنصات"}
+              {insight.week_start} {insight.period_end ? `← ${insight.period_end}` : ""} · {platformLabel}
             </div>
           </div>
         </div>
@@ -56,6 +61,35 @@ const InsightHeroCard = ({ insight }: Props) => {
           {status.label}
         </div>
       </div>
+
+      {isTikTok && (
+        <div className="mb-4 p-3 rounded-xl bg-foreground/5 border border-border/50">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Music2 className="w-3.5 h-3.5 text-foreground" />
+            <span className="text-[12px] font-bold text-foreground">@hmburgerhm</span>
+          </div>
+          {insight.bio && (
+            <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">{insight.bio}</p>
+          )}
+          <div className="flex flex-wrap gap-3 text-[11px]">
+            <span className="inline-flex items-center gap-1 text-foreground">
+              <Users className="w-3 h-3 text-primary" />
+              <strong>{(insight.total_followers ?? 0).toLocaleString()}</strong>
+              <span className="text-muted-foreground">متابع</span>
+            </span>
+            <span className="inline-flex items-center gap-1 text-foreground">
+              <Heart className="w-3 h-3 text-danger" />
+              <strong>{(insight.total_likes ?? 0).toLocaleString()}</strong>
+              <span className="text-muted-foreground">إعجاب</span>
+            </span>
+            <span className="inline-flex items-center gap-1 text-foreground">
+              <Sparkles className="w-3 h-3 text-accent" />
+              <strong>{insight.posts_count}</strong>
+              <span className="text-muted-foreground">فيديو</span>
+            </span>
+          </div>
+        </div>
+      )}
 
       <p className="text-[14.5px] leading-relaxed text-foreground">
         {insight.ai_summary || "لا يوجد ملخص بعد — أعد التحليل."}

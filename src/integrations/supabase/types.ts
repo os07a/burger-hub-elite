@@ -1071,9 +1071,11 @@ export type Database = {
           ai_suggestions: Json
           ai_summary: string | null
           best_post_time: string | null
+          bio: string | null
           content_interactions: number
           created_at: string
           engagement_rate: number
+          following_count: number
           id: string
           impressions: number
           interactions_change_pct: number
@@ -1089,6 +1091,7 @@ export type Database = {
           sales_correlation: Json
           source: string
           total_followers: number
+          total_likes: number
           updated_at: string
           views: number
           views_change_pct: number
@@ -1099,9 +1102,11 @@ export type Database = {
           ai_suggestions?: Json
           ai_summary?: string | null
           best_post_time?: string | null
+          bio?: string | null
           content_interactions?: number
           created_at?: string
           engagement_rate?: number
+          following_count?: number
           id?: string
           impressions?: number
           interactions_change_pct?: number
@@ -1117,6 +1122,7 @@ export type Database = {
           sales_correlation?: Json
           source?: string
           total_followers?: number
+          total_likes?: number
           updated_at?: string
           views?: number
           views_change_pct?: number
@@ -1127,9 +1133,11 @@ export type Database = {
           ai_suggestions?: Json
           ai_summary?: string | null
           best_post_time?: string | null
+          bio?: string | null
           content_interactions?: number
           created_at?: string
           engagement_rate?: number
+          following_count?: number
           id?: string
           impressions?: number
           interactions_change_pct?: number
@@ -1145,6 +1153,7 @@ export type Database = {
           sales_correlation?: Json
           source?: string
           total_followers?: number
+          total_likes?: number
           updated_at?: string
           views?: number
           views_change_pct?: number
