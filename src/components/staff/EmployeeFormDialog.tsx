@@ -167,7 +167,7 @@ const EmployeeFormDialog = ({ open, onOpenChange, employee }: Props) => {
           <DialogTitle>{isEdit ? `تعديل: ${employee?.name}` : "إضافة موظف جديد"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Tabs defaultValue="personal">
+          <Tabs defaultValue="personal" dir="rtl">
             <TabsList className="grid grid-cols-4 w-full">
               <TabsTrigger value="personal">شخصي</TabsTrigger>
               <TabsTrigger value="contract">تعاقد</TabsTrigger>
