@@ -2,7 +2,11 @@ import { useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { Send, MessageSquare, Users, Clock, ChevronDown } from "lucide-react";
+import { Send, MessageSquare, Clock, ChevronDown, Copy, Check, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useWhatsappMessages, useWhatsappStats } from "@/hooks/useWhatsappMessages";
+import { formatSaudiPhoneDisplay } from "@/lib/phoneNormalize";
 
 const templates = [
   { id: "welcome", name: "ترحيب عميل جديد", emoji: "👋", body: "أهلاً {name}! شكراً لزيارتك برقرهم 🍔 نتمنى تكون تجربتك ممتازة. تابعنا لعروض حصرية!" },
@@ -41,6 +45,56 @@ const Messages = () => {
   const [selectedSegment, setSelectedSegment] = useState(0);
   const [messageBody, setMessageBody] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [sending, setSending] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const { data: stats } = useWhatsappStats();
+  const { data: recentDb } = useWhatsappMessages(10);
+
+  const projectRef = "bjfhrrtajyvvdcsrpwqb";
+  const webhookUrl = `https://${projectRef}.supabase.co/functions/v1/whatsapp-webhook`;
+
+  const copyWebhook = async () => {
+    await navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    toast.success("تم نسخ رابط الـ Webhook");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendWhatsapp = async () => {
+    if (!phone.trim()) {
+      toast.error("أدخل رقم الجوال");
+      return;
+    }
+    if (!messageBody.trim()) {
+      toast.error("اكتب نص الرسالة");
+      return;
+    }
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-whatsapp-message", {
+        body: {
+          to: phone.trim(),
+          message: messageBody.trim(),
+          template_name: selectedTemplate ?? null,
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error ?? "فشل الإرسال");
+      }
+      toast.success(`تم إرسال الرسالة إلى ${data.to}`);
+      setPhone("");
+      setMessageBody("");
+      setSelectedTemplate(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطأ غير متوقع";
+      toast.error(`فشل الإرسال: ${msg}`);
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleSelectTemplate = (t: typeof templates[0]) => {
     setSelectedTemplate(t.id);
@@ -54,10 +108,10 @@ const Messages = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <MetricCard label="📨 رسائل مرسلة" value="156" sub="هذا الشهر" />
-        <MetricCard label="✅ نسبة التوصيل" value="94.2%" sub="من إجمالي الرسائل" subColor="success" />
+        <MetricCard label="📨 رسائل مرسلة" value={String(stats?.totalSent ?? 0)} sub="إجمالي" />
+        <MetricCard label="✅ نسبة النجاح" value={`${stats?.successRate ?? 0}%`} sub="من الرسائل المرسلة" subColor="success" />
         <MetricCard label="👥 العملاء المستهدفين" value="47" sub="عميل مسجّل بالنظام" />
-        <MetricCard label="📖 نسبة القراءة" value="67%" sub="واتساب فقط" subColor="success" />
+        <MetricCard label="📖 مقروءة" value={String(stats?.read ?? 0)} sub="عبر واتساب" subColor="success" />
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -136,25 +190,36 @@ const Messages = () => {
             </div>
           </div>
 
+          {/* رقم الجوال للإرسال الفوري */}
+          <div className="mb-4">
+            <div className="text-[10px] text-muted-foreground mb-2 font-medium">📱 رقم الجوال (للاختبار)</div>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="مثال: 0501234567"
+              dir="ltr"
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all text-right"
+            />
+          </div>
+
           {/* أزرار الإرسال */}
           <div className="flex gap-3">
             <button
-              disabled={!messageBody}
+              onClick={handleSendWhatsapp}
+              disabled={!messageBody || !phone || sending}
               className="flex items-center gap-2 bg-success text-primary-foreground px-5 py-2.5 rounded-xl text-[12px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <MessageSquare size={14} />
-              إرسال واتساب
+              {sending ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />}
+              {sending ? "جاري الإرسال..." : "إرسال واتساب"}
             </button>
             <button
-              disabled={!messageBody}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-[12px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled
+              title="قريباً"
+              className="flex items-center gap-2 bg-muted text-muted-foreground px-5 py-2.5 rounded-xl text-[12px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send size={14} />
               إرسال SMS
-            </button>
-            <button className="flex items-center gap-2 bg-muted text-muted-foreground px-4 py-2.5 rounded-xl text-[12px] hover:bg-muted/80 transition-colors">
-              <Clock size={14} />
-              جدولة
             </button>
           </div>
         </div>
@@ -190,34 +255,64 @@ const Messages = () => {
           <Clock size={14} /> آخر الرسائل المرسلة
         </div>
         <div className="space-y-0">
-          {recentMessages.map((msg, i) => (
-            <div key={i} className={`flex items-center justify-between py-3 text-[13px] ${i < recentMessages.length - 1 ? "border-b border-border" : ""}`}>
-              <div className="flex items-center gap-3">
-                <span className="text-[18px]">{msg.emoji}</span>
-                <div>
-                  <div className="font-semibold text-foreground">{msg.to} <span className="text-[10px] text-muted-foreground font-normal">{msg.phone}</span></div>
-                  <div className="text-[10px] text-muted-foreground">{msg.template} · {msg.time}</div>
+          {(recentDb && recentDb.length > 0) ? (
+            recentDb.map((msg, i) => {
+              const st = statusMap[msg.status] ?? { label: msg.status, variant: "warning" as const };
+              return (
+                <div key={msg.id} className={`flex items-center justify-between py-3 text-[13px] ${i < recentDb.length - 1 ? "border-b border-border" : ""}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[18px]">💬</span>
+                    <div>
+                      <div className="font-semibold text-foreground" dir="ltr">
+                        {formatSaudiPhoneDisplay(msg.to_phone) || msg.to_phone}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground line-clamp-1">
+                        {msg.body.slice(0, 60)}{msg.body.length > 60 ? "…" : ""} · {new Date(msg.sent_at).toLocaleString("ar-SA")}
+                      </div>
+                    </div>
+                  </div>
+                  <StatusBadge variant={st.variant}>{st.label}</StatusBadge>
                 </div>
+              );
+            })
+          ) : (
+            recentMessages.map((msg, i) => (
+              <div key={i} className={`flex items-center justify-between py-3 text-[13px] ${i < recentMessages.length - 1 ? "border-b border-border" : ""}`}>
+                <div className="flex items-center gap-3">
+                  <span className="text-[18px]">{msg.emoji}</span>
+                  <div>
+                    <div className="font-semibold text-foreground">{msg.to} <span className="text-[10px] text-muted-foreground font-normal">{msg.phone}</span></div>
+                    <div className="text-[10px] text-muted-foreground">{msg.template} · {msg.time}</div>
+                  </div>
+                </div>
+                <StatusBadge variant={statusMap[msg.status].variant}>{statusMap[msg.status].label}</StatusBadge>
               </div>
-              <StatusBadge variant={statusMap[msg.status].variant}>{statusMap[msg.status].label}</StatusBadge>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
-      {/* تنبيه الربط */}
-      <div className="ios-card mt-6 border-2 border-dashed border-warning/30">
+      {/* إعدادات Webhook */}
+      <div className="ios-card mt-6 border-2 border-dashed border-success/30">
         <div className="flex items-start gap-3">
-          <span className="text-[28px]">📱</span>
-          <div>
-            <div className="text-[13px] font-bold text-foreground mb-1">ربط الواتساب مطلوب</div>
+          <span className="text-[28px]">✅</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-bold text-foreground mb-1">WhatsApp Cloud API متصل</div>
             <div className="text-[11px] text-muted-foreground leading-relaxed mb-3">
-              لتفعيل إرسال الرسائل الفعلي، تحتاج ربط حساب Twilio بالنظام.
-              سجّل في <a href="https://www.twilio.com" target="_blank" rel="noopener" className="text-primary underline">Twilio</a> وفعّل WhatsApp Sandbox، ثم ربطه من هنا.
+              لتفعيل تحديثات الحالة (تم التوصيل / تمت القراءة) من Meta، الصق الرابط التالي في
+              {" "}<span className="font-semibold">Meta Developer → WhatsApp → Configuration → Webhook</span>{" "}
+              مع نفس قيمة <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">WHATSAPP_VERIFY_TOKEN</code>:
             </div>
-            <button className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-[12px] font-semibold hover:opacity-90 transition-opacity">
-              ربط Twilio الآن
-            </button>
+            <div className="flex items-center gap-2 bg-background border border-border rounded-xl px-3 py-2">
+              <code className="text-[11px] text-foreground flex-1 overflow-x-auto whitespace-nowrap" dir="ltr">{webhookUrl}</code>
+              <button
+                onClick={copyWebhook}
+                className="flex items-center gap-1 bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-[11px] font-semibold hover:opacity-90 transition-opacity shrink-0"
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+                {copied ? "تم" : "نسخ"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
