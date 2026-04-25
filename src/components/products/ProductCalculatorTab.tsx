@@ -77,7 +77,7 @@ const ProductCalculatorTab = () => {
 
   return (
     <div className="ios-card">
-      <Tabs defaultValue="recipe" className="w-full">
+      <Tabs defaultValue="recipe" className="w-full" dir="rtl">
         <TabsList className="grid w-full grid-cols-4 h-9">
           <TabsTrigger value="recipe" className="text-[11px] gap-1">
             <ChefHat size={12} /> مكونات
