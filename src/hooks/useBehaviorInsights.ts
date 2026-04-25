@@ -40,7 +40,23 @@ const riyadhHour = (iso: string | null): number | null => {
   return (d.getUTCHours() + 3) % 24;
 };
 
-export type ReadinessLevel = "insufficient" | "preliminary" | "ready";
+export type ReadinessLevel = "insufficient" | "preliminary" | "ready" | "deep";
+
+export interface NarrativeItem {
+  emoji: string;
+  text: string;
+  tone: "success" | "warning" | "info" | "danger" | "neutral";
+}
+
+export interface DeepInsights {
+  peakDayLift: number;        // % above weekly average
+  weakestDayDrop: number;     // % below weekly average (positive number)
+  weekendShare: number;       // % of (Thu+Fri+Sat) of total weekly revenue
+  gapPct: number;             // gap between strongest and weakest day in %
+  peakHourSpan: string | null;     // "7م – 9م"
+  quietestHourSpan: string | null; // "11ص – 12م"
+  narratives: NarrativeItem[];
+}
 
 export const useBehaviorInsights = ({ fromDate, toDate }: BehaviorOptions = {}) => {
   const query = useQuery({
@@ -159,7 +175,10 @@ export const useBehaviorInsights = ({ fromDate, toDate }: BehaviorOptions = {}) 
     // Readiness
     let level: ReadinessLevel = "insufficient";
     let message = "نحتاج بيانات أكثر — استمر بمزامنة الكاشير لاكتشاف الذروة بدقة.";
-    if (daysCount >= 28) {
+    if (daysCount >= 30) {
+      level = "deep";
+      message = `تحليل موسّع مفعّل ✅ (${daysCount} يوم) — رؤى الأسبوع الكاملة متاحة.`;
+    } else if (daysCount >= 28) {
       level = "ready";
       message = `بيانات كافية (${daysCount} يوم) — التحليل موثوق.`;
     } else if (daysCount >= 14) {
@@ -167,6 +186,101 @@ export const useBehaviorInsights = ({ fromDate, toDate }: BehaviorOptions = {}) 
       message = `بيانات أولية (${daysCount} يوم) — اعتبر النتائج تقريبية حتى تصل 28 يوم.`;
     } else {
       message = `بيانات غير كافية (${daysCount} يوم فقط) — نحتاج 14 يوم على الأقل لعرض الذروة، و28 لاعتمادها.`;
+    }
+
+    // Deep insights — only computed when level === "deep"
+    let insights: DeepInsights | null = null;
+    if (level === "deep" && dayWithSamples.length >= 4 && strongestDay && weakestDay) {
+      const weeklyMean = dayWithSamples.reduce((s, d) => s + d.avg, 0) / dayWithSamples.length;
+      const peakDayLift = weeklyMean ? ((strongestDay.avg - weeklyMean) / weeklyMean) * 100 : 0;
+      const weakestDayDrop = weeklyMean ? ((weeklyMean - weakestDay.avg) / weeklyMean) * 100 : 0;
+      const gapPct = weakestDay.avg ? ((strongestDay.avg - weakestDay.avg) / weakestDay.avg) * 100 : 0;
+
+      // Weekend share (Thu=4, Fri=5, Sat=6)
+      const weekendDays = weekdayAverages.filter((w) => ["الخميس", "الجمعة", "السبت"].includes(w.day));
+      const weekendSum = weekendDays.reduce((s, d) => s + d.avg, 0);
+      const totalSum = weekdayAverages.reduce((s, d) => s + d.avg, 0);
+      const weekendShare = totalSum ? (weekendSum / totalSum) * 100 : 0;
+
+      // Peak / quiet hour spans — average across all weekdays per hour slot
+      const hourTotals = HOURS.map((_, slot) => {
+        let sum = 0, count = 0;
+        for (let di = 0; di < heatmap.length; di++) {
+          const c = heatmap[di][slot];
+          if (c.sampleDays > 0) { sum += c.avg; count += 1; }
+        }
+        return count ? sum / count : 0;
+      });
+      // Best 3 consecutive hours
+      let bestStart = 0, bestSum = -1;
+      for (let i = 0; i <= hourTotals.length - 3; i++) {
+        const s = hourTotals[i] + hourTotals[i + 1] + hourTotals[i + 2];
+        if (s > bestSum) { bestSum = s; bestStart = i; }
+      }
+      const peakHourSpan = bestSum > 0 ? `${HOUR_LABELS[bestStart]} – ${HOUR_LABELS[bestStart + 2]}` : null;
+      // Quietest 2 consecutive hours (with data)
+      let quietStart = -1, quietSum = Infinity;
+      for (let i = 0; i <= hourTotals.length - 2; i++) {
+        if (hourTotals[i] === 0 || hourTotals[i + 1] === 0) continue;
+        const s = hourTotals[i] + hourTotals[i + 1];
+        if (s < quietSum) { quietSum = s; quietStart = i; }
+      }
+      const quietestHourSpan = quietStart >= 0 ? `${HOUR_LABELS[quietStart]} – ${HOUR_LABELS[quietStart + 1]}` : null;
+
+      const narratives: NarrativeItem[] = [];
+      narratives.push({
+        emoji: "🔥",
+        tone: "success",
+        text: `${strongestDay.day} هي ذروة الأسبوع — ${Math.round(strongestDay.avg).toLocaleString("en-US")} ر.س متوسط، أي بفارق +${peakDayLift.toFixed(0)}% عن متوسط الأسبوع.`,
+      });
+      narratives.push({
+        emoji: "📉",
+        tone: "warning",
+        text: `${weakestDay.day} الأضعف بـ ${Math.round(weakestDay.avg).toLocaleString("en-US")} ر.س متوسط (-${weakestDayDrop.toFixed(0)}% تحت المتوسط).`,
+      });
+      narratives.push({
+        emoji: "🛋️",
+        tone: "info",
+        text: `الفجوة بين أقوى يوم وأضعف يوم تصل إلى ${gapPct.toFixed(0)}% — تكشف فرصة كبيرة لتنشيط الأيام الهادئة.`,
+      });
+      if (peakHourSpan) {
+        narratives.push({
+          emoji: "🌙",
+          tone: "info",
+          text: `أعلى ساعات الإيراد في اليوم: ${peakHourSpan} — جدول طاقم العمل والمخزون لتغطية هذه الفترة.`,
+        });
+      }
+      narratives.push({
+        emoji: "📊",
+        tone: "neutral",
+        text: `نهاية الأسبوع (الخميس/الجمعة/السبت) تساهم بـ ${weekendShare.toFixed(0)}% من إيراد الأسبوع.`,
+      });
+      // Marketing recommendation: target 2 weakest days
+      const sortedWeakest = [...dayWithSamples].sort((a, b) => a.avg - b.avg).slice(0, 2).map((w) => w.day);
+      if (sortedWeakest.length === 2) {
+        narratives.push({
+          emoji: "📈",
+          tone: "success",
+          text: `توصية: اطلق عرضاً ترويجياً يستهدف ${sortedWeakest[0]} و${sortedWeakest[1]} — رفع 15-20% فيهما يقرّب المتوسط الأسبوعي من هدف 1,000 ر.س/يوم.`,
+        });
+      }
+      if (quietestHourSpan) {
+        narratives.push({
+          emoji: "⏰",
+          tone: "neutral",
+          text: `أهدأ ساعات في اليوم: ${quietestHourSpan} — مناسبة للصيانة، التدريب، أو تجهيز المخزون.`,
+        });
+      }
+
+      insights = {
+        peakDayLift,
+        weakestDayDrop,
+        weekendShare,
+        gapPct,
+        peakHourSpan,
+        quietestHourSpan,
+        narratives,
+      };
     }
 
     return {
@@ -189,6 +303,7 @@ export const useBehaviorInsights = ({ fromDate, toDate }: BehaviorOptions = {}) 
       heatMax,
       readiness: { daysCount, level, message },
       dateRange: { minDate, maxDate, totalDays: daysCount },
+      insights,
     };
   }, [query.data]);
 

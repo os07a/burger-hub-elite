@@ -139,9 +139,10 @@ const Behavior = () => {
     );
   }
 
-  const { kpis, itemRanking, weekdayAverages, heatmap, heatMax, readiness, dateRange } = data;
+  const { kpis, itemRanking, weekdayAverages, heatmap, heatMax, readiness, dateRange, insights } = data;
   const showPeak = readiness.level !== "insufficient";
   const isPreliminary = readiness.level === "preliminary";
+  const isDeep = readiness.level === "deep";
 
   const subtitle = `تقرير الكاشير · ${dateRange.totalDays} يوم${dateRange.minDate ? ` · ${dateRange.minDate} → ${dateRange.maxDate}` : ""}`;
 
@@ -163,6 +164,14 @@ const Behavior = () => {
           <AlertCircle size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
           <div className="text-[11px] text-foreground leading-relaxed">
             🟡 {readiness.message}
+          </div>
+        </div>
+      )}
+      {isDeep && (
+        <div className="mb-4 flex items-start gap-2 bg-success/10 border border-success/30 rounded-lg p-3">
+          <AlertCircle size={16} className="text-success flex-shrink-0 mt-0.5" />
+          <div className="text-[11px] text-foreground leading-relaxed">
+            ✅ {readiness.message}
           </div>
         </div>
       )}
@@ -240,6 +249,34 @@ const Behavior = () => {
         </Tooltip>
       </div>
       </TooltipProvider>
+
+      {isDeep && insights && insights.narratives.length > 0 && (
+        <div className="mb-4 bg-surface border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-bold text-foreground">🧠 رؤى ذكية للأسبوع</div>
+            <span className="text-[9px] text-success bg-success/10 border border-success/30 rounded px-2 py-0.5">
+              بيانات كاملة (≥30 يوم) ✅
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {insights.narratives.map((n, i) => {
+              const toneClasses = {
+                success: "border-success/30 bg-success/5",
+                warning: "border-warning/30 bg-warning/5",
+                danger: "border-danger/30 bg-danger/5",
+                info: "border-blue-500/30 bg-blue-500/5",
+                neutral: "border-border bg-background",
+              }[n.tone];
+              return (
+                <div key={i} className={`flex items-start gap-2 p-2.5 rounded-lg border ${toneClasses}`}>
+                  <span className="text-[16px] flex-shrink-0 leading-none mt-0.5">{n.emoji}</span>
+                  <div className="text-[11px] text-foreground leading-relaxed">{n.text}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="border rounded-lg p-4 border-r-[3px] border-r-primary border-gray-50 bg-gray-50">
