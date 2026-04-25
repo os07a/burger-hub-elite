@@ -4,7 +4,7 @@ import FloatingAdvisor from "@/components/FloatingAdvisor";
 
 const AppLayout = () => {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen" dir="rtl">
       <Sidebar />
       <main className="flex-1 p-8 max-w-[calc(100vw-230px)] overflow-x-hidden">
         <Outlet />
