@@ -112,8 +112,20 @@ const SalesIndicator = () => {
     );
   }
 
-  const { kpis, monthlyBreakdown, bestDays, worstDays, worstMonthNote, weekdayAverages, weekdayTip, forecasts, subtitle } = data;
+  const { kpis, monthlyBreakdown, bestDays, worstDays, worstMonthNote, weekdayAverages, weekdayTip, forecasts, subtitle, readiness, narratives } = data;
   const maxWeekdayAvg = Math.max(...weekdayAverages.map((w) => w.avg), 1);
+
+  const isEarly = readiness.level === "early";
+  const isPreliminary = readiness.level === "preliminary";
+  const isReady = readiness.level === "ready";
+  const isDeep = readiness.level === "deep";
+  const bannerStyle = isDeep
+    ? "bg-success/10 border-success/30"
+    : isReady
+    ? "bg-success/10 border-success/30"
+    : isPreliminary
+    ? "bg-blue-500/10 border-blue-500/30"
+    : "bg-orange-500/10 border-orange-500/30";
 
   const kpiCards: { label: string; value: string; color: string; tooltipTitle: string; tooltipDesc: string }[] = [
     {
@@ -168,6 +180,45 @@ const SalesIndicator = () => {
   <div>
     <PageHeader title="مؤشر المبيعات" subtitle={subtitle} badge="تحليل" />
     {Toolbar}
+
+    {/* بانر مستوى نضج البيانات */}
+    {readiness.level !== "insufficient" && (
+      <div className={`mb-4 rounded-lg border p-3 ${bannerStyle}`}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[11px] font-bold text-foreground">{readiness.message}</div>
+          <div className="text-[9px] text-gray-light">{readiness.daysCount} يوم بيانات فعلية</div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <div className="flex justify-between text-[8px] text-gray-light mb-0.5">
+              <span>تحليل أولي (14 يوم)</span>
+              <span className="font-semibold text-foreground">{readiness.daysCount}/14</span>
+            </div>
+            <div className="h-1 bg-background rounded-sm overflow-hidden">
+              <div className="h-full bg-orange-500 rounded-sm" style={{ width: `${readiness.progressTo14}%` }} />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-[8px] text-gray-light mb-0.5">
+              <span>موثوق (28 يوم)</span>
+              <span className="font-semibold text-foreground">{readiness.daysCount}/28</span>
+            </div>
+            <div className="h-1 bg-background rounded-sm overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-sm" style={{ width: `${readiness.progressTo28}%` }} />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-[8px] text-gray-light mb-0.5">
+              <span>موسّع (30+ يوم)</span>
+              <span className="font-semibold text-foreground">{readiness.daysCount}/30</span>
+            </div>
+            <div className="h-1 bg-background rounded-sm overflow-hidden">
+              <div className="h-full bg-success rounded-sm" style={{ width: `${readiness.progressTo30}%` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* مؤشرات سريعة */}
     <TooltipProvider delayDuration={150}>
@@ -228,6 +279,41 @@ const SalesIndicator = () => {
         </table>
       </div>
     </div>
+
+    {/* بطاقة الرؤى الذكية */}
+    {narratives.length > 0 && (
+      <div className="bg-surface border border-border rounded-lg p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-[11px] font-bold text-foreground">🧠 رؤى ذكية للمبيعات</div>
+          <span className={`text-[9px] rounded px-2 py-0.5 border ${
+            isDeep || isReady
+              ? "text-success bg-success/10 border-success/30"
+              : isPreliminary
+              ? "text-blue-400 bg-blue-500/10 border-blue-500/30"
+              : "text-orange-500 bg-orange-500/10 border-orange-500/30"
+          }`}>
+            {isDeep ? "تحليل موسّع ✅" : isReady ? "تحليل موثوق ✅" : isPreliminary ? "بيانات أولية" : "بيانات مبدئية"}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {narratives.map((n, i) => {
+            const toneClasses = {
+              success: "border-success/30 bg-success/5",
+              warning: "border-orange-500/30 bg-orange-500/5",
+              danger: "border-danger/30 bg-danger/5",
+              info: "border-blue-500/30 bg-blue-500/5",
+              neutral: "border-border bg-background",
+            }[n.tone];
+            return (
+              <div key={i} className={`flex items-start gap-2 p-2.5 rounded-lg border ${toneClasses}`}>
+                <span className="text-[16px] flex-shrink-0 leading-none mt-0.5">{n.emoji}</span>
+                <div className="text-[11px] text-foreground leading-relaxed">{n.text}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
 
     <div className="grid grid-cols-3 gap-3 mb-4">
       {/* أفضل 5 أيام */}

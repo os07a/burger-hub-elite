@@ -38,6 +38,23 @@ export interface ForecastItem {
   trend: "up" | "target" | "warning";
 }
 
+export type SalesReadinessLevel = "insufficient" | "early" | "preliminary" | "ready" | "deep";
+
+export interface SalesNarrativeItem {
+  emoji: string;
+  text: string;
+  tone: "success" | "warning" | "info" | "danger" | "neutral";
+}
+
+export interface SalesReadiness {
+  level: SalesReadinessLevel;
+  message: string;
+  daysCount: number;
+  progressTo14: number;
+  progressTo28: number;
+  progressTo30: number;
+}
+
 const ratingFor = (avg: number): Pick<MonthlyBreakdown, "rating" | "ratingVariant"> => {
   if (avg >= 800) return { rating: "ممتاز", ratingVariant: "success" };
   if (avg >= 600) return { rating: "جيد", ratingVariant: "info" };
@@ -188,6 +205,112 @@ export const useSalesIndicator = ({ fromDate, toDate }: UseSalesIndicatorOptions
     const maxDate = sorted[sorted.length - 1].date;
     const subtitle = `تقرير الكاشير · ${sorted.length} يوم · ${formatArabicDayMonth(minDate)} – ${formatArabicDayMonth(maxDate)}`;
 
+    // ── Readiness level (mirrors useBehaviorInsights logic) ──
+    const daysCount = sorted.length;
+    let level: SalesReadinessLevel = "insufficient";
+    let message = `بيانات غير كافية (${daysCount} يوم) — نحتاج 3 أيام على الأقل لبدء التحليل.`;
+    if (daysCount >= 30) {
+      level = "deep";
+      message = `✅ تحليل موسّع كامل (${daysCount} يوم) — رؤى موثوقة.`;
+    } else if (daysCount >= 28) {
+      level = "ready";
+      message = `بيانات كافية (${daysCount} يوم) — التحليل موثوق.`;
+    } else if (daysCount >= 14) {
+      level = "preliminary";
+      message = `بيانات أولية (${daysCount} يوم) — اعتبر النتائج تقريبية حتى تصل 28 يوم.`;
+    } else if (daysCount >= 3) {
+      level = "early";
+      message = `🧪 تحليل مبدئي (${daysCount} يوم) — الأرقام إرشادية وتُحدَّث تلقائياً مع كل مزامنة.`;
+    }
+    const readiness: SalesReadiness = {
+      level,
+      message,
+      daysCount,
+      progressTo14: Math.min(100, Math.round((daysCount / 14) * 100)),
+      progressTo28: Math.min(100, Math.round((daysCount / 28) * 100)),
+      progressTo30: Math.min(100, Math.round((daysCount / 30) * 100)),
+    };
+
+    // ── Smart narratives (built only from already-computed values) ──
+    const narratives: SalesNarrativeItem[] = [];
+    if (level !== "insufficient") {
+      const isEarly = level === "early";
+      const prefix = isEarly ? "مبدئياً، " : "";
+
+      // 1) Strongest weekday vs avg
+      if (weekdayAverages.length > 0) {
+        const sortedWk = [...weekdayAverages].sort((a, b) => b.avg - a.avg);
+        const top = sortedWk[0];
+        const weeklyMean = weekdayAverages.reduce((s, w) => s + w.avg, 0) / weekdayAverages.length;
+        const lift = weeklyMean ? ((top.avg - weeklyMean) / weeklyMean) * 100 : 0;
+        narratives.push({
+          emoji: "🔥",
+          tone: "success",
+          text: `${prefix}${top.day} هي ذروة الأسبوع — ${Math.round(top.avg).toLocaleString("en-US")} ر.س متوسط (+${lift.toFixed(0)}% فوق المتوسط الأسبوعي).`,
+        });
+
+        // 2) Weakest weekday vs avg
+        const bottom = sortedWk[sortedWk.length - 1];
+        if (bottom && bottom.day !== top.day) {
+          const drop = weeklyMean ? ((weeklyMean - bottom.avg) / weeklyMean) * 100 : 0;
+          narratives.push({
+            emoji: "📉",
+            tone: "warning",
+            text: `${prefix}${bottom.day} الأضعف بـ ${Math.round(bottom.avg).toLocaleString("en-US")} ر.س (-${drop.toFixed(0)}% تحت المتوسط).`,
+          });
+        }
+      }
+
+      // 3) Best actual day record
+      if (bestDayInfo) {
+        narratives.push({
+          emoji: "🏆",
+          tone: "info",
+          text: `${prefix}أعلى يوم مسجّل: ${bestDayInfo.label} بـ ${Math.round(bestDayInfo.value).toLocaleString("en-US")} ر.س — استخدمه كمعيار لما يقدر المحل يحققه.`,
+        });
+      }
+
+      // 4) Discount rate vs 2% benchmark
+      if (totalGross > 0) {
+        const overSafe = discountPct > 2;
+        narratives.push({
+          emoji: "🏷️",
+          tone: overSafe ? "warning" : "success",
+          text: `معدل الخصم الكلي ${discountPct.toFixed(1)}% — ${overSafe ? "تجاوز سقف 2% الموصى به، راجع سياسات الخصم لحماية الهامش." : "ضمن الحد الآمن (≤2%) — ممتاز لحماية هامش الربح."}`,
+        });
+      }
+
+      // 5) Annual path vs 1,000 SAR/day target
+      if (dailyAvg > 0) {
+        const gapPct = Math.max(0, Math.round((1000 / dailyAvg - 1) * 100));
+        const annualPathLocal = Math.round(dailyAvg * 276);
+        narratives.push({
+          emoji: "📈",
+          tone: gapPct > 30 ? "warning" : "info",
+          text: `المسار السنوي الحالي ~${annualPathLocal.toLocaleString("en-US")} ر.س — ${gapPct > 0 ? `يحتاج رفع المتوسط ${gapPct}% للوصول لهدف 1,000 ر.س/يوم.` : "تجاوزت الهدف اليومي 👏."}`,
+        });
+      }
+
+      // 6) Marketing recommendation: weakest 2 weekdays
+      if (weekdayAverages.length >= 2) {
+        const weakest2 = [...weekdayAverages].sort((a, b) => a.avg - b.avg).slice(0, 2).map((w) => w.day);
+        narratives.push({
+          emoji: "🎯",
+          tone: "success",
+          text: `توصية تسويقية: استهدف ${weakest2[0]} و${weakest2[1]} بعروض موجّهة — رفع 15-20% فيهما يقرّب المتوسط من 1,000 ر.س/يوم.`,
+        });
+      }
+
+      // 7) Early-mode wrap-up note
+      if (isEarly) {
+        narratives.push({
+          emoji: "⏳",
+          tone: "neutral",
+          text: `هذه نتائج أولية — ستزداد دقّتها تلقائياً عند بلوغ 14 يوم ثم 28 يوم.`,
+        });
+      }
+    }
+
     return {
       kpis: {
         totalGross,
@@ -211,6 +334,8 @@ export const useSalesIndicator = ({ fromDate, toDate }: UseSalesIndicatorOptions
       forecasts,
       subtitle,
       daysCount: sorted.length,
+      readiness,
+      narratives,
     };
   }, [rows]);
 
