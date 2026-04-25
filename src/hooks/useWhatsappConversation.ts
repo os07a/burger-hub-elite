@@ -40,8 +40,9 @@ export function useWhatsappConversation(phone: string | null) {
 
   useEffect(() => {
     if (!norm) return;
+    const channelName = `whatsapp-conv-${norm}-${Math.random().toString(36).slice(2, 10)}`;
     const channel = supabase
-      .channel(`whatsapp-conversation-${norm}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "whatsapp_messages" },
