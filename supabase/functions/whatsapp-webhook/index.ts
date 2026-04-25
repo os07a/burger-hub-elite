@@ -83,11 +83,97 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Process status updates
+    // Helper: normalize a Meta phone (E.164 without +) to match our stored format
+    const normalize = (p: string | undefined | null) => {
+      if (!p) return null;
+      const d = String(p).replace(/\D/g, "");
+      return d || null;
+    };
+
+    // Process status updates AND inbound messages
     const entries = payload?.entry ?? [];
     for (const entry of entries) {
       const changes = entry?.changes ?? [];
       for (const change of changes) {
+        const value = change?.value ?? {};
+        const businessPhoneId: string | undefined =
+          value?.metadata?.phone_number_id;
+
+        // ===== Inbound messages =====
+        const messages = value?.messages ?? [];
+        for (const msg of messages) {
+          const metaMessageId = msg?.id;
+          const fromPhone = normalize(msg?.from);
+          const type = msg?.type ?? "text";
+          const ts = msg?.timestamp
+            ? new Date(Number(msg.timestamp) * 1000).toISOString()
+            : new Date().toISOString();
+
+          let body = "";
+          let mediaType: string | null = null;
+          if (type === "text") {
+            body = msg?.text?.body ?? "";
+          } else if (type === "image") {
+            body = msg?.image?.caption ?? "[صورة]";
+            mediaType = "image";
+          } else if (type === "audio") {
+            body = "[رسالة صوتية]";
+            mediaType = "audio";
+          } else if (type === "video") {
+            body = msg?.video?.caption ?? "[فيديو]";
+            mediaType = "video";
+          } else if (type === "document") {
+            body = msg?.document?.filename ?? "[مستند]";
+            mediaType = "document";
+          } else if (type === "button") {
+            body = msg?.button?.text ?? "[زر]";
+          } else if (type === "interactive") {
+            body =
+              msg?.interactive?.button_reply?.title ??
+              msg?.interactive?.list_reply?.title ??
+              "[تفاعل]";
+          } else {
+            body = `[${type}]`;
+          }
+
+          if (!fromPhone || !metaMessageId) continue;
+
+          // Try to match a known customer by phone
+          let customerId: string | null = null;
+          try {
+            const { data: cust } = await admin
+              .from("loyalty_customers")
+              .select("id, phone")
+              .limit(2000);
+            const match = (cust ?? []).find((c) => {
+              const cp = String(c.phone ?? "").replace(/\D/g, "");
+              return cp && (cp === fromPhone || cp.endsWith(fromPhone) || fromPhone.endsWith(cp));
+            });
+            if (match) customerId = match.id;
+          } catch (_) {
+            // ignore matching errors
+          }
+
+          const { error: insErr } = await admin
+            .from("whatsapp_messages")
+            .insert({
+              direction: "inbound",
+              from_phone: fromPhone,
+              to_phone: businessPhoneId ?? "business",
+              body,
+              media_type: mediaType,
+              meta_message_id: metaMessageId,
+              status: "received",
+              customer_id: customerId,
+              sent_at: ts,
+            });
+
+          if (insErr) {
+            console.error("Failed to insert inbound message", insErr);
+          }
+        }
+
+        // ===== Status updates =====
         const statuses = change?.value?.statuses ?? [];
         for (const st of statuses) {
           const metaMessageId = st?.id;

@@ -2,11 +2,14 @@ import { useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { Send, MessageSquare, Clock, ChevronDown, Copy, Check, Loader2 } from "lucide-react";
+import { Send, MessageSquare, Clock, ChevronDown, Copy, Check, Loader2, MessagesSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWhatsappMessages, useWhatsappStats } from "@/hooks/useWhatsappMessages";
 import { formatSaudiPhoneDisplay } from "@/lib/phoneNormalize";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ConversationsTab from "@/components/messages/ConversationsTab";
+import { useWhatsappContacts } from "@/hooks/useWhatsappContacts";
 
 const templates = [
   { id: "welcome", name: "ترحيب عميل جديد", emoji: "👋", body: "أهلاً {name}! شكراً لزيارتك برقرهم 🍔 نتمنى تكون تجربتك ممتازة. تابعنا لعروض حصرية!" },
@@ -51,6 +54,8 @@ const Messages = () => {
 
   const { data: stats } = useWhatsappStats();
   const { data: recentDb } = useWhatsappMessages(10);
+  const { data: contactsData } = useWhatsappContacts();
+  const totalUnread = (contactsData ?? []).reduce((s, c) => s + c.unreadCount, 0);
 
   const projectRef = "bjfhrrtajyvvdcsrpwqb";
   const webhookUrl = `https://${projectRef}.supabase.co/functions/v1/whatsapp-webhook`;
@@ -114,7 +119,27 @@ const Messages = () => {
         <MetricCard label="📖 مقروءة" value={String(stats?.read ?? 0)} sub="عبر واتساب" subColor="success" />
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <Tabs defaultValue="send" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="send" className="text-[12px]">
+            <Send size={12} className="ml-1.5" /> إرسال جديد
+          </TabsTrigger>
+          <TabsTrigger value="conversations" className="text-[12px]">
+            <MessagesSquare size={12} className="ml-1.5" /> المحادثات
+            {totalUnread > 0 && (
+              <span className="mr-1.5 bg-success text-primary-foreground text-[9px] font-bold rounded-full min-w-[16px] h-[16px] inline-flex items-center justify-center px-1">
+                {totalUnread}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="conversations" className="mt-0">
+          <ConversationsTab />
+        </TabsContent>
+
+        <TabsContent value="send" className="mt-0 space-y-6">
+      <div className="grid grid-cols-3 gap-4">
         {/* إرسال رسالة */}
         <div className="col-span-2 ios-card">
           <div className="text-[11px] font-medium text-muted-foreground mb-4 flex items-center gap-2">
@@ -293,7 +318,7 @@ const Messages = () => {
       </div>
 
       {/* إعدادات Webhook */}
-      <div className="ios-card mt-6 border-2 border-dashed border-success/30">
+      <div className="ios-card border-2 border-dashed border-success/30">
         <div className="flex items-start gap-3">
           <span className="text-[28px]">✅</span>
           <div className="flex-1 min-w-0">
@@ -316,6 +341,8 @@ const Messages = () => {
           </div>
         </div>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
