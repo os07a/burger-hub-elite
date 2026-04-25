@@ -103,8 +103,8 @@ const Products = () => {
         <MetricCard label="متوسط الهامش" value={`${avgMargin.toFixed(1)}%`} sub="هامش خام" subColor={avgMargin >= 50 ? "success" : "warning"} />
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md mb-4">
+      <Tabs defaultValue="list" className="w-full" dir="rtl">
+        <TabsList className="grid w-full grid-cols-3 max-w-md mb-4 mr-0 ml-auto md:ml-0 md:mr-0">
           <TabsTrigger value="list" className="text-[12px] gap-1.5">القائمة <MenuIcon size={13} /></TabsTrigger>
           <TabsTrigger value="movement" className="text-[12px] gap-1.5">الحركة <BarChart3 size={13} /></TabsTrigger>
           <TabsTrigger value="calculator" className="text-[12px] gap-1.5">الحاسبة <Calculator size={13} /></TabsTrigger>
@@ -112,7 +112,7 @@ const Products = () => {
 
         <TabsContent value="list" className="space-y-4">
           {/* Type filter */}
-          <div className="flex items-center gap-2">
+          <div dir="rtl" className="flex items-center gap-2">
             <Button
               size="sm"
               variant={typeFilter === "all" ? "default" : "outline"}
