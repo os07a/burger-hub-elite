@@ -119,7 +119,7 @@ const Messages = () => {
         <MetricCard label="📖 مقروءة" value={String(stats?.read ?? 0)} sub="عبر واتساب" subColor="success" />
       </div>
 
-      <Tabs defaultValue="send" className="w-full">
+      <Tabs defaultValue="send" className="w-full" dir="rtl">
         <TabsList className="mb-4">
           <TabsTrigger value="send" className="text-[12px]">
             <Send size={12} className="ml-1.5" /> إرسال جديد
