@@ -1291,9 +1291,12 @@ export type Database = {
         Row: {
           body: string
           created_at: string
+          customer_id: string | null
+          delivered_at: string | null
           error: string | null
           id: string
           meta_message_id: string | null
+          read_at: string | null
           sent_at: string
           sent_by: string | null
           status: string
@@ -1303,9 +1306,12 @@ export type Database = {
         Insert: {
           body: string
           created_at?: string
+          customer_id?: string | null
+          delivered_at?: string | null
           error?: string | null
           id?: string
           meta_message_id?: string | null
+          read_at?: string | null
           sent_at?: string
           sent_by?: string | null
           status?: string
@@ -1315,9 +1321,12 @@ export type Database = {
         Update: {
           body?: string
           created_at?: string
+          customer_id?: string | null
+          delivered_at?: string | null
           error?: string | null
           id?: string
           meta_message_id?: string | null
+          read_at?: string | null
           sent_at?: string
           sent_by?: string | null
           status?: string
