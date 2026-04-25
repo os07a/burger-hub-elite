@@ -1293,10 +1293,15 @@ export type Database = {
           created_at: string
           customer_id: string | null
           delivered_at: string | null
+          direction: string
           error: string | null
+          from_phone: string | null
           id: string
+          media_type: string | null
+          media_url: string | null
           meta_message_id: string | null
           read_at: string | null
+          read_by_user_at: string | null
           sent_at: string
           sent_by: string | null
           status: string
@@ -1308,10 +1313,15 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           delivered_at?: string | null
+          direction?: string
           error?: string | null
+          from_phone?: string | null
           id?: string
+          media_type?: string | null
+          media_url?: string | null
           meta_message_id?: string | null
           read_at?: string | null
+          read_by_user_at?: string | null
           sent_at?: string
           sent_by?: string | null
           status?: string
@@ -1323,10 +1333,15 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           delivered_at?: string | null
+          direction?: string
           error?: string | null
+          from_phone?: string | null
           id?: string
+          media_type?: string | null
+          media_url?: string | null
           meta_message_id?: string | null
           read_at?: string | null
+          read_by_user_at?: string | null
           sent_at?: string
           sent_by?: string | null
           status?: string
