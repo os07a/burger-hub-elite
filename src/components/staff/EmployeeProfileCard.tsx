@@ -141,7 +141,7 @@ const EmployeeProfileCard = ({ employee: emp, attendance, isAdmin, onEdit, onAdd
 
         {expanded && (
           <div className="border-t border-border animate-fade-in">
-            <Tabs defaultValue="profile" className="p-4">
+            <Tabs defaultValue="profile" className="p-4" dir="rtl">
               <TabsList className="grid grid-cols-4 mb-4">
                 <TabsTrigger value="profile" className="text-[12px]">الملف</TabsTrigger>
                 <TabsTrigger value="records" className="text-[12px]">السجلات{recordsCount > 0 && ` (${recordsCount})`}</TabsTrigger>

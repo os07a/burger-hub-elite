@@ -119,13 +119,13 @@ const Attendance = () => {
 
       <QuickPunchButton onOutOfRange={(empId) => { setPermEmpId(empId); setPermOpen(true); }} />
 
-      <div className="flex gap-2 mb-4 justify-end">
+      <div className="flex gap-2 mb-4 justify-start">
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setPermEmpId(undefined); setPermOpen(true); }}>
           تسجيل استئذان <Plus size={14} />
         </Button>
       </div>
 
-      <Tabs defaultValue="today" className="w-full">
+      <Tabs defaultValue="today" className="w-full" dir="rtl">
         <TabsList className="mb-3">
           <TabsTrigger value="today">سجل اليوم</TabsTrigger>
           <TabsTrigger value="week">ملخص الأسبوع</TabsTrigger>
