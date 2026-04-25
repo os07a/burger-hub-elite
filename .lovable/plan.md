@@ -1,35 +1,49 @@
-## ربط مؤشر المبيعات ببيانات Loyverse الحقيقية
+# Tooltips تفصيلية + مزامنة الكاشير + تصفية التواريخ لمؤشر المبيعات
 
-### الهدف
-استبدال القيم الثابتة في `src/pages/SalesIndicator.tsx` ببيانات حقيقية من جدول `daily_sales` (Loyverse) عبر Supabase، مع حسابات ديناميكية لكل الأقسام.
+## الهدف
+إضافة 3 ميزات لصفحة `مؤشر المبيعات` (`/sales-indicator`):
+1. **Tooltips تفصيلية** على بطاقات KPI الستة (إجمالي، صافي، متوسط يومي، أعلى يوم، أدنى يوم، خصومات) — توضح المعنى وطريقة الحساب.
+2. **زر مزامنة الكاشير** في رأس الصفحة (يفتح `PosSyncDialog` الموجود، إعادة استخدام بدون تكرار).
+3. **تصفية نطاق التواريخ** (من / إلى) في رأس الصفحة، تطبّق على كل المؤشرات والجداول.
 
-### ملاحظة حول البيانات المتاحة
-حالياً جدول `daily_sales` يحتوي **37 يوم فقط** (20 مارس → 26 أبريل 2026). الأرقام الثابتة الحالية تغطي ديسمبر→أبريل (132 يوم) — لذلك ستظهر فعلياً فقط الفترة المتاحة، مع subtitle ديناميكي يعكس النطاق الحقيقي.
+---
 
-### التغييرات
+## التغييرات بالتفصيل
 
-**1. هوك جديد `src/hooks/useSalesIndicator.ts`**
-يستخدم `useDailySalesSummary` ويُرجع بيانات محسوبة:
-- **KPIs**: totalGross, totalNet, dailyAvg, bestDay, worstDay (استثناء الأيام = 0)، totalDiscounts
-- **monthlyBreakdown**: تجميع حسب الشهر العربي (gross, net, days, avg, discounts, discPct, rating)
-- **bestDays / worstDays**: top 5 / bottom 5 (مع استثناء الأيام صفر من الأسوأ)
-- **weekdayAverages**: متوسط `gross_sales` لكل يوم أسبوع
-- **forecasts**: توقع الشهر = dailyAvg × أيام الشهر، هدف +15%، نقطة التعادل ~16,500
+### 1) `src/hooks/useSalesIndicator.ts` — قبول نطاق تواريخ
+- يستقبل `{ fromDate?, toDate? }` ويمررها لـ `useDailySalesSummary`.
+- يضيف داخل `kpis` ثلاث قيم مساعدة للـ Tooltips:
+  - `bestDayLabel`, `bestDayDate`
+  - `worstDayLabel`, `worstDayDate`
+  - `discountPct` — نسبة الخصم الكلية
+- بدون كسر العقد الحالي للحقول الموجودة.
 
-**2. تعديل `src/pages/SalesIndicator.tsx`**
-- إزالة كل المصفوفات الثابتة (bestDays, worstDays, salesMonths, weekdays)
-- استدعاء `useSalesIndicator()` بدلاً منها
-- subtitle ديناميكي: `"تقرير الكاشير · {N} يوم · {minDate} – {maxDate}"`
-- حالة فارغة عند عدم وجود بيانات + توجيه لمزامنة Loyverse
-- Skeleton أثناء التحميل
-- الحفاظ على نفس التصميم RTL والألوان والأيقونات بالكامل بدون أي تغيير بصري
+### 2) `src/pages/SalesIndicator.tsx` — رأس صفحة جديد + Tooltips
+- **State محلي**: `fromDate`, `toDate`, `posSyncOpen`.
+- **شريط أدوات** بمحاذاة يمين تحت `PageHeader`:
+  - حقلا `<Input type="date" />` لـ "من" و"إلى".
+  - زر "إعادة تعيين" يصفّر النطاق.
+  - زر **"🔄 مزامنة الكاشير"** بنمط `bg-primary` يفتح `PosSyncDialog`.
+  - عند نجاح المزامنة (`onSynced`) يعمل `queryClient.invalidateQueries(["daily-sales-summary"])`.
+- **Tooltips على بطاقات KPI** باستخدام `Tooltip` من `@/components/ui/tooltip` (موجود):
+  - **🧾 إجمالي المبيعات**: مجموع قيمة الفواتير قبل الخصومات والمسترد — `gross_sales` من الكاشير.
+  - **💵 صافي المبيعات**: إجمالي − الخصومات − المسترد. الإيراد الفعلي.
+  - **📊 متوسط يومي**: إجمالي ÷ عدد الأيام المسجّلة ({daysCount} يوم).
+  - **🏆 أعلى يوم**: أعلى مبيعات يومية ({bestDayLabel} - {bestDayDate}).
+  - **📉 أدنى يوم فعلي**: أقل يوم فيه مبيعات > 0 (يتجاهل أيام الإغلاق) — {worstDayLabel}.
+  - **🏷️ إجمالي الخصومات**: مجموع الخصومات. النسبة {discountPct}% — يفضّل تحت 2%.
 
-**3. مساعدات تنسيق في `src/lib/format.ts`**
-- `getArabicMonth(date)` → "يناير", "فبراير"...
-- `getArabicWeekday(date)` → "الجمعة", "الأحد"...
-- `formatArabicDayMonth(date)` → "2 يناير"
+### 3) لا تعديلات على Supabase
+- `useDailySalesSummary` يدعم `fromDate/toDate` أصلاً.
 
-### النتيجة
-- كل الأرقام في الصفحة تأتي من `daily_sales` بشكل حي
-- تحديث تلقائي عند مزامنة Loyverse جديدة (React Query)
-- نفس الشكل البصري والـ RTL بدون أي تغيير في التصميم
+---
+
+## نقاط مهمة
+- RTL محفوظ (شريط الأدوات `justify-start` بمحاذاة العنوان من اليمين).
+- إعادة استخدام `PosSyncDialog` بدون نسخ.
+- Tooltips من shadcn — صفر تبعيات جديدة.
+- KPIs والشهور وأيام الأسبوع تتحدث تلقائياً عبر `useMemo` عند تغيير النطاق.
+
+## الملفات
+- ✏️ `src/hooks/useSalesIndicator.ts`
+- ✏️ `src/pages/SalesIndicator.tsx`

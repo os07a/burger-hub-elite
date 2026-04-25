@@ -1,16 +1,74 @@
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { RefreshCw, Calendar as CalendarIcon, X } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
 import { useSalesIndicator } from "@/hooks/useSalesIndicator";
-import { fmt } from "@/lib/format";
+import { fmt, formatArabicDayMonth } from "@/lib/format";
 
 const SalesIndicator = () => {
-  const { isLoading, error, data } = useSalesIndicator();
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
+  const [posSyncOpen, setPosSyncOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { isLoading, error, data } = useSalesIndicator({
+    fromDate: fromDate || undefined,
+    toDate: toDate || undefined,
+  });
+
+  const hasFilter = !!(fromDate || toDate);
+  const resetFilter = () => { setFromDate(""); setToDate(""); };
+
+  const Toolbar = (
+    <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div className="flex items-center gap-1.5 bg-surface border border-border rounded-lg px-2 py-1.5">
+        <CalendarIcon size={12} className="text-gray-light" />
+        <span className="text-[10px] text-gray-light">من</span>
+        <input
+          type="date"
+          value={fromDate}
+          onChange={(e) => setFromDate(e.target.value)}
+          className="bg-transparent text-[11px] text-foreground outline-none w-[120px]"
+        />
+        <span className="text-[10px] text-gray-light mx-1">إلى</span>
+        <input
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          className="bg-transparent text-[11px] text-foreground outline-none w-[120px]"
+        />
+      </div>
+      {hasFilter && (
+        <button
+          onClick={resetFilter}
+          className="flex items-center gap-1 text-[10px] text-gray-light hover:text-foreground bg-surface border border-border rounded-lg px-2 py-1.5 transition-colors"
+        >
+          <X size={10} /> إعادة تعيين
+        </button>
+      )}
+      <button
+        onClick={() => setPosSyncOpen(true)}
+        className="flex items-center gap-1.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors mr-auto"
+      >
+        <RefreshCw size={12} /> مزامنة الكاشير
+      </button>
+      <PosSyncDialog
+        open={posSyncOpen}
+        onOpenChange={setPosSyncOpen}
+        onSynced={() => queryClient.invalidateQueries({ queryKey: ["daily-sales-summary"] })}
+      />
+    </div>
+  );
 
   if (isLoading) {
     return (
       <div>
         <PageHeader title="مؤشر المبيعات" subtitle="جاري تحميل بيانات الكاشير..." badge="تحليل" />
+        {Toolbar}
         <div className="grid grid-cols-6 gap-2 mb-4">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
         </div>
@@ -26,6 +84,7 @@ const SalesIndicator = () => {
     return (
       <div>
         <PageHeader title="مؤشر المبيعات" subtitle="خطأ في تحميل البيانات" badge="تحليل" />
+        {Toolbar}
         <div className="bg-surface border border-red-500/30 rounded-lg p-6 text-center text-red-400 text-[12px]">
           ⚠️ تعذر تحميل بيانات المبيعات: {error.message}
         </div>
@@ -36,12 +95,17 @@ const SalesIndicator = () => {
   if (!data) {
     return (
       <div>
-        <PageHeader title="مؤشر المبيعات" subtitle="لا توجد بيانات بعد" badge="تحليل" />
+        <PageHeader title="مؤشر المبيعات" subtitle={hasFilter ? "ما فيه بيانات في النطاق المحدد" : "لا توجد بيانات بعد"} badge="تحليل" />
+        {Toolbar}
         <div className="bg-surface border border-border rounded-lg p-8 text-center">
           <div className="text-[32px] mb-2">📊</div>
-          <div className="text-[14px] font-bold text-foreground mb-1">ما فيه بيانات مبيعات بعد</div>
+          <div className="text-[14px] font-bold text-foreground mb-1">
+            {hasFilter ? "ما فيه بيانات في الفترة المختارة" : "ما فيه بيانات مبيعات بعد"}
+          </div>
           <div className="text-[11px] text-gray-light leading-relaxed max-w-md mx-auto">
-            شغّل مزامنة Loyverse من لوحة التحكم لجلب بيانات الكاشير، وراح تظهر هنا تلقائياً.
+            {hasFilter
+              ? "غيّر النطاق أو اضغط إعادة تعيين."
+              : "شغّل مزامنة الكاشير من الزر أعلاه لجلب البيانات وعرضها هنا."}
           </div>
         </div>
       </div>
@@ -51,29 +115,80 @@ const SalesIndicator = () => {
   const { kpis, monthlyBreakdown, bestDays, worstDays, worstMonthNote, weekdayAverages, weekdayTip, forecasts, subtitle } = data;
   const maxWeekdayAvg = Math.max(...weekdayAverages.map((w) => w.avg), 1);
 
-  const kpiCards = [
-    { label: "🧾 إجمالي المبيعات", value: fmt(kpis.totalGross), color: "text-primary" },
-    { label: "💵 صافي المبيعات", value: fmt(kpis.totalNet), color: "text-black" },
-    { label: "📊 متوسط يومي", value: fmt(kpis.dailyAvg), color: "text-blue-400" },
-    { label: "🏆 أعلى يوم", value: fmt(kpis.bestDay), color: "text-black" },
-    { label: "📉 أدنى يوم فعلي", value: fmt(kpis.worstDay), color: "text-red-400" },
-    { label: "🏷️ إجمالي الخصومات", value: fmt(kpis.totalDiscounts), color: "text-orange-400" },
+  const kpiCards: { label: string; value: string; color: string; tooltipTitle: string; tooltipDesc: string }[] = [
+    {
+      label: "🧾 إجمالي المبيعات",
+      value: fmt(kpis.totalGross),
+      color: "text-primary",
+      tooltipTitle: "إجمالي المبيعات (Gross Sales)",
+      tooltipDesc: "مجموع قيمة الفواتير المسجّلة في الكاشير قبل خصم أي خصومات أو مسترد. يمثّل حجم الحركة الكلي خلال الفترة.",
+    },
+    {
+      label: "💵 صافي المبيعات",
+      value: fmt(kpis.totalNet),
+      color: "text-black",
+      tooltipTitle: "صافي المبيعات (Net Sales)",
+      tooltipDesc: "إجمالي المبيعات − الخصومات − المسترد. هذا هو الإيراد الفعلي الذي دخل المحل ويستخدم لحساب الأرباح.",
+    },
+    {
+      label: "📊 متوسط يومي",
+      value: fmt(kpis.dailyAvg),
+      color: "text-blue-400",
+      tooltipTitle: "المتوسط اليومي",
+      tooltipDesc: `إجمالي المبيعات ÷ عدد الأيام المسجّلة (${data.daysCount} يوم). يعكس مستوى الأداء اليومي ويُقارن بهدف 1,000 ر.س/يوم.`,
+    },
+    {
+      label: "🏆 أعلى يوم",
+      value: fmt(kpis.bestDay),
+      color: "text-black",
+      tooltipTitle: "أعلى يوم في النطاق",
+      tooltipDesc: kpis.bestDayDate
+        ? `أعلى مبيعات يومية مسجّلة: ${kpis.bestDayLabel} (${kpis.bestDayDate}). استخدمه كمرجع لما يقدر المحل يحققه.`
+        : "أعلى مبيعات يومية مسجّلة في النطاق.",
+    },
+    {
+      label: "📉 أدنى يوم فعلي",
+      value: fmt(kpis.worstDay),
+      color: "text-red-400",
+      tooltipTitle: "أدنى يوم فعلي",
+      tooltipDesc: kpis.worstDayDate
+        ? `أقل يوم فيه مبيعات > 0 (نتجاهل أيام الإغلاق التام): ${kpis.worstDayLabel} (${kpis.worstDayDate}). راجعه لمعرفة السبب.`
+        : "أقل يوم فيه مبيعات فعلية > 0 (تستبعد أيام الإغلاق).",
+    },
+    {
+      label: "🏷️ إجمالي الخصومات",
+      value: fmt(kpis.totalDiscounts),
+      color: "text-orange-400",
+      tooltipTitle: "إجمالي الخصومات",
+      tooltipDesc: `مجموع كل الخصومات الممنوحة. النسبة الحالية ${kpis.discountPct.toFixed(1)}% من الإجمالي — يفضّل أن تبقى تحت 2% لحماية الهامش.`,
+    },
   ];
 
   return (
   <div>
     <PageHeader title="مؤشر المبيعات" subtitle={subtitle} badge="تحليل" />
+    {Toolbar}
 
     {/* مؤشرات سريعة */}
-    <div className="grid grid-cols-6 gap-2 mb-4">
-      {kpiCards.map((m) => (
-        <div key={m.label} className="bg-surface border border-border rounded-lg p-3 text-center">
-          <div className="text-[9px] text-gray-light font-medium mb-1">{m.label}</div>
-          <div className={`text-[18px] font-bold ${m.color}`}>{m.value}</div>
-          <div className="text-[8px] text-gray-light">ر.س</div>
-        </div>
-      ))}
-    </div>
+    <TooltipProvider delayDuration={150}>
+      <div className="grid grid-cols-6 gap-2 mb-4">
+        {kpiCards.map((m) => (
+          <Tooltip key={m.label}>
+            <TooltipTrigger asChild>
+              <div className="bg-surface border border-border rounded-lg p-3 text-center cursor-help hover:border-primary/40 transition-colors">
+                <div className="text-[9px] text-gray-light font-medium mb-1">{m.label}</div>
+                <div className={`text-[18px] font-bold ${m.color}`}>{m.value}</div>
+                <div className="text-[8px] text-gray-light">ر.س</div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[260px] text-right" dir="rtl">
+              <div className="text-[11px] font-bold text-foreground mb-1">{m.tooltipTitle}</div>
+              <div className="text-[10px] text-muted-foreground leading-relaxed">{m.tooltipDesc}</div>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </TooltipProvider>
 
     {/* الأداء الشهري التفصيلي */}
     <div className="bg-surface border border-border rounded-lg p-4 mb-4">
