@@ -104,7 +104,7 @@ const Products = () => {
       </div>
 
       <Tabs defaultValue="list" className="w-full" dir="rtl">
-        <TabsList className="grid w-full grid-cols-3 max-w-md mb-4 mr-0 ml-auto md:ml-0 md:mr-0">
+        <TabsList className="grid w-full grid-cols-3 max-w-md mb-4">
           <TabsTrigger value="list" className="text-[12px] gap-1.5">القائمة <MenuIcon size={13} /></TabsTrigger>
           <TabsTrigger value="movement" className="text-[12px] gap-1.5">الحركة <BarChart3 size={13} /></TabsTrigger>
           <TabsTrigger value="calculator" className="text-[12px] gap-1.5">الحاسبة <Calculator size={13} /></TabsTrigger>
