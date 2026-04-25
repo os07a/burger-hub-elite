@@ -9,12 +9,24 @@ const corsHeaders = {
 
 const META_API_VERSION = "v21.0";
 
-const BodySchema = z.object({
+const TextBodySchema = z.object({
+  kind: z.literal("text").optional(),
   to: z.string().min(8).max(20),
   message: z.string().min(1).max(4096),
   template_name: z.string().max(100).optional().nullable(),
   customer_id: z.string().uuid().optional().nullable(),
 });
+
+const TemplateBodySchema = z.object({
+  kind: z.literal("template"),
+  to: z.string().min(8).max(20),
+  template_name: z.string().min(1).max(100),
+  language: z.string().min(2).max(10).default("ar"),
+  parameters: z.array(z.string().min(1).max(1024)).max(20).default([]),
+  customer_id: z.string().uuid().optional().nullable(),
+});
+
+const BodySchema = z.union([TemplateBodySchema, TextBodySchema]);
 
 /** Normalize Saudi numbers to 9665XXXXXXXX format (no +). */
 function normalizeSaudiPhone(raw: string): string | null {
@@ -67,14 +79,18 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub as string;
 
     // 2) Validate input
-    const parsed = BodySchema.safeParse(await req.json());
+    const rawBody = await req.json();
+    const parsed = BodySchema.safeParse(rawBody);
     if (!parsed.success) {
       return json(
-        { error: "Invalid input", details: parsed.error.flatten().fieldErrors },
+        { error: "Invalid input", details: parsed.error.flatten() },
         400,
       );
     }
-    const { to, message, template_name, customer_id } = parsed.data;
+    const input = parsed.data;
+    const isTemplate = "kind" in input && input.kind === "template";
+    const to = input.to;
+    const customer_id = input.customer_id ?? null;
 
     // 3) Normalize phone
     const normalized = normalizeSaudiPhone(to);
@@ -99,15 +115,55 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5) Send via Meta Graph API
+    // 5) Build Meta payload (text vs template)
     const metaUrl = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`;
-    const metaPayload = {
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to: normalized,
-      type: "text",
-      text: { preview_url: false, body: message },
-    };
+
+    let metaPayload: Record<string, unknown>;
+    let storedBody: string;
+    let storedTemplateName: string | null;
+
+    if (isTemplate) {
+      const tpl = input as z.infer<typeof TemplateBodySchema>;
+      const components =
+        tpl.parameters.length > 0
+          ? [
+              {
+                type: "body",
+                parameters: tpl.parameters.map((text) => ({
+                  type: "text",
+                  text,
+                })),
+              },
+            ]
+          : [];
+      metaPayload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: normalized,
+        type: "template",
+        template: {
+          name: tpl.template_name,
+          language: { code: tpl.language },
+          ...(components.length > 0 ? { components } : {}),
+        },
+      };
+      storedTemplateName = tpl.template_name;
+      storedBody =
+        tpl.parameters.length > 0
+          ? `[${tpl.template_name}] ${tpl.parameters.join(" · ")}`
+          : `[${tpl.template_name}]`;
+    } else {
+      const txt = input as z.infer<typeof TextBodySchema>;
+      metaPayload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: normalized,
+        type: "text",
+        text: { preview_url: false, body: txt.message },
+      };
+      storedTemplateName = txt.template_name ?? null;
+      storedBody = txt.message;
+    }
 
     const metaRes = await fetch(metaUrl, {
       method: "POST",
@@ -128,8 +184,8 @@ Deno.serve(async (req) => {
 
       await admin.from("whatsapp_messages").insert({
         to_phone: normalized,
-        body: message,
-        template_name: template_name ?? null,
+        body: storedBody,
+        template_name: storedTemplateName,
         customer_id: customer_id ?? null,
         sent_by: userId,
         status: "failed",
@@ -153,8 +209,8 @@ Deno.serve(async (req) => {
       .from("whatsapp_messages")
       .insert({
         to_phone: normalized,
-        body: message,
-        template_name: template_name ?? null,
+        body: storedBody,
+        template_name: storedTemplateName,
         customer_id: customer_id ?? null,
         sent_by: userId,
         status: "sent",
