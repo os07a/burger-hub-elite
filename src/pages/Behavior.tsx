@@ -1,14 +1,13 @@
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { RefreshCw, Calendar as CalendarIcon, X, AlertCircle } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
-
-const rankings = [
-  { rank: 1, name: "آنجوس لحم", desc: "بريسكت أنجوس · جبن أمريكي · صلصة خاصة", count: "~420", pct: "34%" },
-  { rank: 2, name: "وجبة كاملة", desc: "برجر + بطاطس + بيبسي", count: "~310", pct: "25%" },
-  { rank: 3, name: "كريسبي الدجاج", desc: "صدور دجاج مقرمش · صوص سبايسي", count: "~230", pct: "19%" },
-  { rank: 4, name: "ناشفيل الدجاج", desc: "دجاج ناشفيل · جبن · مخلل", count: "~150", pct: "12%" },
-  { rank: 5, name: "بطاطس (منفردة/بالجبن)", desc: "إضافة جانبية", count: "~80", pct: "7%" },
-  { rank: 6, name: "مشروبات (بيبسي/ماء)", desc: "بيبسي 250مل · ماء معدني", count: "~40", pct: "3%" },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
+import { useBehaviorInsights, HOUR_LABELS, ORDERED_WEEKDAYS_LABEL } from "@/hooks/useBehaviorInsights";
+import { fmt } from "@/lib/format";
 
 const rankColors: Record<number, string> = {
   1: "bg-primary text-primary-foreground",
@@ -28,22 +27,9 @@ const ProgressBar = ({ label, value, color = "bg-primary" }: { label: string; va
   </div>
 );
 
-const days = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
-const hours = ["10ص", "11ص", "12م", "1م", "2م", "3م", "4م", "5م", "6م", "7م", "8م", "9م"];
-
-// بيانات مبنية على أيام الأسبوع الفعلية: الجمعة=ذروة (810 ر.س)، الاثنين=أضعف (627 ر.س)
-const heatData = [
-  [8, 10, 22, 28, 18, 12, 15, 20, 35, 52, 68, 55],   // السبت: 704 ر.س
-  [6, 9, 18, 24, 16, 11, 14, 18, 30, 44, 58, 50],     // الأحد: 681 ر.س
-  [5, 8, 15, 22, 14, 10, 12, 16, 28, 40, 50, 42],     // الاثنين: 627 ر.س (أضعف)
-  [5, 8, 16, 23, 15, 10, 13, 17, 29, 42, 52, 45],     // الثلاثاء: 674 ر.س
-  [6, 9, 17, 24, 16, 11, 14, 18, 30, 45, 55, 48],     // الأربعاء: 668 ر.س
-  [10, 14, 26, 32, 22, 16, 20, 28, 45, 64, 78, 68],   // الخميس: 707 ر.س
-  [12, 16, 30, 20, 14, 18, 24, 32, 50, 72, 90, 78],   // الجمعة: 810 ر.س (ذروة)
-];
-
-const heatColor = (v: number) => {
-  const t = v / 90;
+const heatColor = (v: number, max: number, sample: number) => {
+  if (sample < 1) return { bg: "#f1f1f1", fg: "#9ca3af" };
+  const t = max ? v / max : 0;
   if (t < 0.25) return { bg: "#fceaec", fg: "#8a0c18" };
   if (t < 0.5) return { bg: "#e8a0a8", fg: "#5a0010" };
   if (t < 0.75) return { bg: "#c03040", fg: "#fff" };
@@ -51,47 +37,252 @@ const heatColor = (v: number) => {
 };
 
 const Behavior = () => {
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [posSyncOpen, setPosSyncOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { isLoading, error, data, isEmpty } = useBehaviorInsights({
+    fromDate: fromDate || undefined,
+    toDate: toDate || undefined,
+  });
+
+  const hasFilter = !!(fromDate || toDate);
+  const resetFilter = () => { setFromDate(""); setToDate(""); };
+
+  const setPreset = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days + 1);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    setFromDate(iso(start));
+    setToDate(iso(end));
+  };
+
+  const Toolbar = (
+    <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div className="flex items-center gap-1.5 bg-surface border border-border rounded-lg px-2 py-1.5">
+        <CalendarIcon size={12} className="text-gray-light" />
+        <span className="text-[10px] text-gray-light">من</span>
+        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
+          className="bg-transparent text-[11px] text-foreground outline-none w-[120px]" />
+        <span className="text-[10px] text-gray-light mx-1">إلى</span>
+        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
+          className="bg-transparent text-[11px] text-foreground outline-none w-[120px]" />
+      </div>
+      <div className="flex items-center gap-1">
+        {[
+          { label: "7 أيام", d: 7 },
+          { label: "30 يوم", d: 30 },
+          { label: "90 يوم", d: 90 },
+        ].map((p) => (
+          <button key={p.d} onClick={() => setPreset(p.d)}
+            className="text-[10px] text-gray-light hover:text-foreground bg-surface border border-border rounded-lg px-2 py-1.5 transition-colors">
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {hasFilter && (
+        <button onClick={resetFilter}
+          className="flex items-center gap-1 text-[10px] text-gray-light hover:text-foreground bg-surface border border-border rounded-lg px-2 py-1.5 transition-colors">
+          <X size={10} /> إعادة تعيين
+        </button>
+      )}
+      <button onClick={() => setPosSyncOpen(true)}
+        className="flex items-center gap-1.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors mr-auto">
+        <RefreshCw size={12} /> مزامنة الكاشير
+      </button>
+      <PosSyncDialog open={posSyncOpen} onOpenChange={setPosSyncOpen}
+        onSynced={() => queryClient.invalidateQueries({ queryKey: ["behavior-insights"] })} />
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <div>
+        <PageHeader title="سلوك الزبائن" subtitle="جاري تحميل بيانات الكاشير..." />
+        {Toolbar}
+        <div className="grid grid-cols-4 gap-3 mb-5">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
+        <Skeleton className="h-64 mb-4" />
+        <Skeleton className="h-72" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <PageHeader title="سلوك الزبائن" subtitle="خطأ في تحميل البيانات" />
+        {Toolbar}
+        <div className="bg-surface border border-red-500/30 rounded-lg p-6 text-center text-red-400 text-[12px]">
+          ⚠️ تعذر تحميل البيانات: {error.message}
+        </div>
+      </div>
+    );
+  }
+
+  if (!data || isEmpty || data.readiness.daysCount === 0) {
+    return (
+      <div>
+        <PageHeader title="سلوك الزبائن" subtitle={hasFilter ? "ما فيه بيانات في النطاق المحدد" : "لا توجد بيانات بعد"} />
+        {Toolbar}
+        <div className="bg-surface border border-border rounded-lg p-8 text-center">
+          <div className="text-[32px] mb-2">📊</div>
+          <div className="text-[14px] font-bold text-foreground mb-1">
+            {hasFilter ? "ما فيه إيصالات في الفترة المختارة" : "ما فيه بيانات كاشير بعد"}
+          </div>
+          <div className="text-[11px] text-gray-light leading-relaxed max-w-md mx-auto">
+            {hasFilter ? "غيّر النطاق أو اضغط إعادة تعيين." : "اضغط زر 'مزامنة الكاشير' أعلاه لجلب البيانات من Loyverse."}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { kpis, itemRanking, weekdayAverages, heatmap, heatMax, readiness, dateRange } = data;
+  const showPeak = readiness.level !== "insufficient";
+  const isPreliminary = readiness.level === "preliminary";
+
+  const subtitle = `تقرير الكاشير · ${dateRange.totalDays} يوم${dateRange.minDate ? ` · ${dateRange.minDate} → ${dateRange.maxDate}` : ""}`;
+
   return (
     <div>
-      <PageHeader title="سلوك الزبائن" subtitle="تحليل المبيعات وأوقات الذروة — مبني على بيانات 132 يوم فعلي" />
+      <PageHeader title="سلوك الزبائن" subtitle={subtitle} />
+      {Toolbar}
 
+      {readiness.level === "insufficient" && (
+        <div className="mb-4 flex items-start gap-2 bg-warning/10 border border-warning/30 rounded-lg p-3">
+          <AlertCircle size={16} className="text-warning flex-shrink-0 mt-0.5" />
+          <div className="flex-[1] text-[11px] text-foreground leading-relaxed">
+            <b>عتبة الجاهزية لم تُستوفَ بعد.</b> {readiness.message} (نعرض الأصناف فقط، ونحجب تحليل الذروة وخريطة الحرارة.)
+          </div>
+        </div>
+      )}
+      {isPreliminary && (
+        <div className="mb-4 flex items-start gap-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+          <AlertCircle size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="text-[11px] text-foreground leading-relaxed">
+            🟡 {readiness.message}
+          </div>
+        </div>
+      )}
+
+      <TooltipProvider delayDuration={150}>
       <div className="grid grid-cols-4 gap-3 mb-5">
-        <MetricCard label="🔥 ذروة الأسبوع" value="الجمعة 9م" sub="810 ر.س متوسط يوم الجمعة" />
-        <MetricCard label="🏆 الأكثر طلباً" value="آنجوس لحم" sub="34% من الطلبات" subColor="success" />
-        <MetricCard label="📉 أضعف يوم" value="الاثنين" sub="627 ر.س متوسط" subColor="warning" />
-        <MetricCard label="📊 متوسط يومي" value="696" sub="132 يوم" showRiyal />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <MetricCard
+                label="🔥 ذروة الأسبوع"
+                value={showPeak ? `${kpis.peakDay} ${kpis.peakHour}` : "—"}
+                sub={showPeak ? `متوسط ${fmt(kpis.peakValue)} ر.س/إيصال (عينة ${kpis.peakSamples} يوم)` : "بحاجة لبيانات أكثر"}
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[260px] text-right" dir="rtl">
+            <div className="text-[11px] font-bold text-foreground mb-1">ذروة الأسبوع</div>
+            <div className="text-[10px] text-muted-foreground leading-relaxed">
+              اليوم والساعة الأعلى بمتوسط الإيراد لكل إيصال (بتوقيت الرياض). نحتاج 14 يوم على الأقل لعرضها.
+            </div>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <MetricCard
+                label="🏆 الأكثر طلباً"
+                value={kpis.topItem.length > 18 ? kpis.topItem.slice(0, 18) + "…" : kpis.topItem}
+                sub={`${kpis.topItemPct.toFixed(0)}% من إجمالي الكميات`}
+                subColor="success"
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[260px] text-right" dir="rtl">
+            <div className="text-[11px] font-bold text-foreground mb-1">الأكثر طلباً</div>
+            <div className="text-[10px] text-muted-foreground leading-relaxed">
+              المنتج الذي تكرّرت كميته الأكبر في فواتير الكاشير ضمن النطاق الحالي.
+            </div>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <MetricCard
+                label="📉 أضعف يوم"
+                value={showPeak ? kpis.weakestDay : "—"}
+                sub={showPeak ? `${fmt(kpis.weakestDayAvg)} ر.س متوسط` : "بحاجة لبيانات أكثر"}
+                subColor="warning"
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[260px] text-right" dir="rtl">
+            <div className="text-[11px] font-bold text-foreground mb-1">أضعف يوم في الأسبوع</div>
+            <div className="text-[10px] text-muted-foreground leading-relaxed">
+              يوم الأسبوع الأقل إيراداً (متوسط مبيعات ذلك اليوم عبر التواريخ المتاحة).
+            </div>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <MetricCard label="📊 متوسط يومي" value={fmt(kpis.dailyAvg)} sub={`${dateRange.totalDays} يوم`} showRiyal />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[260px] text-right" dir="rtl">
+            <div className="text-[11px] font-bold text-foreground mb-1">المتوسط اليومي</div>
+            <div className="text-[10px] text-muted-foreground leading-relaxed">
+              مجموع إيرادات كل الأيام ÷ عدد الأيام المسجّلة في النطاق.
+            </div>
+          </TooltipContent>
+        </Tooltip>
       </div>
+      </TooltipProvider>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="border rounded-lg p-4 border-r-[3px] border-r-primary border-gray-50 bg-gray-50">
-          <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">ترتيب الأصناف — بناءً على المبيعات الفعلية</div>
-          {rankings.map((item) => (
-            <div key={item.rank} className="flex items-center gap-3 py-2.5 border-b border-border last:border-b-0">
-              <div className={`w-6 h-6 rounded-[7px] flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${rankColors[item.rank] || "bg-background text-gray"}`}>
-                {item.rank}
+          <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">ترتيب الأصناف — مبيعات فعلية من الكاشير</div>
+          {itemRanking.length === 0 && (
+            <div className="text-[11px] text-gray-light text-center py-6">لا توجد أصناف مسجّلة في النطاق.</div>
+          )}
+          {itemRanking.map((item, idx) => {
+            const rank = idx + 1;
+            return (
+              <div key={item.name} className="flex items-center gap-3 py-2.5 border-b border-border last:border-b-0">
+                <div className={`w-6 h-6 rounded-[7px] flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${rankColors[rank] || "bg-background text-gray"}`}>
+                  {rank}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold text-foreground truncate">{item.name}</div>
+                  <div className="text-[10px] text-gray-light mt-px font-medium">{fmt(item.gross)} ر.س مبيعات</div>
+                </div>
+                <div className="text-left min-w-[70px]">
+                  <div className="text-[13px] font-bold text-foreground">{fmt(item.qty)}</div>
+                  <div className="text-[9px] text-gray-light">{item.pct.toFixed(1)}%</div>
+                </div>
               </div>
-              <div className="flex-1">
-                <div className="text-[13px] font-semibold text-foreground">{item.name}</div>
-                <div className="text-[10px] text-gray-light mt-px font-medium">{item.desc}</div>
-              </div>
-              <div className="text-left min-w-[70px]">
-                <div className="text-[13px] font-bold text-foreground">{item.count}</div>
-                <div className="text-[9px] text-gray-light">{item.pct}</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="space-y-3">
           <div className="bg-surface border border-border rounded-lg p-4">
-            <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">الإضافات المفضلة</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider">الإضافات المفضلة</div>
+              <span className="text-[8px] text-gray-light bg-background border border-border rounded px-1.5 py-0.5">تقدير</span>
+            </div>
             <ProgressBar label="جبن إضافي (أمريكي شرائح)" value={62} />
             <ProgressBar label="بطاطس بالجبن" value={48} />
             <ProgressBar label="صلصة ناشفيل حارة" value={35} color="bg-foreground" />
             <ProgressBar label="مشروب كبير (بيبسي)" value={55} />
           </div>
           <div className="bg-surface border border-border rounded-lg p-4">
-            <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">طريقة الاستلام</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider">طريقة الاستلام</div>
+              <span className="text-[8px] text-gray-light bg-background border border-border rounded px-1.5 py-0.5">تقدير</span>
+            </div>
             <ProgressBar label="توصيل (هنقرستيشن + كيتا)" value={54} />
             <ProgressBar label="داخل المطعم" value={28} color="bg-foreground" />
             <ProgressBar label="استلام ذاتي" value={18} color="bg-gray-light" />
@@ -100,39 +291,50 @@ const Behavior = () => {
       </div>
 
       <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">أوقات الذروة — بناءً على متوسطات أيام الأسبوع الفعلية</div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider">أوقات الذروة — متوسط الإيراد لكل ساعة (بتوقيت الرياض)</div>
+          {isPreliminary && <span className="text-[9px] text-blue-400 bg-blue-500/10 border border-blue-500/30 rounded px-2 py-0.5">🟡 بيانات أولية</span>}
+        </div>
+        {!showPeak ? (
+          <div className="text-center py-10 text-[11px] text-gray-light">
+            🔒 خريطة الحرارة محجوبة — استمر بمزامنة الكاشير حتى تتجمع 14 يوم على الأقل.
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[440px] border-collapse">
             <thead>
               <tr>
                 <th />
-                {hours.map((h) => (
+                {HOUR_LABELS.map((h) => (
                   <th key={h} className="text-[10px] text-gray-light font-semibold p-1 text-center">{h}</th>
                 ))}
                 <th className="text-[10px] text-gray-light font-semibold p-1 text-center">المتوسط</th>
               </tr>
             </thead>
             <tbody>
-              {days.map((day, di) => {
-                const avgForDay = [704, 681, 627, 674, 668, 707, 810][di];
+              {ORDERED_WEEKDAYS_LABEL.map((day, di) => {
+                const avgForDay = weekdayAverages[di]?.avg ?? 0;
                 return (
                   <tr key={day}>
                     <td className="text-[11px] text-gray font-semibold pr-2.5 py-1 whitespace-nowrap text-right">{day}</td>
-                    {heatData[di].map((v, hi) => {
-                      const c = heatColor(v);
+                    {heatmap[di].map((cell, hi) => {
+                      const c = heatColor(cell.avg, heatMax, cell.sampleDays);
                       return (
-                        <td key={hi} className="w-9 h-[29px] rounded text-center align-middle text-[10px] font-bold" style={{ background: c.bg, color: c.fg }}>
-                          {v}
+                        <td key={hi} className="w-9 h-[29px] rounded text-center align-middle text-[10px] font-bold"
+                          style={{ background: c.bg, color: c.fg }}
+                          title={cell.sampleDays > 0 ? `${cell.avg} ر.س متوسط · ${cell.sampleDays} يوم عينة` : "لا توجد بيانات"}>
+                          {cell.sampleDays > 0 ? cell.avg : ""}
                         </td>
                       );
                     })}
-                    <td className="text-[11px] font-bold text-primary text-center pr-2">{avgForDay}</td>
+                    <td className="text-[11px] font-bold text-primary text-center pr-2">{fmt(avgForDay)}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+        )}
         <div className="flex items-center gap-1.5 mt-2.5 justify-end">
           <span className="text-[10px] text-gray-light font-medium">هادئ</span>
           {["#fceaec", "#e8a0a8", "#c03040", "#8a0c18"].map((bg) => (
@@ -140,9 +342,11 @@ const Behavior = () => {
           ))}
           <span className="text-[10px] text-gray-light font-medium">ذروة</span>
         </div>
-        <div className="mt-2 p-2 bg-background border border-border rounded-lg text-[9px] text-gray leading-relaxed">
-          💡 <b className="text-foreground">نصيحة:</b> الجمعة والخميس أقوى يومين (810 و707 ر.س). ركّز التسويق على الاثنين والأربعاء لرفع المتوسط.
-        </div>
+        {showPeak && kpis.strongestDay !== "—" && (
+          <div className="mt-2 p-2 bg-background border border-border rounded-lg text-[9px] text-gray leading-relaxed">
+            💡 <b className="text-foreground">نصيحة:</b> أقوى يوم {kpis.strongestDay} ({fmt(kpis.strongestDayAvg)} ر.س متوسط)، وأضعف يوم {kpis.weakestDay} ({fmt(kpis.weakestDayAvg)} ر.س). ركّز التسويق على الأيام الضعيفة لرفع المتوسط.
+          </div>
+        )}
       </div>
     </div>
   );
