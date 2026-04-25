@@ -139,10 +139,13 @@ const Behavior = () => {
     );
   }
 
-  const { kpis, itemRanking, weekdayAverages, heatmap, heatMax, readiness, dateRange, insights } = data;
-  const showPeak = readiness.level !== "insufficient";
+  const { kpis, itemRanking, weekdayAverages, heatmap, heatMax, readiness, dateRange, insights, earlyNarratives } = data;
+  const isEarly = readiness.level === "early";
+  const showPeak = readiness.level !== "insufficient"; // includes early/preliminary/ready/deep
   const isPreliminary = readiness.level === "preliminary";
   const isDeep = readiness.level === "deep";
+  const progressTo14 = Math.min(100, Math.round((readiness.daysCount / 14) * 100));
+  const progressTo28 = Math.min(100, Math.round((readiness.daysCount / 28) * 100));
 
   const subtitle = `تقرير الكاشير · ${dateRange.totalDays} يوم${dateRange.minDate ? ` · ${dateRange.minDate} → ${dateRange.maxDate}` : ""}`;
 
@@ -156,6 +159,36 @@ const Behavior = () => {
           <AlertCircle size={16} className="text-warning flex-shrink-0 mt-0.5" />
           <div className="flex-[1] text-[11px] text-foreground leading-relaxed">
             <b>عتبة الجاهزية لم تُستوفَ بعد.</b> {readiness.message} (نعرض الأصناف فقط، ونحجب تحليل الذروة وخريطة الحرارة.)
+          </div>
+        </div>
+      )}
+      {isEarly && (
+        <div className="mb-4 bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
+          <div className="flex items-start gap-2 mb-2">
+            <AlertCircle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 text-[11px] text-foreground leading-relaxed">
+              🧪 <b>{readiness.message}</b>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div>
+              <div className="flex justify-between text-[9px] text-gray-light mb-1">
+                <span>التقدم نحو 14 يوم (تحليل أولي)</span>
+                <span className="font-semibold text-foreground">{readiness.daysCount}/14</span>
+              </div>
+              <div className="h-1.5 bg-background rounded-sm overflow-hidden">
+                <div className="h-full bg-orange-500 rounded-sm" style={{ width: `${progressTo14}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-[9px] text-gray-light mb-1">
+                <span>التقدم نحو 28 يوم (تحليل موثوق)</span>
+                <span className="font-semibold text-foreground">{readiness.daysCount}/28</span>
+              </div>
+              <div className="h-1.5 bg-background rounded-sm overflow-hidden">
+                <div className="h-full bg-success rounded-sm" style={{ width: `${progressTo28}%` }} />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -184,14 +217,14 @@ const Behavior = () => {
               <MetricCard
                 label="🔥 ذروة الأسبوع"
                 value={showPeak ? `${kpis.peakDay} ${kpis.peakHour}` : "—"}
-                sub={showPeak ? `متوسط ${fmt(kpis.peakValue)} ر.س/إيصال (عينة ${kpis.peakSamples} يوم)` : "بحاجة لبيانات أكثر"}
+                sub={showPeak ? `${isEarly ? "مبدئي · " : ""}متوسط ${fmt(kpis.peakValue)} ر.س/إيصال (عينة ${kpis.peakSamples} يوم)` : "بحاجة لبيانات أكثر"}
               />
             </div>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-[260px] text-right" dir="rtl">
             <div className="text-[11px] font-bold text-foreground mb-1">ذروة الأسبوع</div>
             <div className="text-[10px] text-muted-foreground leading-relaxed">
-              اليوم والساعة الأعلى بمتوسط الإيراد لكل إيصال (بتوقيت الرياض). نحتاج 14 يوم على الأقل لعرضها.
+              اليوم والساعة الأعلى بمتوسط الإيراد لكل إيصال (بتوقيت الرياض). {isEarly ? "النتائج مبدئية حتى تجمع 14 يوم على الأقل." : "تتحدث تلقائياً مع كل مزامنة."}
             </div>
           </TooltipContent>
         </Tooltip>
@@ -249,6 +282,34 @@ const Behavior = () => {
         </Tooltip>
       </div>
       </TooltipProvider>
+
+      {isEarly && earlyNarratives && earlyNarratives.length > 0 && (
+        <div className="mb-4 bg-surface border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-bold text-foreground">🧪 رؤى مبدئية (بناءً على البيانات الحالية)</div>
+            <span className="text-[9px] text-orange-500 bg-orange-500/10 border border-orange-500/30 rounded px-2 py-0.5">
+              بيانات مبدئية ({readiness.daysCount} يوم)
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {earlyNarratives.map((n, i) => {
+              const toneClasses = {
+                success: "border-success/30 bg-success/5",
+                warning: "border-orange-500/30 bg-orange-500/5",
+                danger: "border-danger/30 bg-danger/5",
+                info: "border-blue-500/30 bg-blue-500/5",
+                neutral: "border-border bg-background",
+              }[n.tone];
+              return (
+                <div key={i} className={`flex items-start gap-2 p-2.5 rounded-lg border ${toneClasses}`}>
+                  <span className="text-[16px] flex-shrink-0 leading-none mt-0.5">{n.emoji}</span>
+                  <div className="text-[11px] text-foreground leading-relaxed">{n.text}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {isDeep && insights && insights.narratives.length > 0 && (
         <div className="mb-4 bg-surface border border-border rounded-lg p-4">
@@ -331,10 +392,11 @@ const Behavior = () => {
         <div className="flex items-center justify-between mb-3">
           <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider">أوقات الذروة — متوسط الإيراد لكل ساعة (بتوقيت الرياض)</div>
           {isPreliminary && <span className="text-[9px] text-blue-400 bg-blue-500/10 border border-blue-500/30 rounded px-2 py-0.5">🟡 بيانات أولية</span>}
+          {isEarly && <span className="text-[9px] text-orange-500 bg-orange-500/10 border border-orange-500/30 rounded px-2 py-0.5">🧪 عيّنة صغيرة</span>}
         </div>
         {!showPeak ? (
           <div className="text-center py-10 text-[11px] text-gray-light">
-            🔒 خريطة الحرارة محجوبة — استمر بمزامنة الكاشير حتى تتجمع 14 يوم على الأقل.
+            🔒 خريطة الحرارة محجوبة — تحتاج 3 أيام على الأقل من البيانات.
           </div>
         ) : (
         <div className="overflow-x-auto">

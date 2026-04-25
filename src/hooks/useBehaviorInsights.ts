@@ -40,7 +40,7 @@ const riyadhHour = (iso: string | null): number | null => {
   return (d.getUTCHours() + 3) % 24;
 };
 
-export type ReadinessLevel = "insufficient" | "preliminary" | "ready" | "deep";
+export type ReadinessLevel = "insufficient" | "early" | "preliminary" | "ready" | "deep";
 
 export interface NarrativeItem {
   emoji: string;
@@ -184,6 +184,9 @@ export const useBehaviorInsights = ({ fromDate, toDate }: BehaviorOptions = {}) 
     } else if (daysCount >= 14) {
       level = "preliminary";
       message = `بيانات أولية (${daysCount} يوم) — اعتبر النتائج تقريبية حتى تصل 28 يوم.`;
+    } else if (daysCount >= 3) {
+      level = "early";
+      message = `تحليل مبدئي (${daysCount} يوم) — الأرقام إرشادية وتُحدَّث تلقائياً كلما زادت البيانات.`;
     } else {
       message = `بيانات غير كافية (${daysCount} يوم فقط) — نحتاج 14 يوم على الأقل لعرض الذروة، و28 لاعتمادها.`;
     }
@@ -283,6 +286,52 @@ export const useBehaviorInsights = ({ fromDate, toDate }: BehaviorOptions = {}) 
       };
     }
 
+    // Soft narratives — only when level === "early" (preliminary indicators based on small sample)
+    let earlyNarratives: NarrativeItem[] | null = null;
+    if (level === "early" && strongestDay && weakestDay) {
+      // Compute peak hour span using the same logic, but with relaxed checks
+      const hourTotals = HOURS.map((_, slot) => {
+        let sum = 0, count = 0;
+        for (let di = 0; di < heatmap.length; di++) {
+          const c = heatmap[di][slot];
+          if (c.sampleDays > 0) { sum += c.avg; count += 1; }
+        }
+        return count ? sum / count : 0;
+      });
+      let bestStart = 0, bestSum = -1;
+      for (let i = 0; i <= hourTotals.length - 3; i++) {
+        const s = hourTotals[i] + hourTotals[i + 1] + hourTotals[i + 2];
+        if (s > bestSum) { bestSum = s; bestStart = i; }
+      }
+      const earlyPeakHourSpan = bestSum > 0 ? `${HOUR_LABELS[bestStart]} – ${HOUR_LABELS[bestStart + 2]}` : null;
+
+      earlyNarratives = [];
+      earlyNarratives.push({
+        emoji: "🔥",
+        tone: "info",
+        text: `حتى الآن، ${strongestDay.day} هي الأعلى بـ ${Math.round(strongestDay.avg).toLocaleString("en-US")} ر.س متوسط (عيّنة ${strongestDay.sampleDays} يوم).`,
+      });
+      if (weakestDay.day !== strongestDay.day) {
+        earlyNarratives.push({
+          emoji: "📉",
+          tone: "neutral",
+          text: `${weakestDay.day} هي الأهدأ مبدئياً بـ ${Math.round(weakestDay.avg).toLocaleString("en-US")} ر.س — قد يتغيّر مع تجمّع المزيد من البيانات.`,
+        });
+      }
+      if (earlyPeakHourSpan) {
+        earlyNarratives.push({
+          emoji: "🌙",
+          tone: "info",
+          text: `نطاق ساعات الذروة الحالي: ${earlyPeakHourSpan} (مؤشر أولي).`,
+        });
+      }
+      earlyNarratives.push({
+        emoji: "⏳",
+        tone: "warning",
+        text: `هذه نتائج أولية — سنرفع دقّتها تلقائياً عند بلوغ 14 يوم ثم 28 يوم.`,
+      });
+    }
+
     return {
       kpis: {
         peakDay: peakRow >= 0 ? ORDERED_WEEKDAYS_LABEL[peakRow] : "—",
@@ -304,6 +353,7 @@ export const useBehaviorInsights = ({ fromDate, toDate }: BehaviorOptions = {}) 
       readiness: { daysCount, level, message },
       dateRange: { minDate, maxDate, totalDays: daysCount },
       insights,
+      earlyNarratives,
     };
   }, [query.data]);
 
