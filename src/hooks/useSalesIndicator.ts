@@ -38,6 +38,23 @@ export interface ForecastItem {
   trend: "up" | "target" | "warning";
 }
 
+export type SalesReadinessLevel = "insufficient" | "early" | "preliminary" | "ready" | "deep";
+
+export interface SalesNarrativeItem {
+  emoji: string;
+  text: string;
+  tone: "success" | "warning" | "info" | "danger" | "neutral";
+}
+
+export interface SalesReadiness {
+  level: SalesReadinessLevel;
+  message: string;
+  daysCount: number;
+  progressTo14: number;
+  progressTo28: number;
+  progressTo30: number;
+}
+
 const ratingFor = (avg: number): Pick<MonthlyBreakdown, "rating" | "ratingVariant"> => {
   if (avg >= 800) return { rating: "ممتاز", ratingVariant: "success" };
   if (avg >= 600) return { rating: "جيد", ratingVariant: "info" };
@@ -211,6 +228,8 @@ export const useSalesIndicator = ({ fromDate, toDate }: UseSalesIndicatorOptions
       forecasts,
       subtitle,
       daysCount: sorted.length,
+      readiness,
+      narratives,
     };
   }, [rows]);
 
