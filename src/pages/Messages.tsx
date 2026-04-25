@@ -1,35 +1,23 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
-import {
-  Send,
-  MessageSquare,
-  Clock,
-  Copy,
-  Check,
-  Loader2,
-  AlertTriangle,
-  RefreshCw,
-  FileCheck2,
-} from "lucide-react";
+import { Send, MessageSquare, Clock, ChevronDown, Copy, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWhatsappMessages, useWhatsappStats } from "@/hooks/useWhatsappMessages";
-import { useWhatsappTemplates } from "@/hooks/useWhatsappTemplates";
-import { useLoyaltyCustomersForMessaging, type MessagingCustomer } from "@/hooks/useLoyaltyCustomersForMessaging";
 import { formatSaudiPhoneDisplay } from "@/lib/phoneNormalize";
-import {
-  type MetaTemplate,
-  extractVariables,
-  statusVariant as templateStatusVariant,
-  getBodyText,
-} from "@/lib/templateUtils";
-import TemplateSmartForm from "@/components/messages/TemplateSmartForm";
-import TemplatePreviewBubble from "@/components/messages/TemplatePreviewBubble";
-import TemplateSuggestionsCard from "@/components/messages/TemplateSuggestionsCard";
 
-const recentMessagesFallback = [
+const templates = [
+  { id: "welcome", name: "ترحيب عميل جديد", emoji: "👋", body: "أهلاً {name}! شكراً لزيارتك برقرهم 🍔 نتمنى تكون تجربتك ممتازة. تابعنا لعروض حصرية!" },
+  { id: "loyalty", name: "تحديث نقاط الولاء", emoji: "⭐", body: "مرحباً {name}! عندك {points} نقطة في برقرهم. زيارة واحدة كمان وتحصل على وجبة مجانية! 🎁" },
+  { id: "promo", name: "عرض خاص", emoji: "🎉", body: "عرض حصري لعملاء برقرهم! خصم 20% على جميع الوجبات يوم الاثنين 🔥 الكود: BURG20" },
+  { id: "new-item", name: "منتج جديد", emoji: "🍔", body: "جديد في برقرهم! جرّب {product} الجديد — طعم ما يتوصف 🤤 متوفر الحين في الفرع." },
+  { id: "feedback", name: "طلب تقييم", emoji: "📝", body: "شكراً لزيارتك برقرهم {name}! نحب نسمع رأيك 💬 قيّمنا من هنا: {link}" },
+  { id: "birthday", name: "تهنئة عيد ميلاد", emoji: "🎂", body: "كل عام وأنت بخير {name}! 🎂 هديتنا لك: وجبة مجانية من برقرهم. أبرز هالرسالة عند الكاشير ❤️" },
+];
+
+const recentMessages = [
   { to: "عبدالرحمن", phone: "...4521", template: "عرض خاص", status: "delivered", time: "اليوم 2:30م", emoji: "🎉" },
   { to: "محمد الشهري", phone: "...8834", template: "تحديث نقاط", status: "delivered", time: "اليوم 1:15م", emoji: "⭐" },
   { to: "يوسف", phone: "...6612", template: "ترحيب عميل", status: "delivered", time: "أمس 9:00م", emoji: "👋" },
@@ -44,40 +32,25 @@ const statusMap: Record<string, { label: string; variant: "success" | "warning" 
   failed: { label: "فشلت", variant: "danger" },
 };
 
+const customerSegments = [
+  { label: "جميع العملاء", count: 47, emoji: "👥" },
+  { label: "عملاء متكررين", count: 12, emoji: "🔁" },
+  { label: "عملاء VIP (5+ زيارات)", count: 5, emoji: "👑" },
+  { label: "عملاء غير نشطين (30+ يوم)", count: 18, emoji: "😴" },
+  { label: "عملاء جدد (آخر 7 أيام)", count: 8, emoji: "🆕" },
+];
+
 const Messages = () => {
-  const [selectedTemplateName, setSelectedTemplateName] = useState<string>("");
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
-  const [manualPhone, setManualPhone] = useState("");
-  const [parameters, setParameters] = useState<string[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState(0);
+  const [messageBody, setMessageBody] = useState("");
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [phone, setPhone] = useState("");
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const { data: stats } = useWhatsappStats();
   const { data: recentDb } = useWhatsappMessages(10);
-  const { data: customers = [] } = useLoyaltyCustomersForMessaging();
-  const {
-    data: templatesData,
-    isLoading: templatesLoading,
-    error: templatesError,
-    refetch: refetchTemplates,
-    isFetching: templatesFetching,
-  } = useWhatsappTemplates();
-
-  const allTemplates: MetaTemplate[] = templatesData?.templates ?? [];
-  const approvedTemplates = useMemo(
-    () => allTemplates.filter((t) => t.status === "APPROVED"),
-    [allTemplates],
-  );
-
-  const selectedTemplate = useMemo(
-    () => approvedTemplates.find((t) => t.name === selectedTemplateName) ?? null,
-    [approvedTemplates, selectedTemplateName],
-  );
-
-  const selectedCustomer: MessagingCustomer | null = useMemo(
-    () => customers.find((c) => c.id === selectedCustomerId) ?? null,
-    [customers, selectedCustomerId],
-  );
 
   const projectRef = "bjfhrrtajyvvdcsrpwqb";
   const webhookUrl = `https://${projectRef}.supabase.co/functions/v1/whatsapp-webhook`;
@@ -89,42 +62,32 @@ const Messages = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const resolvedPhone = selectedCustomer?.phone || manualPhone.trim();
-  const requiredVars = selectedTemplate ? extractVariables(selectedTemplate) : [];
-  const allVarsFilled =
-    requiredVars.length === 0 ||
-    requiredVars.every((_, i) => parameters[i] && parameters[i].trim().length > 0);
-
-  const canSend = !!selectedTemplate && !!resolvedPhone && allVarsFilled && !sending;
-
-  const handleSelectTemplate = (name: string) => {
-    setSelectedTemplateName(name);
-    setParameters([]);
-  };
-
-  const handleSend = async () => {
-    if (!selectedTemplate || !resolvedPhone) return;
+  const handleSendWhatsapp = async () => {
+    if (!phone.trim()) {
+      toast.error("أدخل رقم الجوال");
+      return;
+    }
+    if (!messageBody.trim()) {
+      toast.error("اكتب نص الرسالة");
+      return;
+    }
     setSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "send-whatsapp-message",
-        {
-          body: {
-            kind: "template",
-            to: resolvedPhone,
-            template_name: selectedTemplate.name,
-            language: selectedTemplate.language || "ar",
-            parameters: parameters.slice(0, requiredVars.length),
-            customer_id: selectedCustomerId || null,
-          },
+      const { data, error } = await supabase.functions.invoke("send-whatsapp-message", {
+        body: {
+          to: phone.trim(),
+          message: messageBody.trim(),
+          template_name: selectedTemplate ?? null,
         },
-      );
+      });
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error ?? "فشل الإرسال");
-      toast.success(`تم إرسال القالب إلى ${data.to}`);
-      setParameters([]);
-      setManualPhone("");
-      setSelectedCustomerId("");
+      if (!data?.success) {
+        throw new Error(data?.error ?? "فشل الإرسال");
+      }
+      toast.success(`تم إرسال الرسالة إلى ${data.to}`);
+      setPhone("");
+      setMessageBody("");
+      setSelectedTemplate(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "خطأ غير متوقع";
       toast.error(`فشل الإرسال: ${msg}`);
@@ -133,291 +96,158 @@ const Messages = () => {
     }
   };
 
-  const isTokenExpired =
-    !!templatesError &&
-    /access token|expired|OAuthException/i.test(String((templatesError as Error)?.message ?? ""));
+  const handleSelectTemplate = (t: typeof templates[0]) => {
+    setSelectedTemplate(t.id);
+    setMessageBody(t.body);
+    setShowTemplates(false);
+  };
 
   return (
     <div className="animate-fade-in">
-      <PageHeader
-        title="الرسائل النصية"
-        subtitle="إرسال قوالب واتساب معتمدة من Meta · بيانات حقيقية"
-        badge="WhatsApp Cloud API"
-      />
+      <PageHeader title="الرسائل النصية" subtitle="إرسال رسائل واتساب وSMS للعملاء · Twilio" badge="جديد" />
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <MetricCard label="📨 رسائل مرسلة" value={String(stats?.totalSent ?? 0)} sub="إجمالي" />
         <MetricCard label="✅ نسبة النجاح" value={`${stats?.successRate ?? 0}%`} sub="من الرسائل المرسلة" subColor="success" />
-        <MetricCard
-          label="📋 قوالب معتمدة"
-          value={String(templatesData?.approved ?? 0)}
-          sub={`من ${templatesData?.total ?? 0} قالب`}
-          subColor={(templatesData?.approved ?? 0) > 0 ? "success" : "warning"}
-        />
+        <MetricCard label="👥 العملاء المستهدفين" value="47" sub="عميل مسجّل بالنظام" />
         <MetricCard label="📖 مقروءة" value={String(stats?.read ?? 0)} sub="عبر واتساب" subColor="success" />
       </div>
 
-      {/* تنبيه انتهاء التوكن */}
-      {isTokenExpired && (
-        <div className="ios-card mb-6 border-2 border-destructive/40 bg-destructive/5">
-          <div className="flex items-start gap-3">
-            <span className="text-[24px]">⚠️</span>
-            <div className="flex-1">
-              <div className="text-[13px] font-bold text-destructive mb-1">
-                Access Token الخاص بـ Meta منتهي الصلاحية
-              </div>
-              <div className="text-[11px] text-foreground/80 leading-relaxed">
-                التوكن المؤقت من Meta يخلص كل 24 ساعة. حدّث <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">WHATSAPP_ACCESS_TOKEN</code> أو
-                {" "}<strong>أنشئ توكن دائم</strong> عبر System User (الخطوات بالأسفل ⬇️).
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* الصف الرئيسي: عمودين كما في الواجهة السابقة */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        {/* العمود الأيسر (col-span-2): نموذج الإرسال */}
+        {/* إرسال رسالة */}
         <div className="col-span-2 ios-card">
           <div className="text-[11px] font-medium text-muted-foreground mb-4 flex items-center gap-2">
             <Send size={14} /> إرسال رسالة جديدة
           </div>
 
-          {/* القالب المختار */}
+          {/* اختيار الشريحة */}
           <div className="mb-4">
-            <div className="text-[10px] text-muted-foreground mb-2 font-medium flex items-center gap-1.5">
-              <FileCheck2 size={11} /> القالب المعتمد من Meta
+            <div className="text-[10px] text-muted-foreground mb-2 font-medium">🎯 الشريحة المستهدفة</div>
+            <div className="flex flex-wrap gap-2">
+              {customerSegments.map((seg, i) => (
+                <button
+                  key={seg.label}
+                  onClick={() => setSelectedSegment(i)}
+                  className={`text-[11px] px-3 py-1.5 rounded-full transition-all ${
+                    selectedSegment === i
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "bg-background text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {seg.emoji} {seg.label} ({seg.count})
+                </button>
+              ))}
             </div>
-            {!selectedTemplate ? (
-              <div className="text-[11px] text-muted-foreground bg-muted/40 rounded-xl p-3 border border-dashed border-border">
-                👈 اختر قالباً من القائمة الجانبية لبدء الإرسال
-              </div>
-            ) : (
-              <div className="bg-background rounded-xl p-3 border border-primary/30">
-                <div className="flex items-center justify-between mb-1">
-                  <code className="text-[11px] font-bold text-primary" dir="ltr">
-                    {selectedTemplate.name}
-                  </code>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded border ${templateStatusVariant(selectedTemplate.status).color}`}>
-                    {templateStatusVariant(selectedTemplate.status).label}
-                  </span>
-                </div>
-                <div className="text-[10px] text-muted-foreground line-clamp-2">
-                  {getBodyText(selectedTemplate)}
-                </div>
+          </div>
+
+          {/* اختيار القالب */}
+          <div className="mb-4 relative">
+            <div className="text-[10px] text-muted-foreground mb-2 font-medium">📋 اختر قالب جاهز</div>
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="w-full flex items-center justify-between bg-background rounded-xl px-4 py-3 text-[12px] text-foreground border border-border hover:border-primary/30 transition-colors"
+            >
+              <span>
+                {selectedTemplate
+                  ? `${templates.find(t => t.id === selectedTemplate)?.emoji} ${templates.find(t => t.id === selectedTemplate)?.name}`
+                  : "اختر قالب..."
+                }
+              </span>
+              <ChevronDown size={14} className={`text-muted-foreground transition-transform ${showTemplates ? "rotate-180" : ""}`} />
+            </button>
+            {showTemplates && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden">
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => handleSelectTemplate(t)}
+                    className="w-full text-right px-4 py-3 text-[12px] hover:bg-muted transition-colors flex items-center gap-2 border-b border-border last:border-0"
+                  >
+                    <span className="text-[16px]">{t.emoji}</span>
+                    <div>
+                      <div className="font-semibold text-foreground">{t.name}</div>
+                      <div className="text-[10px] text-muted-foreground line-clamp-1">{t.body}</div>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </div>
 
-          {selectedTemplate && (
-            <>
-              {/* المستلم */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <div className="text-[10px] text-muted-foreground mb-2 font-medium">👤 العميل</div>
-                  <select
-                    value={selectedCustomerId}
-                    onChange={(e) => setSelectedCustomerId(e.target.value)}
-                    className="w-full h-10 bg-background border border-border rounded-lg px-3 text-[12px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                  >
-                    <option value="">اختر عميل...</option>
-                    {customers
-                      .filter((c) => c.hasValidPhone)
-                      .slice(0, 100)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name || "بدون اسم"} — {formatSaudiPhoneDisplay(c.phone)}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div>
-                  <div className="text-[10px] text-muted-foreground mb-2 font-medium">📱 أو رقم يدوي</div>
-                  <input
-                    type="tel"
-                    value={manualPhone}
-                    onChange={(e) => setManualPhone(e.target.value)}
-                    disabled={!!selectedCustomerId}
-                    placeholder="0501234567"
-                    dir="ltr"
-                    className="w-full h-10 bg-background border border-border rounded-lg px-3 text-[12px] text-right focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all disabled:opacity-50"
-                  />
-                </div>
-              </div>
+          {/* نص الرسالة */}
+          <div className="mb-4">
+            <div className="text-[10px] text-muted-foreground mb-2 font-medium">✏️ نص الرسالة</div>
+            <textarea
+              value={messageBody}
+              onChange={(e) => setMessageBody(e.target.value)}
+              placeholder="اكتب رسالتك هنا أو اختر قالب جاهز..."
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-[12px] text-foreground placeholder:text-muted-foreground resize-none h-28 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+            />
+            <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+              <span>المتغيرات: {"{name}"} {"{points}"} {"{product}"} {"{link}"}</span>
+              <span>{messageBody.length}/1600</span>
+            </div>
+          </div>
 
-              {/* النموذج الذكي + المعاينة */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pt-4 border-t border-border">
-                <TemplateSmartForm
-                  template={selectedTemplate}
-                  customer={selectedCustomer}
-                  parameters={parameters}
-                  onChange={setParameters}
-                />
-                <TemplatePreviewBubble
-                  template={selectedTemplate}
-                  parameters={parameters}
-                />
-              </div>
+          {/* رقم الجوال للإرسال الفوري */}
+          <div className="mb-4">
+            <div className="text-[10px] text-muted-foreground mb-2 font-medium">📱 رقم الجوال (للاختبار)</div>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="مثال: 0501234567"
+              dir="ltr"
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all text-right"
+            />
+          </div>
 
-              {/* زر الإرسال */}
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <div className="text-[10px] text-muted-foreground">
-                  {!resolvedPhone
-                    ? "⚠️ اختر عميل أو أدخل رقم"
-                    : !allVarsFilled
-                    ? `⚠️ اكمل تعبئة المتغيرات (${requiredVars.length})`
-                    : `✓ جاهز للإرسال إلى ${formatSaudiPhoneDisplay(resolvedPhone) || resolvedPhone}`}
-                </div>
-                <button
-                  onClick={handleSend}
-                  disabled={!canSend}
-                  className="flex items-center gap-2 bg-success text-primary-foreground px-5 py-2.5 rounded-xl text-[12px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {sending ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />}
-                  {sending ? "جاري الإرسال..." : "إرسال القالب"}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* العمود الجانبي: قوالب Meta */}
-        <div className="ios-card">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-[11px] font-medium text-muted-foreground">📋 قوالب Meta المعتمدة</div>
+          {/* أزرار الإرسال */}
+          <div className="flex gap-3">
             <button
-              onClick={() => refetchTemplates()}
-              disabled={templatesFetching}
-              className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+              onClick={handleSendWhatsapp}
+              disabled={!messageBody || !phone || sending}
+              className="flex items-center gap-2 bg-success text-primary-foreground px-5 py-2.5 rounded-xl text-[12px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <RefreshCw size={10} className={templatesFetching ? "animate-spin" : ""} />
+              {sending ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />}
+              {sending ? "جاري الإرسال..." : "إرسال واتساب"}
+            </button>
+            <button
+              disabled
+              title="قريباً"
+              className="flex items-center gap-2 bg-muted text-muted-foreground px-5 py-2.5 rounded-xl text-[12px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Send size={14} />
+              إرسال SMS
             </button>
           </div>
+        </div>
 
-          {templatesLoading ? (
-            <div className="text-[11px] text-muted-foreground flex items-center gap-2 py-4">
-              <Loader2 size={12} className="animate-spin" /> جاري التحميل...
-            </div>
-          ) : isTokenExpired ? (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-[11px] text-destructive">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>التوكن منتهي. حدّثه عشان نجلب القوالب.</span>
-            </div>
-          ) : templatesError ? (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-[11px] text-destructive">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>تعذّر جلب القوالب من Meta.</span>
-            </div>
-          ) : approvedTemplates.length === 0 ? (
-            <div className="text-[11px] text-muted-foreground bg-muted/40 rounded-lg p-3 text-center">
-              ما عندك قوالب معتمدة بعد. شوف الاقتراحات الجاهزة بالأسفل ⬇️
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[480px] overflow-y-auto">
-              {approvedTemplates.map((t) => {
-                const isSelected = selectedTemplateName === t.name;
-                const sv = templateStatusVariant(t.status);
-                const body = getBodyText(t);
-                return (
-                  <button
-                    key={`${t.name}-${t.language}`}
-                    onClick={() => handleSelectTemplate(t.name)}
-                    className={`w-full text-right p-3 rounded-xl transition-all border ${
-                      isSelected
-                        ? "bg-primary/10 border-primary/30"
-                        : "bg-background border-border hover:border-primary/20"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <code className="text-[11px] font-bold text-foreground truncate" dir="ltr">
-                        {t.name}
-                      </code>
-                      <span className={`text-[8px] px-1.5 py-0.5 rounded border shrink-0 ${sv.color}`}>
-                        {sv.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[8px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        {t.category}
-                      </span>
-                      <span className="text-[8px] text-muted-foreground" dir="ltr">
-                        {t.language}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
-                      {body}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+        {/* قوالب سريعة */}
+        <div className="ios-card">
+          <div className="text-[11px] font-medium text-muted-foreground mb-4">📋 القوالب الجاهزة</div>
+          <div className="space-y-2">
+            {templates.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => handleSelectTemplate(t)}
+                className={`w-full text-right p-3 rounded-xl transition-all border ${
+                  selectedTemplate === t.id
+                    ? "bg-primary/10 border-primary/30"
+                    : "bg-background border-border hover:border-primary/20"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[16px]">{t.emoji}</span>
+                  <span className="text-[12px] font-semibold text-foreground">{t.name}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{t.body}</div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-
-      {/* قوالب مقترحة جاهزة */}
-      {!templatesLoading && approvedTemplates.length === 0 && !isTokenExpired && (
-        <div className="mb-6">
-          <TemplateSuggestionsCard />
-        </div>
-      )}
-
-      {/* دليل System User Token الدائم */}
-      {isTokenExpired && (
-        <div className="ios-card mb-6 border-2 border-dashed border-primary/30">
-          <div className="flex items-start gap-3 mb-3">
-            <span className="text-[24px]">🔐</span>
-            <div className="flex-1">
-              <div className="text-[13px] font-bold text-foreground mb-1">
-                خطوات الحصول على Access Token دائم (System User)
-              </div>
-              <div className="text-[11px] text-muted-foreground">
-                التوكن الدائم لا ينتهي بعد 24 ساعة، ويُستخدم للإنتاج.
-              </div>
-            </div>
-          </div>
-
-          <ol className="space-y-2.5 text-[11px] text-foreground/80 leading-relaxed list-none pr-0">
-            {[
-              {
-                t: "افتح Meta Business Settings",
-                d: "روح على business.facebook.com → اختر حسابك التجاري → ⚙️ Settings.",
-              },
-              {
-                t: "أنشئ System User",
-                d: "Users → System Users → Add → اكتب اسم (مثل: burgerhum_api) → اختر Role: Admin → Create.",
-              },
-              {
-                t: "أضف Assets للـ System User",
-                d: "اختار الـ User اللي أنشأته → Add Assets → WhatsApp Accounts → اختر حساب WhatsApp التجاري → فعّل Full Control.",
-              },
-              {
-                t: "أنشئ التوكن",
-                d: "نفس الصفحة → Generate New Token → اختر التطبيق (App) → الصلاحيات: whatsapp_business_messaging + whatsapp_business_management → Token Expiration: Never → Generate Token.",
-              },
-              {
-                t: "انسخ التوكن وحدّثه هنا",
-                d: "انسخ الـ Token بسرعة (يظهر مرة وحدة فقط!) → ارجع هنا واضغط زر تحديث WHATSAPP_ACCESS_TOKEN.",
-              },
-            ].map((step, i) => (
-              <li key={i} className="flex gap-3">
-                <span className="shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-bold">
-                  {i + 1}
-                </span>
-                <div>
-                  <div className="font-semibold text-foreground">{step.t}</div>
-                  <div className="text-muted-foreground">{step.d}</div>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <div className="mt-3 p-2.5 rounded-lg bg-warning/10 border border-warning/20 text-[10px] text-foreground/80">
-            💡 <strong>ملاحظة:</strong> System User token صلاحياته مرتبطة بحسابك التجاري في Meta. لو حذفت الـ User أو غيّرت Role، التوكن يبطل.
-          </div>
-        </div>
-      )}
 
       {/* سجل الرسائل */}
       <div className="ios-card">
@@ -446,8 +276,8 @@ const Messages = () => {
               );
             })
           ) : (
-            recentMessagesFallback.map((msg, i) => (
-              <div key={i} className={`flex items-center justify-between py-3 text-[13px] ${i < recentMessagesFallback.length - 1 ? "border-b border-border" : ""}`}>
+            recentMessages.map((msg, i) => (
+              <div key={i} className={`flex items-center justify-between py-3 text-[13px] ${i < recentMessages.length - 1 ? "border-b border-border" : ""}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-[18px]">{msg.emoji}</span>
                   <div>
