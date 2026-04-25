@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Calendar as CalendarIcon, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,46 +10,47 @@ import { useSalesIndicator } from "@/hooks/useSalesIndicator";
 import { fmt, formatArabicDayMonth } from "@/lib/format";
 
 const SalesIndicator = () => {
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  const [rangeDays, setRangeDays] = useState<number>(30); // 7 | 30 | 0 (=90+ all)
   const [posSyncOpen, setPosSyncOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { isLoading, error, data } = useSalesIndicator({
-    fromDate: fromDate || undefined,
-    toDate: toDate || undefined,
-  });
+  const computeRange = (days: number) => {
+    if (days <= 0) return { fromDate: undefined, toDate: undefined };
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days + 1);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    return { fromDate: iso(start), toDate: iso(end) };
+  };
+  const { fromDate, toDate } = computeRange(rangeDays);
+  const hasFilter = rangeDays > 0;
 
-  const hasFilter = !!(fromDate || toDate);
-  const resetFilter = () => { setFromDate(""); setToDate(""); };
+  const { isLoading, error, data } = useSalesIndicator({
+    fromDate,
+    toDate,
+  });
 
   const Toolbar = (
     <div className="flex items-center gap-2 mb-3 flex-wrap">
-      <div className="flex items-center gap-1.5 bg-surface border border-border rounded-lg px-2 py-1.5">
-        <CalendarIcon size={12} className="text-gray-light" />
-        <span className="text-[10px] text-gray-light">من</span>
-        <input
-          type="date"
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-          className="bg-transparent text-[11px] text-foreground outline-none w-[120px]"
-        />
-        <span className="text-[10px] text-gray-light mx-1">إلى</span>
-        <input
-          type="date"
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-          className="bg-transparent text-[11px] text-foreground outline-none w-[120px]"
-        />
+      <div className="flex items-center gap-1.5">
+        {[
+          { label: "7 أيام", d: 7 },
+          { label: "30 يوم", d: 30 },
+          { label: "90+ يوم", d: 0 },
+        ].map((p) => (
+          <button
+            key={p.d}
+            onClick={() => setRangeDays(p.d)}
+            className={`text-[11px] rounded-full px-3.5 py-1.5 border transition-colors ${
+              rangeDays === p.d
+                ? "bg-primary text-primary-foreground border-primary font-semibold"
+                : "bg-surface text-gray-light hover:text-foreground border-border"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
-      {hasFilter && (
-        <button
-          onClick={resetFilter}
-          className="flex items-center gap-1 text-[10px] text-gray-light hover:text-foreground bg-surface border border-border rounded-lg px-2 py-1.5 transition-colors"
-        >
-          <X size={10} /> إعادة تعيين
-        </button>
-      )}
       <button
         onClick={() => setPosSyncOpen(true)}
         className="flex items-center gap-1.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors mr-auto"
