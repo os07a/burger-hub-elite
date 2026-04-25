@@ -1,154 +1,169 @@
-# ربط واتساب عبر Meta Cloud API + إعادة بناء فلو الرسائل
+## 🎯 الهدف
 
-## الهدف
-ربط فعلي مع **Meta WhatsApp Cloud API** (بدون Twilio) + إعادة بناء صفحة `/messages` لتشتغل ببيانات حقيقية من قاعدة الولاء، مع إرسال فعلي وتتبع حالة التوصيل.
-
----
-
-## 📘 المرحلة 0 — دليل استخراج القيم الـ 5 من Meta (تسوّيها بالتوازي)
-
-### الخطوات السريعة:
-1. **افتح** developers.facebook.com → My Apps → Create App → اختار **Business**
-2. داخل التطبيق: Add Product → اختار **WhatsApp** → Set up
-3. هيظهر لك Test number مجاني تلقائياً (تقدر ترسل لـ 5 أرقام تجريبية)
-
-### القيم الـ 5 ووين تجيبها:
-
-| Secret Name | المكان |
-|-------------|--------|
-| `WHATSAPP_ACCESS_TOKEN` | WhatsApp → API Setup → "Temporary access token" (للتجربة، 24h). للإنتاج: System Users → Generate permanent token |
-| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp → API Setup → تحت "From" |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | WhatsApp → API Setup → "WhatsApp Business Account ID" |
-| `WHATSAPP_VERIFY_TOKEN` | **تختاره أنت** — أي نص (مثل `burgerhum_secret_2025`) |
-| `WHATSAPP_APP_SECRET` | App Settings → Basic → "App Secret" → Show |
-
-### إضافة الأرقام التجريبية (مهم!):
-WhatsApp → API Setup → To → Manage phone number list → أضف رقمك ورقمين تجريبيين
+ربط نظام الرسائل بـ Meta WhatsApp Cloud API لسحب القوالب المعتمدة فعلياً، مع توفير **محتوى احترافي جاهز** (تعبئة ذكية من بيانات العميل + اقتراحات نصية للنصوص الثابتة)، بالإضافة لدليل إنشاء قوالب جديدة في حال عدم وجودها.
 
 ---
 
-## 🔧 المرحلة 1 — Edge Functions
+## 1. إضافة Secret جديد
 
-### `send-whatsapp-message` (جديد)
-- يستقبل: `{ to, message, template_name?, customer_id? }`
-- يطبّع الرقم السعودي: `05x...` → `9665x...`
-- يستدعي `POST https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages`
-- يحفظ في `whatsapp_messages` (status: sent/failed)
-- JWT validation + Zod input validation
-
-### `whatsapp-webhook` (جديد)
-- `verify_jwt = false` (Meta يستدعيه بدون auth)
-- **GET**: تحقّق `hub.verify_token` ضد `WHATSAPP_VERIFY_TOKEN`
-- **POST**: يستقبل تحديثات الحالة (delivered/read/failed) ويحدّث السجل
-- يتحقق من توقيع `X-Hub-Signature-256` بـ `WHATSAPP_APP_SECRET`
-
-### تحديث `supabase/config.toml`:
-إضافة block للـ webhook بـ `verify_jwt = false`
+سيتم طلب إضافة `WHATSAPP_BUSINESS_ACCOUNT_ID` (WABA ID) عبر أداة الـ Secrets قبل أي تعديل بالكود. الموقع في Meta:
+- **Meta Business Suite → Settings → Business Assets → WhatsApp Accounts → [حسابك] → Account Info**
+- رقم مكوّن من 15-16 خانة.
 
 ---
 
-## 🗄️ المرحلة 2 — Migration
+## 2. Edge Functions جديدة/معدّلة
 
-تحديث `whatsapp_messages`:
-- إضافة `customer_id` (uuid, nullable) للربط مع `loyalty_customers`
-- إضافة `delivered_at`, `read_at` (timestamptz, nullable)
-- توسيع `status` ليدعم: `sent | delivered | read | failed | error`
+### 2.1 `list-whatsapp-templates` (جديدة)
+- تستدعي: `GET https://graph.facebook.com/v21.0/{WABA_ID}/message_templates`
+- ترجع: قائمة القوالب مع `name`, `language`, `status`, `category`, `components` (لاستخراج المتغيرات `{{1}}`, `{{2}}`...)
+- تُفلتر القوالب: تعرض **APPROVED** فقط للإرسال، مع شارات بصرية للحالات الأخرى (PENDING, REJECTED).
+- Auth: تتطلب JWT (تستخدم `userClient.auth.getClaims`).
+- Cache: 5 دقائق client-side عبر React Query.
 
----
-
-## 🎨 المرحلة 3 — إعادة بناء `/messages`
-
-### مكوّنات جديدة:
-
-**`src/lib/phoneNormalize.ts`** — `normalizeSaudiPhone(raw)` يحوّل `05xxx`/`5xxx`/`+9665xxx` → `9665xxxxxxxx`، يرجّع `null` للأرقام الخاطئة.
-
-**`src/lib/messageTemplates.ts`** — 4 قوالب ثابتة (ترحيب، مكافأة ولاء، عرض خاص، تذكير زيارة) مع متغيرات `{name}`, `{points}`, `{visits}`.
-
-**`src/hooks/useLoyaltyCustomersForMessaging.ts`** — جلب العملاء بأرقام صحيحة فقط مع تصنيف VIP/Regular/Inactive.
-
-**`src/hooks/useWhatsappMessages.ts`** — آخر 20 رسالة + Realtime subscription.
-
-**`src/components/messages/RecipientsList.tsx`** — قائمة عملاء مع checkbox، "اختر/إلغاء الكل"، شارة صحة الرقم، عداد "X من Y".
-
-**`src/components/messages/MessagePreview.tsx`** — معاينة حية لأول 3 عملاء بعد استبدال المتغيرات.
-
-**`src/components/messages/SendProgress.tsx`** — Modal أثناء الإرسال الجماعي مع Progress bar فعلي وقائمة نتائج.
-
-**`src/components/messages/EmptyCustomersState.tsx`** — يظهر لما `loyalty_customers` فاضي مع زر "🔄 مزامنة عملاء بونات".
-
-### تعديل `src/pages/Messages.tsx`:
-- حذف كل البيانات الوهمية
-- KPIs فعلية من DB
-- شيل dropdown القوالب المكرر (السايدبار فقط)
-- إخفاء زر SMS (شارة "قريباً")
-- زر جدولة → disabled
-- زر "📱 إرسال واتساب" يصير فعلي عبر `send-whatsapp-message`
+### 2.2 `send-whatsapp-message` (تحديث)
+تحويلها لـ Discriminated Union schema:
+```ts
+// kind: "text"  → الوضع الحالي (24h window)
+// kind: "template" → جديد
+{
+  kind: "template",
+  to: string,
+  template_name: string,
+  language: string,           // مثل "ar" أو "en_US"
+  parameters: string[]        // قيم {{1}}, {{2}}, ... بالترتيب
+}
+```
+- بناء `components` حسب صيغة Meta.
+- تخزين الرسالة في `whatsapp_messages` مع `template_name` والمتغيرات.
+- التحقق السيرفري إن عدد الـ parameters يطابق متغيرات القالب.
 
 ---
 
-## 🔐 المرحلة 4 — Secrets
+## 3. الواجهة (`src/pages/Messages.tsx`)
 
-سأطلب إضافة 5 secrets:
-`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`
+### الهيكل النهائي
+```
+[KPIs ×4] (يبقى)
+[Webhook Configuration] (يبقى)
+
+╔══ بطاقة "إنشاء رسالة" ══╗
+║ Tabs: [📋 قالب معتمد] [💬 رد سريع 24h]
+║
+║ ── تبويب "قالب معتمد" ──
+║   • Dropdown قوالب Meta (APPROVED فقط، مع شارات الحالة)
+║   • معاينة Bubble أخضر مع المتغيرات مستبدلة
+║   • نموذج ديناميكي للمتغيرات:
+║     - تعبئة تلقائية من بيانات العميل المختار (الاسم/النقاط/الزيارات)
+║     - اقتراحات نصية لكل متغير ثابت (chips قابلة للنقر)
+║   • اختيار العميل (Combobox من loyalty_customers) أو إدخال يدوي
+║   • زر إرسال (disabled حتى تكتمل المتغيرات)
+║
+║ ── تبويب "رد سريع 24h" ──
+║   • تنبيه أصفر للـ window
+║   • حقل رقم + Textarea + عداد أحرف (4096)
+║   • زر إرسال نص حر
+╚══════════════════════════╝
+
+[سجل الرسائل ×47] (يبقى)
+
+╔══ بطاقة "ما عندك قوالب؟" (تظهر فقط إذا 0 APPROVED) ══╗
+║ • دليل مختصر: كيف تنشئ قالب في WhatsApp Manager (3 خطوات + رابط مباشر)
+║ • 5 قوالب احترافية مقترحة جاهزة للنسخ:
+║   1. welcome_burgerhum (ترحيب عميل جديد)
+║   2. loyalty_points_update (تحديث نقاط الولاء)
+║   3. special_offer_promo (عرض ترويجي)
+║   4. visit_reminder (تذكير بالزيارة)
+║   5. thank_you_after_visit (شكر بعد الزيارة)
+║ • لكل قالب: زر نسخ النص + زر نسخ الاسم + ملاحظة الفئة (MARKETING/UTILITY)
+╚════════════════════════════════════════════════════════╝
+```
+
+### مكوّن `TemplateSmartForm.tsx` (جديد) — قلب فكرة "المحتوى الجاهز"
+
+لكل متغير `{{N}}` في القالب نعرض حقل إدخال + **شريحتين فوقه**:
+
+| نوع المتغير | الاكتشاف | السلوك |
+|---|---|---|
+| **اسم العميل** | لو الـ component label يحتوي "name" أو متغير {{1}} في قالب فيه placeholder ترحيبي | تعبئة تلقائية من العميل + اقتراحات: "العميل الكريم"، "أخي العزيز"، "ضيفنا الكريم" |
+| **عدد النقاط** | كلمة "points" | تعبئة من `total_points` |
+| **عدد الزيارات** | كلمة "visits" | تعبئة من `total_visits` |
+| **عرض/خصم** | كلمة "offer/discount" | اقتراحات: "خصم 20%"، "وجبة مجانية"، "ضعف النقاط" |
+| **تاريخ** | كلمة "date" | اقتراحات: "اليوم"، "نهاية الأسبوع"، تاريخ مخصص |
+| **عام** | لا يوجد كلمة معروفة | حقل حر + 3 اقتراحات احترافية باللهجة السعودية المهذبة |
+
+### مكوّن `TemplateSuggestionsCard.tsx` (جديد)
+بطاقة الـ 5 قوالب الجاهزة. كل قالب:
+- اسم مقترح (snake_case)
+- الفئة (UTILITY أو MARKETING)
+- اللغة (ar)
+- النص الكامل الجاهز للصق في WhatsApp Manager
+- زر "نسخ النص" + زر "نسخ الاسم"
 
 ---
 
-## 🔗 المرحلة 5 — ربط Webhook في Meta
+## 4. Hooks جديدة
 
-بعد النشر، URL الـ Webhook:
-`https://bjfhrrtajyvvdcsrpwqb.supabase.co/functions/v1/whatsapp-webhook`
+### `useWhatsappTemplates.ts`
+```ts
+// React Query: queryKey ['whatsapp-templates']
+// staleTime: 5min
+// يستدعي list-whatsapp-templates
+// يرجع: { templates, approvedOnly, isLoading, error }
+```
 
-تحطه في: Meta App → WhatsApp → Configuration → Webhook
-- Callback URL: الرابط أعلاه
-- Verify token: نفس `WHATSAPP_VERIFY_TOKEN`
-- Subscribe to: `messages`
-
----
-
-## 🧪 المرحلة 6 — اختبار
-
-1. مزامنة بونات يدوياً من الزر
-2. اختر عميل واحد (رقمك التجريبي)
-3. اختر قالب "ترحيب"
-4. تحقق من المعاينة الحية
-5. اضغط إرسال → يصلك واتساب فعلياً
-6. الحالة تتحدّث (sent → delivered → read)
+### `useSendWhatsappTemplate.ts`
+```ts
+// Mutation تستدعي send-whatsapp-message بـ kind:"template"
+// onSuccess: refetch ['whatsapp-messages'] + toast نجاح
+// onError: toast بالخطأ من Meta
+```
 
 ---
 
-## 📦 الملفات
+## 5. ملفات سيتم إنشاؤها/تعديلها
 
 **جديدة:**
-- `supabase/functions/send-whatsapp-message/index.ts`
-- `supabase/functions/whatsapp-webhook/index.ts`
-- `src/lib/phoneNormalize.ts`
-- `src/lib/messageTemplates.ts`
-- `src/hooks/useLoyaltyCustomersForMessaging.ts`
-- `src/hooks/useWhatsappMessages.ts`
-- `src/components/messages/RecipientsList.tsx`
-- `src/components/messages/MessagePreview.tsx`
-- `src/components/messages/SendProgress.tsx`
-- `src/components/messages/EmptyCustomersState.tsx`
+- `supabase/functions/list-whatsapp-templates/index.ts`
+- `src/hooks/useWhatsappTemplates.ts`
+- `src/hooks/useSendWhatsappTemplate.ts`
+- `src/components/messages/TemplateSmartForm.tsx`
+- `src/components/messages/TemplateSuggestionsCard.tsx`
+- `src/components/messages/TemplatePreviewBubble.tsx`
+- `src/lib/templateUtils.ts` (parsing components, استخراج متغيرات، detection للنوع)
 
-**معدّلة:** `src/pages/Messages.tsx` (إعادة بناء), `supabase/config.toml`
-
-**Migration:** تحديث `whatsapp_messages`
+**معدّلة:**
+- `supabase/functions/send-whatsapp-message/index.ts` (إضافة kind:"template")
+- `src/pages/Messages.tsx` (دمج Tabs + المكوّنات الجديدة)
 
 ---
 
-## ⚠️ ملاحظات
+## 6. خطوات التنفيذ بالترتيب
 
-1. الرقم التجريبي المجاني: 1,000 محادثة/شهر + 5 أرقام مستقبلين فقط
-2. للإرسال بدون قيود → رقم إنتاج موثّق + قوالب معتمدة (لاحقاً)
-3. Access Token المؤقت يخلص بعد 24h — للإنتاج: System User token دائم
-4. `loyalty_customers` فاضي حالياً — تزامن قبل الاختبار
+1. طلب إضافة `WHATSAPP_BUSINESS_ACCOUNT_ID` كـ Secret + انتظار الموافقة.
+2. إنشاء Edge Function `list-whatsapp-templates` ونشرها.
+3. اختبارها عبر `curl_edge_functions` للتأكد من رجوع القوالب.
+4. تحديث `send-whatsapp-message` لدعم template mode.
+5. بناء الـ Hooks والمكوّنات الجديدة.
+6. دمج Tabs في صفحة Messages مع الحفاظ على KPIs والسجل (47 رسالة).
+7. اختبار الفلو كاملاً: اختيار قالب → تعبئة ذكية → معاينة → إرسال.
 
 ---
 
-## 🎁 النتيجة
+## 7. المحتوى الاحترافي الجاهز للقوالب الـ 5
 
-- زر "إرسال واتساب" يرسل **فعلياً** عبر Meta API
-- معاينة حية قبل الإرسال
-- عداد إرسال جماعي شفاف
-- سجل حقيقي مع حالة التوصيل والقراءة
-- بنية جاهزة لترقية رقم إنتاج لاحقاً
+سيتم تضمينها داخل `TemplateSuggestionsCard` بالصياغة الكاملة (لهجة سعودية مهذبة، RTL، مع emojis مدروسة، تحت 1024 حرف لكل قالب حسب حد Meta). أمثلة مختصرة:
+
+1. **welcome_burgerhum** (UTILITY): «أهلاً وسهلاً {{1}} 👋 شرّفتنا في عائلة برجرهم 🍔 رصيدك: {{2}} نقطة بدايةً. بانتظارك دايماً!»
+2. **loyalty_points_update** (UTILITY): «{{1}} العزيز، رصيدك تحدّث إلى {{2}} نقطة بعد زيارتك الـ{{3}} 🌟»
+3. **special_offer_promo** (MARKETING): «{{1}} 🔥 عرض حصري: {{2}} لين {{3}} — لا يفوتك!»
+4. **visit_reminder** (MARKETING): «اشتقنالك يا {{1}} 💚 آخر زيارة لك كانت قبل فترة، تعال جرّب جديدنا!»
+5. **thank_you_after_visit** (UTILITY): «شكراً {{1}} على زيارتك اليوم 🙏 رصيدك الحالي: {{2}} نقطة. نتشرف بعودتك!»
+
+---
+
+## ⚠️ ملاحظات مهمة
+- لن يتم لمس ملفات الكلاينت Supabase (`client.ts`, `types.ts`).
+- لن يتم تعديل `supabase/config.toml` على مستوى المشروع (فقط إضافة block للـ function الجديدة عند الحاجة).
+- الـ 47 رسالة في السجل تبقى كـ fallback إذا قاعدة البيانات فاضية.
+- شارات الحالة: ✅ APPROVED (أخضر) / ⏳ PENDING (أصفر) / ❌ REJECTED (أحمر).
