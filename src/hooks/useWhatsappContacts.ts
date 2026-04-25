@@ -115,8 +115,9 @@ export function useWhatsappContacts() {
   });
 
   useEffect(() => {
+    const channelName = `whatsapp-contacts-${Math.random().toString(36).slice(2, 10)}`;
     const channel = supabase
-      .channel("whatsapp-contacts-realtime")
+      .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "whatsapp_messages" },
