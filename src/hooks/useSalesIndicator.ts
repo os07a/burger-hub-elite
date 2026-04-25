@@ -45,8 +45,13 @@ const ratingFor = (avg: number): Pick<MonthlyBreakdown, "rating" | "ratingVarian
   return { rating: "حرج", ratingVariant: "danger" };
 };
 
-export const useSalesIndicator = () => {
-  const query = useDailySalesSummary({ limit: 1000 });
+export interface UseSalesIndicatorOptions {
+  fromDate?: string;
+  toDate?: string;
+}
+
+export const useSalesIndicator = ({ fromDate, toDate }: UseSalesIndicatorOptions = {}) => {
+  const query = useDailySalesSummary({ fromDate, toDate, limit: 1000 });
   const rows: DailySalesSummaryRow[] = query.data ?? [];
 
   const computed = useMemo(() => {
@@ -101,6 +106,9 @@ export const useSalesIndicator = () => {
 
     const bestDay = bestDays[0]?.value ?? 0;
     const worstDayActual = worstDays[0]?.value ?? 0;
+    const bestDayInfo = bestDays[0];
+    const worstDayInfo = worstDays[0];
+    const discountPct = totalGross ? (totalDiscounts / totalGross) * 100 : 0;
 
     // Worst-month note
     const worstMonthCount = new Map<string, number>();
@@ -188,6 +196,11 @@ export const useSalesIndicator = () => {
         bestDay,
         worstDay: worstDayActual,
         totalDiscounts,
+        bestDayLabel: bestDayInfo?.label ?? "—",
+        bestDayDate: bestDayInfo?.date ?? "",
+        worstDayLabel: worstDayInfo?.label ?? "—",
+        worstDayDate: worstDayInfo?.date ?? "",
+        discountPct,
       },
       monthlyBreakdown,
       bestDays,
