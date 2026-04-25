@@ -55,9 +55,9 @@ export interface CustomerVars {
 /** Replace {name}, {points}, {visits} placeholders with customer values. */
 export function renderTemplate(body: string, vars: CustomerVars): string {
   return body
-    .replaceAll("{name}", vars.name?.trim() || "عزيزنا")
-    .replaceAll("{points}", String(Math.round(Number(vars.points ?? 0))))
-    .replaceAll("{visits}", String(Number(vars.visits ?? 0)));
+    .replace(/\{name\}/g, vars.name?.trim() || "عزيزنا")
+    .replace(/\{points\}/g, String(Math.round(Number(vars.points ?? 0))))
+    .replace(/\{visits\}/g, String(Number(vars.visits ?? 0)));
 }
 
 /** Find {placeholders} in a string. */
