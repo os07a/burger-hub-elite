@@ -1,385 +1,226 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  MessageSquare, Clock, Send, AlertCircle, Inbox, Loader2,
-  Sparkles, RefreshCw,
-} from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { Send, MessageSquare, Users, Clock, ChevronDown } from "lucide-react";
 
-import { useLoyaltyCustomersForMessaging } from "@/hooks/useLoyaltyCustomersForMessaging";
-import { useWhatsappMessages, useWhatsappStats } from "@/hooks/useWhatsappMessages";
-import { MESSAGE_TEMPLATES, renderTemplate } from "@/lib/messageTemplates";
-import { formatSaudiPhoneDisplay } from "@/lib/phoneNormalize";
+const templates = [
+  { id: "welcome", name: "ترحيب عميل جديد", emoji: "👋", body: "أهلاً {name}! شكراً لزيارتك برقرهم 🍔 نتمنى تكون تجربتك ممتازة. تابعنا لعروض حصرية!" },
+  { id: "loyalty", name: "تحديث نقاط الولاء", emoji: "⭐", body: "مرحباً {name}! عندك {points} نقطة في برقرهم. زيارة واحدة كمان وتحصل على وجبة مجانية! 🎁" },
+  { id: "promo", name: "عرض خاص", emoji: "🎉", body: "عرض حصري لعملاء برقرهم! خصم 20% على جميع الوجبات يوم الاثنين 🔥 الكود: BURG20" },
+  { id: "new-item", name: "منتج جديد", emoji: "🍔", body: "جديد في برقرهم! جرّب {product} الجديد — طعم ما يتوصف 🤤 متوفر الحين في الفرع." },
+  { id: "feedback", name: "طلب تقييم", emoji: "📝", body: "شكراً لزيارتك برقرهم {name}! نحب نسمع رأيك 💬 قيّمنا من هنا: {link}" },
+  { id: "birthday", name: "تهنئة عيد ميلاد", emoji: "🎂", body: "كل عام وأنت بخير {name}! 🎂 هديتنا لك: وجبة مجانية من برقرهم. أبرز هالرسالة عند الكاشير ❤️" },
+];
 
-import RecipientsList from "@/components/messages/RecipientsList";
-import MessagePreview from "@/components/messages/MessagePreview";
-import SendProgress, { type SendResult } from "@/components/messages/SendProgress";
-import EmptyCustomersState from "@/components/messages/EmptyCustomersState";
+const recentMessages = [
+  { to: "عبدالرحمن", phone: "...4521", template: "عرض خاص", status: "delivered", time: "اليوم 2:30م", emoji: "🎉" },
+  { to: "محمد الشهري", phone: "...8834", template: "تحديث نقاط", status: "delivered", time: "اليوم 1:15م", emoji: "⭐" },
+  { to: "يوسف", phone: "...6612", template: "ترحيب عميل", status: "delivered", time: "أمس 9:00م", emoji: "👋" },
+  { to: "عبدالباري", phone: "...4438", template: "عرض خاص", status: "read", time: "أمس 6:45م", emoji: "🎉" },
+  { to: "سلطان", phone: "...7721", template: "منتج جديد", status: "failed", time: "أمس 3:20م", emoji: "🍔" },
+];
 
 const statusMap: Record<string, { label: string; variant: "success" | "warning" | "danger" | "info" }> = {
   delivered: { label: "تم التوصيل", variant: "success" },
   read: { label: "مقروءة", variant: "info" },
   sent: { label: "أُرسلت", variant: "warning" },
   failed: { label: "فشلت", variant: "danger" },
-  error: { label: "خطأ", variant: "danger" },
 };
 
+const customerSegments = [
+  { label: "جميع العملاء", count: 47, emoji: "👥" },
+  { label: "عملاء متكررين", count: 12, emoji: "🔁" },
+  { label: "عملاء VIP (5+ زيارات)", count: 5, emoji: "👑" },
+  { label: "عملاء غير نشطين (30+ يوم)", count: 18, emoji: "😴" },
+  { label: "عملاء جدد (آخر 7 أيام)", count: 8, emoji: "🆕" },
+];
+
 const Messages = () => {
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState(0);
   const [messageBody, setMessageBody] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showTemplates, setShowTemplates] = useState(false);
 
-  const [progressOpen, setProgressOpen] = useState(false);
-  const [results, setResults] = useState<SendResult[]>([]);
-  const [sending, setSending] = useState(false);
-
-  const { data: customers = [], isLoading: loadingCustomers, refetch: refetchCustomers } =
-    useLoyaltyCustomersForMessaging();
-  const { data: messages = [], isLoading: loadingMessages } = useWhatsappMessages(20);
-  const { data: stats } = useWhatsappStats();
-
-  const selectedCustomers = useMemo(
-    () => customers.filter((c) => selectedIds.has(c.id)),
-    [customers, selectedIds],
-  );
-
-  const handleToggle = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleSelectAll = (ids: string[]) => setSelectedIds(new Set(ids));
-  const handleClearAll = () => setSelectedIds(new Set());
-
-  const handlePickTemplate = (id: string) => {
-    const t = MESSAGE_TEMPLATES.find((x) => x.id === id);
-    if (!t) return;
-    setSelectedTemplateId(id);
+  const handleSelectTemplate = (t: typeof templates[0]) => {
+    setSelectedTemplate(t.id);
     setMessageBody(t.body);
+    setShowTemplates(false);
   };
-
-  const handleSend = async () => {
-    if (!messageBody.trim()) {
-      toast.error("اكتب نص الرسالة أولاً");
-      return;
-    }
-    if (selectedCustomers.length === 0) {
-      toast.error("اختر عميلاً واحداً على الأقل");
-      return;
-    }
-
-    setSending(true);
-    setResults([]);
-    setProgressOpen(true);
-
-    const tplName = selectedTemplateId
-      ? MESSAGE_TEMPLATES.find((t) => t.id === selectedTemplateId)?.name ?? null
-      : null;
-
-    for (const c of selectedCustomers) {
-      const personalized = renderTemplate(messageBody, {
-        name: c.name,
-        points: c.total_points,
-        visits: c.total_visits,
-      });
-
-      try {
-        const { data, error } = await supabase.functions.invoke("send-whatsapp-message", {
-          body: {
-            to: c.phone,
-            message: personalized,
-            template_name: tplName,
-            customer_id: c.id,
-          },
-        });
-
-        if (error) throw error;
-
-        if (data?.success) {
-          setResults((prev) => [...prev, {
-            customerId: c.id,
-            customerName: c.name || "بدون اسم",
-            phone: formatSaudiPhoneDisplay(c.phone),
-            success: true,
-          }]);
-        } else {
-          setResults((prev) => [...prev, {
-            customerId: c.id,
-            customerName: c.name || "بدون اسم",
-            phone: formatSaudiPhoneDisplay(c.phone),
-            success: false,
-            error: data?.error ?? "فشل غير معروف",
-          }]);
-        }
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        setResults((prev) => [...prev, {
-          customerId: c.id,
-          customerName: c.name || "بدون اسم",
-          phone: formatSaudiPhoneDisplay(c.phone),
-          success: false,
-          error: msg,
-        }]);
-      }
-
-      // brief pause to avoid rate-limit hits
-      await new Promise((r) => setTimeout(r, 300));
-    }
-
-    setSending(false);
-    toast.success("اكتمل الإرسال", {
-      description: `${selectedCustomers.length} رسالة. شاهد التفاصيل في النافذة.`,
-    });
-  };
-
-  const validCustomersCount = customers.filter((c) => c.hasValidPhone).length;
-  const isEmpty = !loadingCustomers && customers.length === 0;
 
   return (
     <div className="animate-fade-in">
-      <PageHeader
-        title="الرسائل"
-        subtitle="إرسال رسائل واتساب للعملاء عبر Meta Cloud API · بيانات حقيقية من بونات"
-        badge="حقيقي"
-      />
+      <PageHeader title="الرسائل النصية" subtitle="إرسال رسائل واتساب وSMS للعملاء · Twilio" badge="جديد" />
 
-      {/* KPIs — بيانات فعلية */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <MetricCard
-          label="📨 رسائل مرسلة"
-          value={String(stats?.totalSent ?? 0)}
-          sub={`اليوم: ${stats?.todaySent ?? 0} · الأسبوع: ${stats?.weekSent ?? 0}`}
-        />
-        <MetricCard
-          label="✅ نسبة النجاح"
-          value={`${stats?.successRate ?? 0}%`}
-          sub={`فشل: ${stats?.failed ?? 0}`}
-          subColor={(stats?.successRate ?? 0) >= 90 ? "success" : "warning"}
-        />
-        <MetricCard
-          label="👥 عملاء مع جوال"
-          value={String(validCustomersCount)}
-          sub={`من إجمالي ${customers.length}`}
-        />
-        <MetricCard
-          label="📖 وصلت/قُرئت"
-          value={`${stats?.delivered ?? 0}/${stats?.read ?? 0}`}
-          sub="تتبع فعلي عبر Webhook"
-          subColor="success"
-        />
+      {/* KPIs */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <MetricCard label="📨 رسائل مرسلة" value="156" sub="هذا الشهر" />
+        <MetricCard label="✅ نسبة التوصيل" value="94.2%" sub="من إجمالي الرسائل" subColor="success" />
+        <MetricCard label="👥 العملاء المستهدفين" value="47" sub="عميل مسجّل بالنظام" />
+        <MetricCard label="📖 نسبة القراءة" value="67%" sub="واتساب فقط" subColor="success" />
       </div>
 
-      {isEmpty ? (
-        <EmptyCustomersState onSynced={() => refetchCustomers()} />
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          {/* Composer + Recipients */}
-          <div className="lg:col-span-2 ios-card space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-2">
-                <Send size={14} /> إرسال رسالة جديدة
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => refetchCustomers()}
-                className="h-7 text-xs gap-1.5"
-              >
-                <RefreshCw size={12} />
-                تحديث العملاء
-              </Button>
-            </div>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {/* إرسال رسالة */}
+        <div className="col-span-2 ios-card">
+          <div className="text-[11px] font-medium text-muted-foreground mb-4 flex items-center gap-2">
+            <Send size={14} /> إرسال رسالة جديدة
+          </div>
 
-            {/* Templates row */}
-            <div>
-              <div className="text-[10px] text-muted-foreground mb-2 font-medium">
-                📋 القوالب الجاهزة
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {MESSAGE_TEMPLATES.map((t) => (
+          {/* اختيار الشريحة */}
+          <div className="mb-4">
+            <div className="text-[10px] text-muted-foreground mb-2 font-medium">🎯 الشريحة المستهدفة</div>
+            <div className="flex flex-wrap gap-2">
+              {customerSegments.map((seg, i) => (
+                <button
+                  key={seg.label}
+                  onClick={() => setSelectedSegment(i)}
+                  className={`text-[11px] px-3 py-1.5 rounded-full transition-all ${
+                    selectedSegment === i
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "bg-background text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {seg.emoji} {seg.label} ({seg.count})
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* اختيار القالب */}
+          <div className="mb-4 relative">
+            <div className="text-[10px] text-muted-foreground mb-2 font-medium">📋 اختر قالب جاهز</div>
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="w-full flex items-center justify-between bg-background rounded-xl px-4 py-3 text-[12px] text-foreground border border-border hover:border-primary/30 transition-colors"
+            >
+              <span>
+                {selectedTemplate
+                  ? `${templates.find(t => t.id === selectedTemplate)?.emoji} ${templates.find(t => t.id === selectedTemplate)?.name}`
+                  : "اختر قالب..."
+                }
+              </span>
+              <ChevronDown size={14} className={`text-muted-foreground transition-transform ${showTemplates ? "rotate-180" : ""}`} />
+            </button>
+            {showTemplates && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden">
+                {templates.map((t) => (
                   <button
                     key={t.id}
-                    onClick={() => handlePickTemplate(t.id)}
-                    className={`text-[11px] px-3 py-1.5 rounded-full transition-all border ${
-                      selectedTemplateId === t.id
-                        ? "bg-primary text-primary-foreground border-primary font-semibold"
-                        : "bg-background text-muted-foreground border-border hover:border-primary/30"
-                    }`}
+                    onClick={() => handleSelectTemplate(t)}
+                    className="w-full text-right px-4 py-3 text-[12px] hover:bg-muted transition-colors flex items-center gap-2 border-b border-border last:border-0"
                   >
-                    {t.emoji} {t.name}
+                    <span className="text-[16px]">{t.emoji}</span>
+                    <div>
+                      <div className="font-semibold text-foreground">{t.name}</div>
+                      <div className="text-[10px] text-muted-foreground line-clamp-1">{t.body}</div>
+                    </div>
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Body editor */}
-            <div>
-              <div className="text-[10px] text-muted-foreground mb-2 font-medium flex items-center justify-between">
-                <span>✏️ نص الرسالة</span>
-                <span className="text-[10px]">{messageBody.length}/1600</span>
-              </div>
-              <textarea
-                value={messageBody}
-                onChange={(e) => setMessageBody(e.target.value)}
-                placeholder="اكتب رسالتك أو اختر قالب جاهز..."
-                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-[13px] text-foreground placeholder:text-muted-foreground resize-none h-28 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-              />
-              <div className="mt-1.5 text-[10px] text-muted-foreground">
-                المتغيرات المدعومة: <code>{"{name}"}</code> <code>{"{points}"}</code> <code>{"{visits}"}</code>
-              </div>
-            </div>
-
-            {/* Live preview */}
-            <MessagePreview body={messageBody} selectedCustomers={selectedCustomers} />
-
-            {/* Send actions */}
-            <div className="flex flex-wrap items-center gap-3 pt-2 border-t">
-              <Button
-                onClick={handleSend}
-                disabled={!messageBody.trim() || selectedIds.size === 0 || sending}
-                className="gap-2 bg-[#25D366] hover:bg-[#1da851] text-white"
-              >
-                {sending ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <MessageSquare size={14} />
-                )}
-                إرسال واتساب ({selectedIds.size})
-              </Button>
-              <Button disabled variant="outline" className="gap-2 opacity-60">
-                <Send size={14} />
-                SMS
-                <Badge variant="secondary" className="text-[9px] ml-1">قريباً</Badge>
-              </Button>
-              <Button disabled variant="ghost" className="gap-2 opacity-60">
-                <Clock size={14} />
-                جدولة
-                <Badge variant="secondary" className="text-[9px] ml-1">قريباً</Badge>
-              </Button>
-            </div>
-          </div>
-
-          {/* Recipients sidebar */}
-          <div className="ios-card">
-            <div className="text-[11px] font-medium text-muted-foreground mb-3 flex items-center gap-2">
-              <Inbox size={14} /> اختر المستلمين
-            </div>
-            {loadingCustomers ? (
-              <div className="flex items-center justify-center py-8 text-muted-foreground">
-                <Loader2 className="animate-spin h-5 w-5" />
-              </div>
-            ) : (
-              <RecipientsList
-                customers={customers}
-                selectedIds={selectedIds}
-                onToggle={handleToggle}
-                onSelectAll={handleSelectAll}
-                onClearAll={handleClearAll}
-              />
             )}
           </div>
-        </div>
-      )}
 
-      {/* Recent messages */}
+          {/* نص الرسالة */}
+          <div className="mb-4">
+            <div className="text-[10px] text-muted-foreground mb-2 font-medium">✏️ نص الرسالة</div>
+            <textarea
+              value={messageBody}
+              onChange={(e) => setMessageBody(e.target.value)}
+              placeholder="اكتب رسالتك هنا أو اختر قالب جاهز..."
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-[12px] text-foreground placeholder:text-muted-foreground resize-none h-28 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+            />
+            <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+              <span>المتغيرات: {"{name}"} {"{points}"} {"{product}"} {"{link}"}</span>
+              <span>{messageBody.length}/1600</span>
+            </div>
+          </div>
+
+          {/* أزرار الإرسال */}
+          <div className="flex gap-3">
+            <button
+              disabled={!messageBody}
+              className="flex items-center gap-2 bg-success text-primary-foreground px-5 py-2.5 rounded-xl text-[12px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <MessageSquare size={14} />
+              إرسال واتساب
+            </button>
+            <button
+              disabled={!messageBody}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-[12px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Send size={14} />
+              إرسال SMS
+            </button>
+            <button className="flex items-center gap-2 bg-muted text-muted-foreground px-4 py-2.5 rounded-xl text-[12px] hover:bg-muted/80 transition-colors">
+              <Clock size={14} />
+              جدولة
+            </button>
+          </div>
+        </div>
+
+        {/* قوالب سريعة */}
+        <div className="ios-card">
+          <div className="text-[11px] font-medium text-muted-foreground mb-4">📋 القوالب الجاهزة</div>
+          <div className="space-y-2">
+            {templates.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => handleSelectTemplate(t)}
+                className={`w-full text-right p-3 rounded-xl transition-all border ${
+                  selectedTemplate === t.id
+                    ? "bg-primary/10 border-primary/30"
+                    : "bg-background border-border hover:border-primary/20"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[16px]">{t.emoji}</span>
+                  <span className="text-[12px] font-semibold text-foreground">{t.name}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{t.body}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* سجل الرسائل */}
       <div className="ios-card">
         <div className="text-[11px] font-medium text-muted-foreground mb-4 flex items-center gap-2">
           <Clock size={14} /> آخر الرسائل المرسلة
-          {messages.length > 0 && (
-            <Badge variant="secondary" className="text-[10px]">{messages.length}</Badge>
-          )}
         </div>
-
-        {loadingMessages ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="animate-spin h-5 w-5" />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="text-center py-8 text-sm text-muted-foreground">
-            لا توجد رسائل بعد. ابدأ بإرسال أول رسالة 📨
-          </div>
-        ) : (
-          <div className="space-y-0">
-            {messages.map((m, i) => {
-              const status = statusMap[m.status] ?? statusMap.sent;
-              const time = new Date(m.sent_at).toLocaleString("ar-SA", {
-                month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-              });
-              return (
-                <div
-                  key={m.id}
-                  className={`flex items-start justify-between gap-3 py-3 text-[13px] ${
-                    i < messages.length - 1 ? "border-b border-border" : ""
-                  }`}
-                >
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="text-[18px]">💬</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-foreground flex items-center gap-2">
-                        <span dir="ltr">{formatSaudiPhoneDisplay(m.to_phone)}</span>
-                        {m.template_name && (
-                          <Badge variant="outline" className="text-[9px] px-1.5">
-                            {m.template_name}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                        {m.body}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2">
-                        <span>{time}</span>
-                        {m.error && (
-                          <span className="text-red-600 flex items-center gap-1">
-                            <AlertCircle size={10} /> {m.error}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <StatusBadge variant={status.variant}>{status.label}</StatusBadge>
+        <div className="space-y-0">
+          {recentMessages.map((msg, i) => (
+            <div key={i} className={`flex items-center justify-between py-3 text-[13px] ${i < recentMessages.length - 1 ? "border-b border-border" : ""}`}>
+              <div className="flex items-center gap-3">
+                <span className="text-[18px]">{msg.emoji}</span>
+                <div>
+                  <div className="font-semibold text-foreground">{msg.to} <span className="text-[10px] text-muted-foreground font-normal">{msg.phone}</span></div>
+                  <div className="text-[10px] text-muted-foreground">{msg.template} · {msg.time}</div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Setup hint */}
-      <div className="ios-card mt-6 border-2 border-dashed border-primary/30 bg-primary/5">
-        <div className="flex items-start gap-3">
-          <Sparkles className="h-7 w-7 text-primary flex-shrink-0" />
-          <div className="space-y-1">
-            <div className="text-[13px] font-bold text-foreground">
-              الإرسال يعمل عبر Meta WhatsApp Cloud API الرسمي
+              </div>
+              <StatusBadge variant={statusMap[msg.status].variant}>{statusMap[msg.status].label}</StatusBadge>
             </div>
-            <div className="text-[11px] text-muted-foreground leading-relaxed">
-              تأكد من إضافة الـ 5 secrets الخاصة بـ Meta + ربط Webhook بالرابط:
-              <code className="bg-background px-2 py-0.5 rounded text-[10px] mx-1" dir="ltr">
-                /functions/v1/whatsapp-webhook
-              </code>
-              ليتم تتبع التوصيل والقراءة تلقائياً. للأرقام التجريبية فقط في وضع Test number.
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Send progress modal */}
-      <SendProgress
-        open={progressOpen}
-        onClose={() => setProgressOpen(false)}
-        total={selectedCustomers.length}
-        results={results}
-        isDone={!sending}
-      />
+      {/* تنبيه الربط */}
+      <div className="ios-card mt-6 border-2 border-dashed border-warning/30">
+        <div className="flex items-start gap-3">
+          <span className="text-[28px]">📱</span>
+          <div>
+            <div className="text-[13px] font-bold text-foreground mb-1">ربط الواتساب مطلوب</div>
+            <div className="text-[11px] text-muted-foreground leading-relaxed mb-3">
+              لتفعيل إرسال الرسائل الفعلي، تحتاج ربط حساب Twilio بالنظام.
+              سجّل في <a href="https://www.twilio.com" target="_blank" rel="noopener" className="text-primary underline">Twilio</a> وفعّل WhatsApp Sandbox، ثم ربطه من هنا.
+            </div>
+            <button className="bg-primary text-primary-foreground px-4 py-2 rounded-xl text-[12px] font-semibold hover:opacity-90 transition-opacity">
+              ربط Twilio الآن
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
