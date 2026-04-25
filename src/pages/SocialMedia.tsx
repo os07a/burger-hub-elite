@@ -60,9 +60,8 @@ const SocialMedia = () => {
         }
       />
 
-      <Tabs defaultValue="both" dir="rtl">
+      <Tabs defaultValue="instagram" dir="rtl">
         <TabsList>
-          <TabsTrigger value="both">الكل</TabsTrigger>
           <TabsTrigger value="instagram">Instagram</TabsTrigger>
           <TabsTrigger value="tiktok" className="gap-1.5">
             <Music2 className="w-3.5 h-3.5" />
@@ -70,7 +69,6 @@ const SocialMedia = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="both" className="mt-5"><PlatformView platform="both" /></TabsContent>
         <TabsContent value="instagram" className="mt-5"><PlatformView platform="instagram" /></TabsContent>
         <TabsContent value="tiktok" className="mt-5"><PlatformView platform="tiktok" /></TabsContent>
       </Tabs>
