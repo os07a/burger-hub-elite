@@ -110,15 +110,15 @@ const Behavior = () => {
   if (!data || isEmpty || data.readiness.daysCount === 0) {
     return (
       <div>
-        <PageHeader title="سلوك الزبائن" subtitle={hasFilter ? "ما فيه بيانات في النطاق المحدد" : "لا توجد بيانات بعد"} />
+        <PageHeader title="سلوك الزبائن" subtitle={rangeDays > 0 ? "ما فيه بيانات في النطاق المحدد" : "لا توجد بيانات بعد"} />
         {Toolbar}
         <div className="bg-surface border border-border rounded-lg p-8 text-center">
           <div className="text-[32px] mb-2">📊</div>
           <div className="text-[14px] font-bold text-foreground mb-1">
-            {hasFilter ? "ما فيه إيصالات في الفترة المختارة" : "ما فيه بيانات كاشير بعد"}
+            {rangeDays > 0 ? "ما فيه إيصالات في الفترة المختارة" : "ما فيه بيانات كاشير بعد"}
           </div>
           <div className="text-[11px] text-gray-light leading-relaxed max-w-md mx-auto">
-            {hasFilter ? "غيّر النطاق أو اضغط إعادة تعيين." : "اضغط زر 'مزامنة الكاشير' أعلاه لجلب البيانات من Loyverse."}
+            {rangeDays > 0 ? "جرّب نطاق أوسع (90+ يوم) لعرض كل البيانات." : "اضغط زر 'مزامنة الكاشير' أعلاه لجلب البيانات من Loyverse."}
           </div>
         </div>
       </div>
