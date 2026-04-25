@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Calendar as CalendarIcon, X, AlertCircle } from "lucide-react";
+import { RefreshCw, AlertCircle } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,57 +37,43 @@ const heatColor = (v: number, max: number, sample: number) => {
 };
 
 const Behavior = () => {
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [rangeDays, setRangeDays] = useState<number>(30); // 7 | 30 | 0 (=90+ all)
   const [posSyncOpen, setPosSyncOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { isLoading, error, data, isEmpty } = useBehaviorInsights({
-    fromDate: fromDate || undefined,
-    toDate: toDate || undefined,
-  });
-
-  const hasFilter = !!(fromDate || toDate);
-  const resetFilter = () => { setFromDate(""); setToDate(""); };
-
-  const setPreset = (days: number) => {
+  const computeRange = (days: number) => {
+    if (days <= 0) return { fromDate: undefined, toDate: undefined };
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - days + 1);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    setFromDate(iso(start));
-    setToDate(iso(end));
+    return { fromDate: iso(start), toDate: iso(end) };
   };
+  const { fromDate, toDate } = computeRange(rangeDays);
+
+  const { isLoading, error, data, isEmpty } = useBehaviorInsights({
+    fromDate,
+    toDate,
+  });
 
   const Toolbar = (
     <div className="flex items-center gap-2 mb-3 flex-wrap">
-      <div className="flex items-center gap-1.5 bg-surface border border-border rounded-lg px-2 py-1.5">
-        <CalendarIcon size={12} className="text-gray-light" />
-        <span className="text-[10px] text-gray-light">من</span>
-        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-          className="bg-transparent text-[11px] text-foreground outline-none w-[120px]" />
-        <span className="text-[10px] text-gray-light mx-1">إلى</span>
-        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-          className="bg-transparent text-[11px] text-foreground outline-none w-[120px]" />
-      </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {[
           { label: "7 أيام", d: 7 },
           { label: "30 يوم", d: 30 },
-          { label: "90 يوم", d: 90 },
+          { label: "90+ يوم", d: 0 },
         ].map((p) => (
-          <button key={p.d} onClick={() => setPreset(p.d)}
-            className="text-[10px] text-gray-light hover:text-foreground bg-surface border border-border rounded-lg px-2 py-1.5 transition-colors">
+          <button key={p.d} onClick={() => setRangeDays(p.d)}
+            className={`text-[11px] rounded-full px-3.5 py-1.5 border transition-colors ${
+              rangeDays === p.d
+                ? "bg-primary text-primary-foreground border-primary font-semibold"
+                : "bg-surface text-gray-light hover:text-foreground border-border"
+            }`}>
             {p.label}
           </button>
         ))}
       </div>
-      {hasFilter && (
-        <button onClick={resetFilter}
-          className="flex items-center gap-1 text-[10px] text-gray-light hover:text-foreground bg-surface border border-border rounded-lg px-2 py-1.5 transition-colors">
-          <X size={10} /> إعادة تعيين
-        </button>
-      )}
       <button onClick={() => setPosSyncOpen(true)}
         className="flex items-center gap-1.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors mr-auto">
         <RefreshCw size={12} /> مزامنة الكاشير
