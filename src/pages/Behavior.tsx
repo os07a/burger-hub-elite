@@ -196,10 +196,10 @@ const Behavior = () => {
       )}
 
       <TooltipProvider delayDuration={150}>
-      <div className="grid grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-4 gap-3 mb-5 items-stretch">
         <Tooltip>
           <TooltipTrigger asChild>
-            <div>
+            <div className="h-full">
               <MetricCard
                 label="🔥 ذروة الأسبوع"
                 value={showPeak ? `${kpis.peakDay} ${kpis.peakHour}` : "—"}
@@ -217,10 +217,10 @@ const Behavior = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <div>
+            <div className="h-full">
               <MetricCard
                 label="🏆 الأكثر طلباً"
-                value={kpis.topItem.length > 18 ? kpis.topItem.slice(0, 18) + "…" : kpis.topItem}
+                value={kpis.topItem}
                 sub={`${kpis.topItemPct.toFixed(0)}% من إجمالي الكميات`}
                 subColor="success"
               />
@@ -236,7 +236,7 @@ const Behavior = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <div>
+            <div className="h-full">
               <MetricCard
                 label="📉 أضعف يوم"
                 value={showPeak ? kpis.weakestDay : "—"}
@@ -255,7 +255,7 @@ const Behavior = () => {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <div>
+            <div className="h-full">
               <MetricCard label="📊 متوسط يومي" value={fmt(kpis.dailyAvg)} sub={`${dateRange.totalDays} يوم`} showRiyal />
             </div>
           </TooltipTrigger>
