@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,12 +106,53 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, attachments } = await req.json();
+    // ── Auth check (OWASP A01) ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claims?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Input validation (OWASP A03) ──
+    const BodySchema = z.object({
+      messages: z.array(z.object({
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.union([z.string().max(20000), z.array(z.any()).max(20)]),
+      })).min(1).max(50),
+      attachments: z.array(z.object({
+        type: z.enum(["image", "text"]),
+        name: z.string().max(255).optional(),
+        text: z.string().max(50000).optional(),
+        dataUrl: z.string().max(15_000_000).optional(), // ~10MB base64
+      })).max(5).optional(),
+    });
+    const raw = await req.json();
+    const parsed = BodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "مدخلات غير صالحة" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { messages, attachments } = parsed.data;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
@@ -168,7 +210,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("advisor error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "حدث خطأ، حاول لاحقاً" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
