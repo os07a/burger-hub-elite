@@ -623,6 +623,53 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_movements: {
+        Row: {
+          cost_at_movement: number
+          created_at: string
+          created_by: string | null
+          id: string
+          inventory_item_id: string
+          movement_type: string
+          notes: string | null
+          quantity: number
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          cost_at_movement?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_item_id: string
+          movement_type: string
+          notes?: string | null
+          quantity: number
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          cost_at_movement?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_item_id?: string
+          movement_type?: string
+          notes?: string | null
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           account: string | null
@@ -820,6 +867,33 @@ export type Database = {
         }
         Relationships: []
       }
+      opening_inventory_runs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          run_date: string
+          run_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          run_date?: string
+          run_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          run_date?: string
+          run_type?: string
+        }
+        Relationships: []
+      }
       partner_shares: {
         Row: {
           category: string
@@ -866,6 +940,7 @@ export type Database = {
           gross_total: number
           id: string
           item_name: string
+          loyverse_item_id: string | null
           net_total: number
           quantity: number
           receipt_date: string
@@ -878,6 +953,7 @@ export type Database = {
           gross_total?: number
           id?: string
           item_name: string
+          loyverse_item_id?: string | null
           net_total?: number
           quantity?: number
           receipt_date: string
@@ -890,6 +966,7 @@ export type Database = {
           gross_total?: number
           id?: string
           item_name?: string
+          loyverse_item_id?: string | null
           net_total?: number
           quantity?: number
           receipt_date?: string
@@ -940,6 +1017,66 @@ export type Database = {
         }
         Relationships: []
       }
+      product_recipes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          inventory_item_id: string
+          notes: string | null
+          product_id: string
+          quantity_per_unit: number
+          unit: string
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+          waste_percentage: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_item_id: string
+          notes?: string | null
+          product_id: string
+          quantity_per_unit: number
+          unit: string
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+          waste_percentage?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_item_id?: string
+          notes?: string | null
+          product_id?: string
+          quantity_per_unit?: number
+          unit?: string
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+          waste_percentage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_recipes_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string | null
@@ -949,6 +1086,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          loyverse_item_id: string | null
           name: string
           price: number
           product_type: string
@@ -962,6 +1100,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          loyverse_item_id?: string | null
           name: string
           price?: number
           product_type?: string
@@ -975,6 +1114,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          loyverse_item_id?: string | null
           name?: string
           price?: number
           product_type?: string
@@ -1266,6 +1406,39 @@ export type Database = {
         }
         Relationships: []
       }
+      unmatched_sales: {
+        Row: {
+          created_at: string
+          details: Json
+          id: string
+          item_name: string
+          loyverse_item_id: string | null
+          pos_receipt_item_id: string | null
+          quantity: number
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          id?: string
+          item_name: string
+          loyverse_item_id?: string | null
+          pos_receipt_item_id?: string | null
+          quantity?: number
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          id?: string
+          item_name?: string
+          loyverse_item_id?: string | null
+          pos_receipt_item_id?: string | null
+          quantity?: number
+          reason?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1355,6 +1528,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_inventory_trigger_status: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1362,6 +1536,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_inventory_trigger: { Args: { p_enabled: boolean }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "employee"
