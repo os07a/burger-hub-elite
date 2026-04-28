@@ -48,7 +48,11 @@ interface DashboardSalesRow {
   taxes: number;
 }
 
-const Dashboard = () => {
+interface DashboardProps {
+  embedded?: boolean;
+}
+
+const Dashboard = ({ embedded = false }: DashboardProps) => {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [cashInput, setCashInput] = useState("");
@@ -169,21 +173,7 @@ const Dashboard = () => {
           invalidateSalesQueries();
         }}
       />
-      <PageHeader title="لوحة التحكم" subtitle={todayLabel} badge="مباشر" />
-
-      <div className="mb-6 grid grid-cols-5 gap-4">
-        <MetricCard label="📊 متوسط الإيرادات اليومية" value={fmt(avgDaily)} sub="بناءً على البيانات الفعلية" subColor="success" showRiyal />
-        <MetricCard label="💰 دخل اليوم" value={fmt(totalToday)} sub={todayStr} showRiyal />
-        <MetricCard
-          label={hasChannelBreakdown ? "💵 كاش اليوم" : "🧾 صافي اليوم"}
-          value={fmt(hasChannelBreakdown ? cashVal : netVal)}
-          sub={hasChannelBreakdown ? "نقد مباشر" : `هامش ${fmtPct(marginVal, 1)}`}
-          subColor={hasChannelBreakdown ? "success" : "gray"}
-          showRiyal
-        />
-        <ProductionCostCard />
-        <MetricCard label="🚨 تنبيهات المخزون" value="4" sub="خبز + مايونيز + بيبسي + زيت" subColor="danger" />
-      </div>
+      {!embedded && <PageHeader title="لوحة التحكم" subtitle={todayLabel} badge="مباشر" />}
 
       <div className="ios-card mb-6">
         <div className="mb-4 flex items-center justify-between">
