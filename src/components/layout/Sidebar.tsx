@@ -24,8 +24,6 @@ const navGroups = [
     label: "الإدارة",
     items: [
       { id: "staff", label: "الطاقم", icon: Users, path: "/staff" },
-      { id: "attendance", label: "الحضور والانصراف", icon: Calendar, path: "/attendance" },
-      { id: "payroll", label: "الرواتب", icon: Wallet, path: "/payroll" },
       { id: "cameras", label: "كاميرات المراقبة", icon: Video, path: "/cameras" },
     ],
   },
@@ -35,7 +33,6 @@ const navGroups = [
       { id: "products", label: "المنتجات", icon: ShoppingBag, path: "/products" },
       { id: "menu-analysis", label: "تحليل المنيو", icon: ChefHat, path: "/menu-analysis" },
       { id: "inventory", label: "المخزون", icon: Package, path: "/inventory" },
-      { id: "opening-inventory", label: "الجرد الابتدائي", icon: Package, path: "/opening-inventory" },
       { id: "suppliers", label: "الموردون", icon: Truck, path: "/suppliers" },
       { id: "delivery-apps", label: "تطبيقات التوصيل", icon: Bike, path: "/delivery-apps" },
       { id: "social-media", label: "التواصل الاجتماعي", icon: Share2, path: "/social-media" },
@@ -44,7 +41,6 @@ const navGroups = [
   {
     label: "المالية",
     items: [
-      { id: "archive", label: "الأرشيف", icon: FolderPlus, path: "/archive" },
       { id: "profits", label: "الأرباح والنسب", icon: BarChart3, path: "/profits" },
     ],
   },
