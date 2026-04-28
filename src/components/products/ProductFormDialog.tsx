@@ -19,7 +19,7 @@ interface Props {
 const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
   const add = useAddProduct();
   const update = useUpdateProduct();
-  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "", product_type: "primary" as "primary" | "ready_made" });
+  const [form, setForm] = useState({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "", product_type: "primary" as "primary" | "ready_made", loyverse_item_id: "" });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,9 +33,10 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
         description: product.description ?? "",
         image_url: product.image_url ?? "",
         product_type: ((product as any).product_type ?? "primary") as "primary" | "ready_made",
+        loyverse_item_id: (product as any).loyverse_item_id ?? "",
       });
     } else {
-      setForm({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "", product_type: "primary" });
+      setForm({ name: "", category: "", price: 0, cost: 0, description: "", image_url: "", product_type: "primary", loyverse_item_id: "" });
     }
   }, [product, open]);
 
@@ -64,12 +65,13 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
 
   const handleSubmit = async () => {
     if (!form.name.trim()) { toast.error("الاسم مطلوب"); return; }
+    const payload = { ...form, loyverse_item_id: form.loyverse_item_id.trim() || null };
     try {
       if (product) {
-        await update.mutateAsync({ id: product.id, ...form });
+        await update.mutateAsync({ id: product.id, ...payload });
         toast.success("تم تحديث المنتج");
       } else {
-        await add.mutateAsync(form);
+        await add.mutateAsync(payload);
         toast.success("تمت إضافة المنتج");
       }
       onOpenChange(false);
@@ -145,6 +147,17 @@ const ProductFormDialog = ({ open, onOpenChange, product }: Props) => {
           <div>
             <Label>الوصف</Label>
             <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
+          </div>
+          <div>
+            <Label>معرّف Loyverse <span className="text-[10px] text-muted-foreground">(اختياري)</span></Label>
+            <Input
+              value={form.loyverse_item_id}
+              onChange={(e) => setForm({ ...form, loyverse_item_id: e.target.value })}
+              placeholder="مثال: 8b2c1e44-..."
+              dir="ltr"
+              className="font-mono text-xs"
+            />
+            <div className="text-[10px] text-warning mt-1">⚠️ ضروري لتفعيل الخصم التلقائي من المخزون عند البيع.</div>
           </div>
         </div>
         <DialogFooter>
