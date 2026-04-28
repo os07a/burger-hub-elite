@@ -9,7 +9,11 @@ import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
 import { useSalesIndicator } from "@/hooks/useSalesIndicator";
 import { fmt, formatArabicDayMonth } from "@/lib/format";
 
-const SalesIndicator = () => {
+interface SalesIndicatorProps {
+  embedded?: boolean;
+}
+
+const SalesIndicator = ({ embedded = false }: SalesIndicatorProps) => {
   const [rangeDays, setRangeDays] = useState<number>(30); // 7 | 30 | 0 (=90+ all)
   const [posSyncOpen, setPosSyncOpen] = useState(false);
   const queryClient = useQueryClient();
