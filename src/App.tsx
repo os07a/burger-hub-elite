@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,16 +10,12 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Behavior from "@/pages/Behavior";
 import Loyalty from "@/pages/Loyalty";
-import Staff from "@/pages/Staff";
-import Attendance from "@/pages/Attendance";
-import Payroll from "@/pages/Payroll";
+import StaffHub from "@/pages/StaffHub";
 import Cameras from "@/pages/Cameras";
 import Products from "@/pages/Products";
 import MenuAnalysis from "@/pages/MenuAnalysis";
-import Inventory from "@/pages/Inventory";
-import Suppliers from "@/pages/Suppliers";
-import Archive from "@/pages/Archive";
-import OpeningInventory from "@/pages/OpeningInventory";
+import InventoryHub from "@/pages/InventoryHub";
+import SuppliersHub from "@/pages/SuppliersHub";
 import Profits from "@/pages/Profits";
 import ProjectStatus from "@/pages/ProjectStatus";
 import SalesIndicator from "@/pages/SalesIndicator";
@@ -51,16 +47,16 @@ const App = () => (
               <Route path="/project-status" element={<ProjectStatus />} />
               <Route path="/behavior" element={<Behavior />} />
               <Route path="/loyalty" element={<Loyalty />} />
-              <Route path="/staff" element={<Staff />} />
-              <Route path="/attendance" element={<Attendance />} />
-              <Route path="/payroll" element={<Payroll />} />
+              <Route path="/staff" element={<StaffHub />} />
+              <Route path="/attendance" element={<Navigate to="/staff?tab=attendance" replace />} />
+              <Route path="/payroll" element={<Navigate to="/staff?tab=payroll" replace />} />
               <Route path="/cameras" element={<Cameras />} />
               <Route path="/products" element={<Products />} />
               <Route path="/menu-analysis" element={<MenuAnalysis />} />
-              <Route path="/inventory" element={<Inventory />} />
-              <Route path="/opening-inventory" element={<OpeningInventory />} />
-              <Route path="/suppliers" element={<Suppliers />} />
-              <Route path="/archive" element={<Archive />} />
+              <Route path="/inventory" element={<InventoryHub />} />
+              <Route path="/opening-inventory" element={<Navigate to="/inventory?tab=opening" replace />} />
+              <Route path="/suppliers" element={<SuppliersHub />} />
+              <Route path="/archive" element={<Navigate to="/suppliers?tab=archive" replace />} />
               <Route path="/profits" element={<Profits />} />
               <Route path="/sales-indicator" element={<SalesIndicator />} />
               <Route path="/advisor" element={<BusinessAdvisor />} />
