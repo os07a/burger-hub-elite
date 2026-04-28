@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
+import ProductionCostCard from "@/components/dashboard/ProductionCostCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import RiyalIcon from "@/components/ui/RiyalIcon";
 import { Plus, X, Check, RefreshCw, Settings2, Undo2, TicketPercent, Wallet, Banknote, CreditCard, Bike } from "lucide-react";
@@ -170,7 +171,7 @@ const Dashboard = () => {
       />
       <PageHeader title="لوحة التحكم" subtitle={todayLabel} badge="مباشر" />
 
-      <div className="mb-6 grid grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-5 gap-4">
         <MetricCard label="📊 متوسط الإيرادات اليومية" value={fmt(avgDaily)} sub="بناءً على البيانات الفعلية" subColor="success" showRiyal />
         <MetricCard label="💰 دخل اليوم" value={fmt(totalToday)} sub={todayStr} showRiyal />
         <MetricCard
@@ -180,6 +181,7 @@ const Dashboard = () => {
           subColor={hasChannelBreakdown ? "success" : "gray"}
           showRiyal
         />
+        <ProductionCostCard />
         <MetricCard label="🚨 تنبيهات المخزون" value="4" sub="خبز + مايونيز + بيبسي + زيت" subColor="danger" />
       </div>
 
