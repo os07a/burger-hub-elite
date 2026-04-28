@@ -72,8 +72,8 @@ const SalesIndicator = ({ embedded = false }: SalesIndicatorProps) => {
   if (isLoading) {
     return (
       <div>
-        <PageHeader title="مؤشر المبيعات" subtitle="جاري تحميل بيانات الكاشير..." badge="تحليل" />
-        {Toolbar}
+        {!embedded && <><PageHeader title="مؤشر المبيعات" subtitle="جاري تحميل بيانات الكاشير..." badge="تحليل" />
+        {Toolbar}</>}
         <div className="grid grid-cols-6 gap-2 mb-4">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
         </div>
@@ -88,8 +88,8 @@ const SalesIndicator = ({ embedded = false }: SalesIndicatorProps) => {
   if (error) {
     return (
       <div>
-        <PageHeader title="مؤشر المبيعات" subtitle="خطأ في تحميل البيانات" badge="تحليل" />
-        {Toolbar}
+        {!embedded && <><PageHeader title="مؤشر المبيعات" subtitle="خطأ في تحميل البيانات" badge="تحليل" />
+        {Toolbar}</>}
         <div className="bg-surface border border-danger/30 rounded-lg p-6 text-center text-danger text-[12px]">
           ⚠️ تعذر تحميل بيانات المبيعات: {error.message}
         </div>
@@ -100,8 +100,8 @@ const SalesIndicator = ({ embedded = false }: SalesIndicatorProps) => {
   if (!data) {
     return (
       <div>
-        <PageHeader title="مؤشر المبيعات" subtitle={hasFilter ? "ما فيه بيانات في النطاق المحدد" : "لا توجد بيانات بعد"} badge="تحليل" />
-        {Toolbar}
+        {!embedded && <><PageHeader title="مؤشر المبيعات" subtitle={hasFilter ? "ما فيه بيانات في النطاق المحدد" : "لا توجد بيانات بعد"} badge="تحليل" />
+        {Toolbar}</>}
         <div className="bg-surface border border-border rounded-lg p-8 text-center">
           <div className="text-[32px] mb-2">📊</div>
           <div className="text-[14px] font-bold text-foreground mb-1">
@@ -183,8 +183,8 @@ const SalesIndicator = ({ embedded = false }: SalesIndicatorProps) => {
 
   return (
   <div>
-    <PageHeader title="مؤشر المبيعات" subtitle={subtitle} badge="تحليل" />
-    {Toolbar}
+    {!embedded && <><PageHeader title="مؤشر المبيعات" subtitle={subtitle} badge="تحليل" />
+    {Toolbar}</>}
 
     {/* بانر مستوى نضج البيانات */}
     {readiness.level !== "insufficient" && (
