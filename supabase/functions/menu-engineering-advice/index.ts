@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,15 +11,54 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const { items, period_days, counts, total_revenue, total_margin, avg_units, avg_margin } = body;
-
-    if (!Array.isArray(items)) {
-      return new Response(JSON.stringify({ error: "items required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // ── Auth check ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claims, error: cErr } = await userClient.auth.getClaims(token);
+    if (cErr || !claims?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Input validation ──
+    const BodySchema = z.object({
+      items: z.array(z.object({
+        name: z.string().max(300),
+        units_sold: z.number().finite(),
+        total_margin: z.number().finite(),
+        margin_pct: z.number().finite(),
+        quadrant: z.enum(["star", "plowhorse", "puzzle", "dog"]),
+      })).max(500),
+      period_days: z.number().int().min(1).max(365),
+      counts: z.object({
+        star: z.number().int().min(0),
+        plowhorse: z.number().int().min(0),
+        puzzle: z.number().int().min(0),
+        dog: z.number().int().min(0),
+      }),
+      total_revenue: z.number().finite(),
+      total_margin: z.number().finite(),
+      avg_units: z.number().finite(),
+      avg_margin: z.number().finite(),
+    });
+    const parsed = BodySchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "مدخلات غير صالحة" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { items, period_days, counts, total_revenue, total_margin, avg_units, avg_margin } = parsed.data;
 
     if (items.length === 0) {
       return new Response(
@@ -98,7 +139,8 @@ ${top("dog")}
 
     if (!aiRes.ok) {
       const txt = await aiRes.text();
-      return new Response(JSON.stringify({ error: "AI gateway failed", details: txt }), {
+      console.error("AI gateway failed:", aiRes.status, txt);
+      return new Response(JSON.stringify({ error: "فشل توليد التوصيات" }), {
         status: aiRes.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -116,7 +158,8 @@ ${top("dog")}
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    console.error("menu-engineering-advice error:", e);
+    return new Response(JSON.stringify({ error: "حدث خطأ، حاول لاحقاً" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
