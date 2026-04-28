@@ -18,6 +18,7 @@ import Products from "@/pages/Products";
 import Inventory from "@/pages/Inventory";
 import Suppliers from "@/pages/Suppliers";
 import Archive from "@/pages/Archive";
+import OpeningInventory from "@/pages/OpeningInventory";
 import Profits from "@/pages/Profits";
 import ProjectStatus from "@/pages/ProjectStatus";
 import SalesIndicator from "@/pages/SalesIndicator";
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/cameras" element={<Cameras />} />
               <Route path="/products" element={<Products />} />
               <Route path="/inventory" element={<Inventory />} />
+              <Route path="/opening-inventory" element={<OpeningInventory />} />
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/archive" element={<Archive />} />
               <Route path="/profits" element={<Profits />} />
