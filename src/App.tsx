@@ -15,6 +15,7 @@ import Attendance from "@/pages/Attendance";
 import Payroll from "@/pages/Payroll";
 import Cameras from "@/pages/Cameras";
 import Products from "@/pages/Products";
+import MenuAnalysis from "@/pages/MenuAnalysis";
 import Inventory from "@/pages/Inventory";
 import Suppliers from "@/pages/Suppliers";
 import Archive from "@/pages/Archive";
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/payroll" element={<Payroll />} />
               <Route path="/cameras" element={<Cameras />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/menu-analysis" element={<MenuAnalysis />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/opening-inventory" element={<OpeningInventory />} />
               <Route path="/suppliers" element={<Suppliers />} />

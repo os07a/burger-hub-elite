@@ -3,8 +3,8 @@ import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import RiyalIcon from "@/components/ui/RiyalIcon";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, TrendingUp, Crown, Menu as MenuIcon, BarChart3, Calculator, Package, Beef, GlassWater } from "lucide-react";
-import { useProducts, useDeleteProduct, type Product } from "@/hooks/useProducts";
+import { Plus, Pencil, Trash2, TrendingUp, Crown, Menu as MenuIcon, BarChart3, Calculator, Package, Beef, GlassWater, Archive, ArchiveRestore, Eye, EyeOff } from "lucide-react";
+import { useProducts, useDeleteProduct, useArchiveProduct, type Product } from "@/hooks/useProducts";
 import { useAuth } from "@/contexts/AuthContext";
 import ProductFormDialog from "@/components/products/ProductFormDialog";
 import RecipeDialog from "@/components/products/RecipeDialog";
@@ -40,8 +40,10 @@ type TypeFilter = "all" | "primary" | "ready_made";
 const Products = () => {
   const { userRole } = useAuth();
   const isAdmin = userRole === "admin";
-  const { data: products = [], isLoading } = useProducts();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: products = [], isLoading } = useProducts({ includeArchived: showArchived });
   const del = useDeleteProduct();
+  const archive = useArchiveProduct();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -74,6 +76,13 @@ const Products = () => {
     (acc[k] ||= []).push(p);
     return acc;
   }, {});
+
+  const handleArchive = async (p: Product) => {
+    try {
+      await archive.mutateAsync({ id: p.id, is_active: !(p.is_active ?? true) });
+      toast.success((p.is_active ?? true) ? "تم نقل المنتج للأرشيف" : "تم استعادة المنتج");
+    } catch (e: any) { toast.error(e.message); }
+  };
 
   const handleAdd = () => { setEditing(null); setDialogOpen(true); };
   const handleEdit = (p: Product) => { setEditing(p); setDialogOpen(true); };
@@ -139,6 +148,16 @@ const Products = () => {
             >
               جاهز ({readyCount}) <GlassWater size={12} />
             </Button>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              variant={showArchived ? "default" : "outline"}
+              onClick={() => setShowArchived((v) => !v)}
+              className="h-7 text-[11px] gap-1"
+              title={showArchived ? "إخفاء المؤرشفة" : "إظهار المؤرشفة"}
+            >
+              {showArchived ? <><EyeOff size={12} /> إخفاء المؤرشفة</> : <><Eye size={12} /> إظهار المؤرشفة</>}
+            </Button>
           </div>
 
           {isLoading && <div className="text-center text-muted-foreground py-8">جارٍ التحميل...</div>}
@@ -190,7 +209,13 @@ const Products = () => {
                               : "border-border hover:border-primary/30"
                           }`}
                         >
-                          {isTop && (
+                          {!(p.is_active ?? true) && (
+                            <div className="absolute -top-3 right-3 z-10 flex items-center gap-1 bg-muted-foreground text-white text-[10px] font-bold pl-2.5 pr-2 py-1 rounded-full shadow-md ring-2 ring-background">
+                              <Archive size={10} />
+                              <span>مؤرشف</span>
+                            </div>
+                          )}
+                          {isTop && (p.is_active ?? true) && (
                             <div className="absolute -top-3 right-3 z-10 flex items-center gap-1 bg-gradient-to-r from-warning to-warning/80 text-white text-[10px] font-bold pl-2.5 pr-2 py-1 rounded-full shadow-lg shadow-warning/30 ring-2 ring-background">
                               <Crown size={11} className="fill-white" />
                               <span>الأعلى ربحاً</span>
@@ -213,6 +238,14 @@ const Products = () => {
                                 aria-label="تعديل"
                               >
                                 <Pencil size={11} />
+                              </button>
+                              <button
+                                onClick={() => handleArchive(p)}
+                                className="w-6 h-6 rounded-full bg-background/95 border border-border shadow-sm flex items-center justify-center hover:bg-warning hover:text-white hover:border-warning transition"
+                                aria-label={(p.is_active ?? true) ? "أرشفة" : "استعادة"}
+                                title={(p.is_active ?? true) ? "أرشفة" : "استعادة"}
+                              >
+                                {(p.is_active ?? true) ? <Archive size={11} /> : <ArchiveRestore size={11} />}
                               </button>
                               <button
                                 onClick={() => setConfirmDel(p)}
