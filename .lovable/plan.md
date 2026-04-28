@@ -1,100 +1,93 @@
-# تطبيق إرشادات OWASP الأمنية
 
-## الهدف
-رفع مستوى الأمان وفق OWASP بدون كسر أي وظيفة قائمة، مع تركيز على ما هو ناقص فعلاً (التحقق من المدخلات في الواجهة + Edge Functions).
+## خطة الدمج
 
----
+نحافظ على كل الكود الحالي ومنطقه — فقط نُغلّف كل صفحتين/ثلاث في صفحة واحدة بتبويبات (Tabs)، ونُحدّث الشريط الجانبي والتوجيه.
 
-## الخطوات
+### 1) المخزون + الجرد الابتدائي → صفحة "المخزون"
 
-### 1. طبقة Validation موحّدة (ملفان جديدان)
-- `src/lib/validation/schemas.ts` — مخططات Zod مركزية لكل النماذج الحساسة:
-  - Product (name, price, cost, category)
-  - Inventory item (name, quantity, unit, cost_per_unit)
-  - Employee (name, phone SA, IBAN, salary)
-  - Supplier (name, phone, email)
-  - Invoice (amount, date, doc_type)
-  - Employee doc (doc_number, dates)
-  - Recipe (quantity_per_unit, waste_percentage)
-- `src/lib/validation/sanitize.ts` — دوال:
-  - `sanitizeText()` — يقصّ المسافات ويزيل أحرف التحكم
-  - `escapePostgrestLike()` — يهرب `% _ , ( )` لاستعلامات `.ilike()` و `.or()` (حماية من حقن PostgREST)
-  - `safeRedirect()` — يمنع open-redirect
+- إنشاء `src/pages/InventoryHub.tsx` يحتوي `Tabs`:
+  - تبويب "الأصناف والمخزون" → محتوى `Inventory.tsx` الحالي
+  - تبويب "الجرد الابتدائي والتعديلات" → محتوى `OpeningInventory.tsx` الحالي
+- إعادة هيكلة: تحويل الصفحتين الحاليتين لمكونات (`InventoryListSection`, `OpeningInventorySection`) داخل `src/components/inventory/` — نفس المنطق دون تغيير.
+- المسار: `/inventory` يفتح الصفحة الأم. `/opening-inventory` يبقى كـ redirect ⇐ `/inventory?tab=opening` للحفاظ على الروابط القديمة.
 
-### 2. ربط Zod بنماذج الواجهة (7 ملفات معدّلة)
-استخدام `zodResolver` مع `react-hook-form` (موجود مسبقاً) في:
-- `src/components/products/ProductFormDialog.tsx`
-- `src/components/inventory/InventoryFormDialog.tsx`
-- `src/components/staff/EmployeeFormDialog.tsx`
-- `src/components/staff/DocFormDialog.tsx`
-- `src/components/suppliers/SupplierFormDialog.tsx`
-- `src/components/suppliers/InvoiceFormDialog.tsx`
-- `src/components/products/RecipeDialog.tsx`
+### 2) الأرشيف → داخل "الموردون"
 
-تطبيق `escapePostgrestLike()` في كل البحث/الفلترة (Products, Inventory, Suppliers, Loyalty, Messages).
+- إنشاء `src/pages/SuppliersHub.tsx` بـ `Tabs`:
+  - "الموردون والفواتير" → محتوى `Suppliers.tsx`
+  - "أرشيف المستندات" → محتوى `Archive.tsx`
+- تحويلهما لمكونين فرعيين.
+- المسار: `/suppliers` رئيسي، `/archive` ⇐ redirect لـ `/suppliers?tab=archive`.
 
-### 3. Validation داخل Edge Functions (8 دوال)
-إضافة Zod من `https://esm.sh/zod@3.23.8` + إرجاع 400 مع `error.flatten()` فقط (بدون stack/SQLSTATE):
-- `menu-engineering-advice` — items array, period_days, counts
-- `business-advisor` — question, context
-- `transcribe-audio` — audioBase64 (حد أقصى للحجم)، mimeType (whitelist)
-- `sync-loyverse-sales` — date params
-- `sync-loyverse-customers` — لا مدخلات لكن نتأكد من JWT
-- `extract-iqama-data` — imageBase64 + mimeType
-- `analyze-social-insights` — period
-- `list-whatsapp-templates` — لا مدخلات (JWT فقط)
+### 3) الحضور + الرواتب → داخل "الطاقم"
 
-### 4. JWT Validation للدوال الناقصة
-الدوال التي لا تتحقق من JWT حالياً ستُضاف لها `getClaims()`:
-- `transcribe-audio` ✗ → يضاف
-- `business-advisor` ✗ → يضاف
-- `menu-engineering-advice` ✗ → يضاف
-- `analyze-social-insights` ✗ → يضاف (إن لزم)
-- `extract-iqama-data` ✗ → يضاف
+- إنشاء `src/pages/StaffHub.tsx` بـ `Tabs`:
+  - "الموظفون" → `Staff.tsx`
+  - "الحضور والانصراف" → `Attendance.tsx`
+  - "الرواتب" → `Payroll.tsx`
+- تحويلهم لمكونات فرعية تحت `src/components/staff/`.
+- المسارات: `/staff` رئيسي، `/attendance` و `/payroll` ⇐ redirects.
 
-استثناء: `whatsapp-webhook` يبقى عام (يستخدم `WHATSAPP_VERIFY_TOKEN` كتوقيع).
+### 4) تحديث الشريط الجانبي (`src/components/layout/Sidebar.tsx`)
 
-### 5. منع تسرّب أخطاء حسّاسة
-استبدال كل `error: e.message` و `details: SQLSTATE` للمستخدم بـ:
-- رسالة عامة للعميل: `"حدث خطأ، حاول لاحقاً"`
-- `console.error()` للسجلات الكاملة (تظل في Edge Function logs فقط)
+إزالة العناصر المدموجة وتقليل الأقسام:
 
-### 6. مراجعة عدم تسرّب مفاتيح
-- فحص `rg "sk_|api[_-]?key|secret" src/` للتأكد من عدم وجود مفاتيح خاصة في الكود
-- التأكد أن `.env` يحتوي فقط على `VITE_SUPABASE_*` (publishable — آمن)
+```text
+الإدارة:
+  - الطاقم (يحوي: موظفون / حضور / رواتب)
+  - كاميرات المراقبة
 
-### 7. Rate Limiting (Documentation فقط)
-لا توجد بنية rate limiting في Supabase Edge Functions بشكل ناتيف يمكن تطبيقه احترافياً بدون Redis. سأكتفي بإضافة:
-- تحديد حجم الـ payload في كل Edge Function (مثلاً audioBase64 ≤ 25MB)
-- توثيق في `README.md` بأن rate limiting يعتمد على Cloudflare layer من Supabase
+المشغّل:
+  - المنتجات
+  - تحليل المنيو
+  - المخزون (يحوي: أصناف / جرد ابتدائي)
+  - الموردون (يحوي: موردون / أرشيف)
+  - تطبيقات التوصيل
+  - التواصل الاجتماعي
 
-### 8. تشغيل الفحوصات النهائية
-- `security--run_security_scan`
-- `supabase--linter`
-- اختبار سريع لـ 2-3 نماذج من الواجهة + 1 edge function
+المالية:
+  - الأرباح والنسب
+```
 
----
+(تم حذف: الجرد الابتدائي، الأرشيف، الحضور، الرواتب من الشريط — لأنها أصبحت تبويبات داخلية)
 
-## ما لن يتم عمله (ومبرراته)
-| البند | السبب |
-|------|--------|
-| Rate limiting احترافي per-IP | يحتاج Redis/Upstash؛ لا يوجد في Supabase ناتيف |
-| تعديل client.ts/types.ts | مولّدة تلقائياً |
-| تشفير حقول DB إضافية | لا يوجد PII حسّاس مكشوف بعد المراجعة |
-| تغيير RLS الحالي | كله مبني على `has_role()` وسليم |
-| إضافة CSRF tokens | Supabase JWT في Authorization header (ليس cookie) → لا حاجة |
+### 5) تحديث `src/App.tsx`
 
----
+- استبدال 6 routes بـ 3 routes رئيسية + 3 redirects تحفظ الروابط القديمة (باستخدام `<Navigate to="..." replace />`).
+- استخدام `?tab=` query param لفتح التبويب المطلوب مباشرة.
 
-## التقدير
-- ملفات جديدة: **2**
-- ملفات واجهة معدّلة: **~10** (7 نماذج + 3 صفحات بحث)
-- Edge Functions معدّلة: **~8**
-- بدون أي migration على DB
-- بدون تغيير أي وظيفة قائمة (تحقق فقط، ليس منطق)
+### تفاصيل تقنية
 
-## التقرير النهائي
-بعد التنفيذ سأعطيك:
-- جدول: ملف | نوع التغيير | عدد الحقول المحمية
-- نتيجة security scan + linter
-- قائمة الدوال التي أصبحت تتطلب JWT
+- التبويبات تستخدم `@/components/ui/tabs` (موجود بالفعل، shadcn).
+- قراءة التبويب الافتراضي من `useSearchParams()` ليعمل deep-linking والـ redirects.
+- لا تغييرات على قاعدة البيانات أو الـ hooks أو الـ RLS.
+- لا تغييرات على الـ Edge Functions.
+- الأيقونات في الشريط الجانبي تبقى كما هي للعناصر المتبقية.
+
+### ملفات ستُنشأ
+- `src/pages/InventoryHub.tsx`
+- `src/pages/SuppliersHub.tsx`
+- `src/pages/StaffHub.tsx`
+- `src/components/inventory/InventoryListSection.tsx`
+- `src/components/inventory/OpeningInventorySection.tsx`
+- `src/components/suppliers/SuppliersListSection.tsx`
+- `src/components/suppliers/ArchiveSection.tsx`
+- `src/components/staff/StaffListSection.tsx`
+- `src/components/staff/AttendanceSection.tsx`
+- `src/components/staff/PayrollSection.tsx`
+
+### ملفات ستُعدَّل
+- `src/App.tsx` — routes + redirects
+- `src/components/layout/Sidebar.tsx` — إزالة 4 عناصر
+
+### ملفات ستُحذف
+- `src/pages/Inventory.tsx`, `OpeningInventory.tsx`
+- `src/pages/Suppliers.tsx`, `Archive.tsx`
+- `src/pages/Staff.tsx`, `Attendance.tsx`, `Payroll.tsx`
+
+(محتواها يُنقل بالكامل إلى المكونات الفرعية الجديدة دون تغيير منطقي.)
+
+### النتيجة
+- الشريط الجانبي يصبح أنظف (من ~20 إلى ~14 عنصر).
+- الأقسام المرتبطة وظيفياً مدموجة ومنطقية.
+- كل الروابط القديمة تستمر بالعمل عبر redirects.
