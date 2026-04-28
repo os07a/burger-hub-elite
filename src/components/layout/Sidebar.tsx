@@ -4,7 +4,7 @@ import { Sun, Moon, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutGrid, TrendingUp, Heart, Users, Calendar, Wallet,
-  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike, MessageSquare, Share2
+  Video, ShoppingBag, Package, Truck, FolderPlus, BarChart3, Activity, LineChart, MessageCircle, Bike, MessageSquare, Share2, ChefHat
 } from "lucide-react";
 
 const navGroups = [
@@ -33,6 +33,7 @@ const navGroups = [
     label: "المشغّل",
     items: [
       { id: "products", label: "المنتجات", icon: ShoppingBag, path: "/products" },
+      { id: "menu-analysis", label: "تحليل المنيو", icon: ChefHat, path: "/menu-analysis" },
       { id: "inventory", label: "المخزون", icon: Package, path: "/inventory" },
       { id: "opening-inventory", label: "الجرد الابتدائي", icon: Package, path: "/opening-inventory" },
       { id: "suppliers", label: "الموردون", icon: Truck, path: "/suppliers" },
