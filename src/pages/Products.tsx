@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, TrendingUp, Crown, Menu as MenuIcon, BarChart3, C
 import { useProducts, useDeleteProduct, type Product } from "@/hooks/useProducts";
 import { useAuth } from "@/contexts/AuthContext";
 import ProductFormDialog from "@/components/products/ProductFormDialog";
+import RecipeDialog from "@/components/products/RecipeDialog";
 import ProductMovementTab from "@/components/products/ProductMovementTab";
 import ProductCalculatorTab from "@/components/products/ProductCalculatorTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,6 +46,7 @@ const Products = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [confirmDel, setConfirmDel] = useState<Product | null>(null);
+  const [recipeProduct, setRecipeProduct] = useState<Product | null>(null);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
 
   const filtered = products.filter((p) => {
@@ -198,6 +200,14 @@ const Products = () => {
                           {isAdmin && (
                             <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                               <button
+                                onClick={() => setRecipeProduct(p)}
+                                className="w-6 h-6 rounded-full bg-background/95 border border-border shadow-sm flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition"
+                                aria-label="الوصفة"
+                                title="الوصفة"
+                              >
+                                <span className="text-[10px]">🧾</span>
+                              </button>
+                              <button
                                 onClick={() => handleEdit(p)}
                                 className="w-6 h-6 rounded-full bg-background/95 border border-border shadow-sm flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition"
                                 aria-label="تعديل"
@@ -276,6 +286,8 @@ const Products = () => {
       </Tabs>
 
       <ProductFormDialog open={dialogOpen} onOpenChange={setDialogOpen} product={editing} />
+
+      <RecipeDialog open={!!recipeProduct} onOpenChange={(o) => !o && setRecipeProduct(null)} product={recipeProduct} />
 
       <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
         <AlertDialogContent dir="rtl">
