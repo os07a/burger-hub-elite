@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
+import CommandCenter from "@/pages/CommandCenter";
 import Behavior from "@/pages/Behavior";
 import Loyalty from "@/pages/Loyalty";
 import StaffHub from "@/pages/StaffHub";
@@ -17,8 +17,6 @@ import MenuAnalysis from "@/pages/MenuAnalysis";
 import InventoryHub from "@/pages/InventoryHub";
 import SuppliersHub from "@/pages/SuppliersHub";
 import Profits from "@/pages/Profits";
-import ProjectStatus from "@/pages/ProjectStatus";
-import SalesIndicator from "@/pages/SalesIndicator";
 import BusinessAdvisor from "@/pages/BusinessAdvisor";
 import DeliveryApps from "@/pages/DeliveryApps";
 import SocialMedia from "@/pages/SocialMedia";
@@ -43,8 +41,9 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/project-status" element={<ProjectStatus />} />
+              <Route path="/" element={<CommandCenter />} />
+              <Route path="/project-status" element={<Navigate to="/?tab=status" replace />} />
+              <Route path="/sales-indicator" element={<Navigate to="/?tab=sales" replace />} />
               <Route path="/behavior" element={<Behavior />} />
               <Route path="/loyalty" element={<Loyalty />} />
               <Route path="/staff" element={<StaffHub />} />
@@ -58,7 +57,6 @@ const App = () => (
               <Route path="/suppliers" element={<SuppliersHub />} />
               <Route path="/archive" element={<Navigate to="/suppliers?tab=archive" replace />} />
               <Route path="/profits" element={<Profits />} />
-              <Route path="/sales-indicator" element={<SalesIndicator />} />
               <Route path="/advisor" element={<BusinessAdvisor />} />
               <Route path="/delivery-apps" element={<DeliveryApps />} />
               <Route path="/social-media" element={<SocialMedia />} />
