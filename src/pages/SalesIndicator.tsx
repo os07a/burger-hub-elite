@@ -9,7 +9,11 @@ import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
 import { useSalesIndicator } from "@/hooks/useSalesIndicator";
 import { fmt, formatArabicDayMonth } from "@/lib/format";
 
-const SalesIndicator = () => {
+interface SalesIndicatorProps {
+  embedded?: boolean;
+}
+
+const SalesIndicator = ({ embedded = false }: SalesIndicatorProps) => {
   const [rangeDays, setRangeDays] = useState<number>(30); // 7 | 30 | 0 (=90+ all)
   const [posSyncOpen, setPosSyncOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -68,8 +72,8 @@ const SalesIndicator = () => {
   if (isLoading) {
     return (
       <div>
-        <PageHeader title="مؤشر المبيعات" subtitle="جاري تحميل بيانات الكاشير..." badge="تحليل" />
-        {Toolbar}
+        {!embedded && <><PageHeader title="مؤشر المبيعات" subtitle="جاري تحميل بيانات الكاشير..." badge="تحليل" />
+        {Toolbar}</>}
         <div className="grid grid-cols-6 gap-2 mb-4">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
         </div>
@@ -84,9 +88,9 @@ const SalesIndicator = () => {
   if (error) {
     return (
       <div>
-        <PageHeader title="مؤشر المبيعات" subtitle="خطأ في تحميل البيانات" badge="تحليل" />
-        {Toolbar}
-        <div className="bg-surface border border-red-500/30 rounded-lg p-6 text-center text-red-400 text-[12px]">
+        {!embedded && <><PageHeader title="مؤشر المبيعات" subtitle="خطأ في تحميل البيانات" badge="تحليل" />
+        {Toolbar}</>}
+        <div className="bg-surface border border-danger/30 rounded-lg p-6 text-center text-danger text-[12px]">
           ⚠️ تعذر تحميل بيانات المبيعات: {error.message}
         </div>
       </div>
@@ -96,8 +100,8 @@ const SalesIndicator = () => {
   if (!data) {
     return (
       <div>
-        <PageHeader title="مؤشر المبيعات" subtitle={hasFilter ? "ما فيه بيانات في النطاق المحدد" : "لا توجد بيانات بعد"} badge="تحليل" />
-        {Toolbar}
+        {!embedded && <><PageHeader title="مؤشر المبيعات" subtitle={hasFilter ? "ما فيه بيانات في النطاق المحدد" : "لا توجد بيانات بعد"} badge="تحليل" />
+        {Toolbar}</>}
         <div className="bg-surface border border-border rounded-lg p-8 text-center">
           <div className="text-[32px] mb-2">📊</div>
           <div className="text-[14px] font-bold text-foreground mb-1">
@@ -125,8 +129,8 @@ const SalesIndicator = () => {
     : isReady
     ? "bg-success/10 border-success/30"
     : isPreliminary
-    ? "bg-blue-500/10 border-blue-500/30"
-    : "bg-orange-500/10 border-orange-500/30";
+    ? "bg-info/10 border-info/30"
+    : "bg-warning/10 border-warning/30";
 
   const kpiCards: { label: string; value: string; color: string; tooltipTitle: string; tooltipDesc: string }[] = [
     {
@@ -139,21 +143,21 @@ const SalesIndicator = () => {
     {
       label: "💵 صافي المبيعات",
       value: fmt(kpis.totalNet),
-      color: "text-black",
+      color: "text-foreground",
       tooltipTitle: "صافي المبيعات (Net Sales)",
       tooltipDesc: "إجمالي المبيعات − الخصومات − المسترد. هذا هو الإيراد الفعلي الذي دخل المحل ويستخدم لحساب الأرباح.",
     },
     {
       label: "📊 متوسط يومي",
       value: fmt(kpis.dailyAvg),
-      color: "text-blue-400",
+      color: "text-info",
       tooltipTitle: "المتوسط اليومي",
       tooltipDesc: `إجمالي المبيعات ÷ عدد الأيام المسجّلة (${data.daysCount} يوم). يعكس مستوى الأداء اليومي ويُقارن بهدف 1,000 ر.س/يوم.`,
     },
     {
       label: "🏆 أعلى يوم",
       value: fmt(kpis.bestDay),
-      color: "text-black",
+      color: "text-foreground",
       tooltipTitle: "أعلى يوم في النطاق",
       tooltipDesc: kpis.bestDayDate
         ? `أعلى مبيعات يومية مسجّلة: ${kpis.bestDayLabel} (${kpis.bestDayDate}). استخدمه كمرجع لما يقدر المحل يحققه.`
@@ -162,7 +166,7 @@ const SalesIndicator = () => {
     {
       label: "📉 أدنى يوم فعلي",
       value: fmt(kpis.worstDay),
-      color: "text-red-400",
+      color: "text-danger",
       tooltipTitle: "أدنى يوم فعلي",
       tooltipDesc: kpis.worstDayDate
         ? `أقل يوم فيه مبيعات > 0 (نتجاهل أيام الإغلاق التام): ${kpis.worstDayLabel} (${kpis.worstDayDate}). راجعه لمعرفة السبب.`
@@ -171,7 +175,7 @@ const SalesIndicator = () => {
     {
       label: "🏷️ إجمالي الخصومات",
       value: fmt(kpis.totalDiscounts),
-      color: "text-orange-400",
+      color: "text-warning",
       tooltipTitle: "إجمالي الخصومات",
       tooltipDesc: `مجموع كل الخصومات الممنوحة. النسبة الحالية ${kpis.discountPct.toFixed(1)}% من الإجمالي — يفضّل أن تبقى تحت 2% لحماية الهامش.`,
     },
@@ -179,8 +183,8 @@ const SalesIndicator = () => {
 
   return (
   <div>
-    <PageHeader title="مؤشر المبيعات" subtitle={subtitle} badge="تحليل" />
-    {Toolbar}
+    {!embedded && <><PageHeader title="مؤشر المبيعات" subtitle={subtitle} badge="تحليل" />
+    {Toolbar}</>}
 
     {/* بانر مستوى نضج البيانات */}
     {readiness.level !== "insufficient" && (
@@ -196,7 +200,7 @@ const SalesIndicator = () => {
               <span className="font-semibold text-foreground">{readiness.daysCount}/14</span>
             </div>
             <div className="h-1 bg-background rounded-sm overflow-hidden">
-              <div className="h-full bg-orange-500 rounded-sm" style={{ width: `${readiness.progressTo14}%` }} />
+              <div className="h-full bg-warning rounded-sm" style={{ width: `${readiness.progressTo14}%` }} />
             </div>
           </div>
           <div>
@@ -205,7 +209,7 @@ const SalesIndicator = () => {
               <span className="font-semibold text-foreground">{readiness.daysCount}/28</span>
             </div>
             <div className="h-1 bg-background rounded-sm overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-sm" style={{ width: `${readiness.progressTo28}%` }} />
+              <div className="h-full bg-info rounded-sm" style={{ width: `${readiness.progressTo28}%` }} />
             </div>
           </div>
           <div>
@@ -265,10 +269,10 @@ const SalesIndicator = () => {
                 <tr key={m.key} className="border-b border-border/50 hover:bg-background/50">
                   <td className="py-2 font-bold text-foreground">{m.month}</td>
                   <td className="text-center text-foreground">{fmt(m.gross)}</td>
-                  <td className="text-center font-medium text-black">{fmt(m.net)}</td>
+                  <td className="text-center font-medium text-foreground">{fmt(m.net)}</td>
                   <td className="text-center text-gray">{m.days}</td>
                   <td className="text-center font-bold text-foreground">{fmt(m.avg)}</td>
-                  <td className="text-center text-rose-700">{fmt(m.discounts)}</td>
+                  <td className="text-center text-danger">{fmt(m.discounts)}</td>
                   <td className="text-center text-gray">{m.discPct.toFixed(1)}%</td>
                   <td className="text-center">
                     <StatusBadge variant={m.ratingVariant} className="text-[8px]">{m.rating}</StatusBadge>
@@ -290,8 +294,8 @@ const SalesIndicator = () => {
             isDeep || isReady
               ? "text-success bg-success/10 border-success/30"
               : isPreliminary
-              ? "text-blue-400 bg-blue-500/10 border-blue-500/30"
-              : "text-orange-500 bg-orange-500/10 border-orange-500/30"
+              ? "text-info bg-info/10 border-info/30"
+              : "text-warning bg-warning/10 border-warning/30"
           }`}>
             {isDeep ? "تحليل موسّع ✅" : isReady ? "تحليل موثوق ✅" : isPreliminary ? "بيانات أولية" : "بيانات مبدئية"}
           </span>
@@ -300,9 +304,9 @@ const SalesIndicator = () => {
           {narratives.map((n, i) => {
             const toneClasses = {
               success: "border-success/30 bg-success/5",
-              warning: "border-orange-500/30 bg-orange-500/5",
+              warning: "border-warning/30 bg-warning/5",
               danger: "border-danger/30 bg-danger/5",
-              info: "border-blue-500/30 bg-blue-500/5",
+              info: "border-info/30 bg-info/5",
               neutral: "border-border bg-background",
             }[n.tone];
             return (
@@ -319,13 +323,13 @@ const SalesIndicator = () => {
     <div className="grid grid-cols-3 gap-3 mb-4">
       {/* أفضل 5 أيام */}
       <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold uppercase tracking-wider mb-3 text-black">🏆 أفضل 5 أيام</div>
+        <div className="text-[9px] font-semibold uppercase tracking-wider mb-3 text-foreground">🏆 أفضل 5 أيام</div>
         <div className="space-y-1.5">
           {bestDays.map((d, i) => (
             <div key={d.date} className="flex items-center gap-2 p-2 bg-background border border-border rounded-lg">
-              <span className="text-[14px] w-6 text-center font-bold text-black">#{i + 1}</span>
+              <span className="text-[14px] w-6 text-center font-bold text-foreground">#{i + 1}</span>
               <span className="text-[11px] text-gray flex-1">{d.label}</span>
-              <span className="text-[13px] font-bold text-black">{fmt(d.value)}</span>
+              <span className="text-[13px] font-bold text-foreground">{fmt(d.value)}</span>
               <span className="text-[8px] text-gray-light">ر.س</span>
             </div>
           ))}
@@ -334,18 +338,18 @@ const SalesIndicator = () => {
 
       {/* أضعف 5 أيام */}
       <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-red-400 uppercase tracking-wider mb-3">📉 أضعف 5 أيام</div>
+        <div className="text-[9px] font-semibold text-danger uppercase tracking-wider mb-3">📉 أضعف 5 أيام</div>
         <div className="space-y-1.5">
           {worstDays.map((d, i) => (
             <div key={d.date} className="flex items-center gap-2 p-2 bg-background border border-border rounded-lg">
-              <span className="text-[14px] w-6 text-center font-bold text-red-400">#{i + 1}</span>
+              <span className="text-[14px] w-6 text-center font-bold text-danger">#{i + 1}</span>
               <span className="text-[11px] text-gray flex-1">{d.label}</span>
-              <span className="text-[13px] font-bold text-red-400">{fmt(d.value)}</span>
+              <span className="text-[13px] font-bold text-danger">{fmt(d.value)}</span>
               <span className="text-[8px] text-gray-light">ر.س</span>
             </div>
           ))}
-          <div className="p-2 mt-1 bg-red-500/5 border border-red-500/20 rounded-lg">
-            <div className="text-[8px] text-red-400 leading-relaxed">
+          <div className="p-2 mt-1 bg-danger/5 border border-danger/20 rounded-lg">
+            <div className="text-[8px] text-danger leading-relaxed">
               ⚠️ {worstMonthNote}
             </div>
           </div>
@@ -357,7 +361,7 @@ const SalesIndicator = () => {
         <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">📅 خريطة الأسبوع</div>
         <div className="space-y-1.5">
           {weekdayAverages.map((d) => {
-            const barColor = d.avg >= 750 ? 'bg-green-500/50' : d.avg >= 670 ? 'bg-yellow-500/40' : 'bg-red-500/40';
+            const barColor = d.avg >= 750 ? 'bg-success/50' : d.avg >= 670 ? 'bg-yellow-500/40' : 'bg-danger/40';
             return (
               <div key={d.day} className="flex items-center gap-2">
                 <span className="text-[11px] text-gray w-14 text-left">{d.day}</span>
@@ -379,17 +383,17 @@ const SalesIndicator = () => {
     <div className="grid grid-cols-2 gap-3">
       {/* تحليل الخصومات */}
       <div className="bg-surface border border-border rounded-lg p-4">
-        <div className="text-[9px] font-semibold text-orange-400 uppercase tracking-wider mb-3">🏷️ تحليل الخصومات والمسترد</div>
+        <div className="text-[9px] font-semibold text-warning uppercase tracking-wider mb-3">🏷️ تحليل الخصومات والمسترد</div>
         <div className="space-y-2">
           {monthlyBreakdown.map((m) => {
             const discPct = m.discPct;
-            const barColor = discPct > 10 ? 'bg-red-500' : discPct > 2 ? 'bg-orange-500' : 'bg-green-500';
+            const barColor = discPct > 10 ? 'bg-danger' : discPct > 2 ? 'bg-warning' : 'bg-success';
             return (
               <div key={m.key}>
                 <div className="flex items-center justify-between text-[10px] mb-0.5">
                   <span className="text-gray">{m.month}</span>
                   <div className="flex items-center gap-2">
-                    <span className={`font-bold ${discPct > 10 ? 'text-red-400' : discPct > 2 ? 'text-orange-400' : 'text-green-400'}`}>
+                    <span className={`font-bold ${discPct > 10 ? 'text-danger' : discPct > 2 ? 'text-warning' : 'text-success'}`}>
                       {discPct.toFixed(1)}%
                     </span>
                     <span className="text-[9px] text-gray-light">{fmt(m.discounts)} ر.س</span>

@@ -11,9 +11,7 @@ const navGroups = [
   {
     label: "الرئيسية",
     items: [
-      { id: "dashboard", label: "لوحة التحكم", icon: LayoutGrid, path: "/" },
-      { id: "project-status", label: "حالة المشروع", icon: Activity, path: "/project-status" },
-      { id: "sales-indicator", label: "مؤشر المبيعات", icon: LineChart, path: "/sales-indicator" },
+      { id: "command-center", label: "مركز القيادة", icon: LayoutGrid, path: "/" },
       { id: "advisor", label: "المستشار الذكي", icon: MessageCircle, path: "/advisor" },
       { id: "behavior", label: "سلوك المستهلك", icon: TrendingUp, path: "/behavior" },
       { id: "loyalty", label: "الولاء", icon: Heart, path: "/loyalty" },
