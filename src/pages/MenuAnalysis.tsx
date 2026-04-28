@@ -87,10 +87,10 @@ const MenuAnalysis = () => {
         <>
           {/* KPIs */}
           <div className="grid grid-cols-4 gap-4 mb-6">
-            <MetricCard label="إجمالي الإيراد" value={data.total_revenue.toFixed(0)} sub={`${data.period_days} يوم`} icon={<RiyalIcon size={14} />} />
-            <MetricCard label="إجمالي الهامش" value={data.total_margin.toFixed(0)} sub={`${data.total_revenue > 0 ? ((data.total_margin / data.total_revenue) * 100).toFixed(0) : 0}% من الإيراد`} subColor="success" icon={<RiyalIcon size={14} />} />
+            <MetricCard label="إجمالي الإيراد" value={data.total_revenue.toFixed(0)} sub={`${data.period_days} يوم`} showRiyal />
+            <MetricCard label="إجمالي الهامش" value={data.total_margin.toFixed(0)} sub={`${data.total_revenue > 0 ? ((data.total_margin / data.total_revenue) * 100).toFixed(0) : 0}% من الإيراد`} subColor="success" showRiyal />
             <MetricCard label="متوسط مبيعات الصنف" value={data.avg_units.toFixed(1)} sub="وحدة" />
-            <MetricCard label="متوسط هامش الصنف" value={data.avg_margin.toFixed(0)} sub="ريال لكل صنف" subColor={data.avg_margin >= 0 ? "success" : "danger"} icon={<RiyalIcon size={14} />} />
+            <MetricCard label="متوسط هامش الصنف" value={data.avg_margin.toFixed(0)} sub="ريال لكل صنف" subColor={data.avg_margin >= 0 ? "success" : "danger"} showRiyal />
           </div>
 
           {/* Quadrant counts */}
