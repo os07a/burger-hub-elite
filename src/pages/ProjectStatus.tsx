@@ -81,7 +81,11 @@ const growthData = [
 const maxGross = Math.max(...salesMonths.map((m) => m.gross));
 const maxBankIncome = Math.max(...bankMonths.map((m) => m.income));
 
-const ProjectStatus = () => {
+interface ProjectStatusProps {
+  embedded?: boolean;
+}
+
+const ProjectStatus = ({ embedded = false }: ProjectStatusProps) => {
   const insights = useProjectStatusInsights({
     salesMonths,
     bankMonths,
@@ -98,11 +102,13 @@ const ProjectStatus = () => {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader
-        title="حالة المشروع"
-        subtitle="كشف بنك الراجحي + تقرير الكاشير · ديسمبر 2025 – أبريل 2026"
-        badge="مباشر"
-      />
+      {!embedded && (
+        <PageHeader
+          title="حالة المشروع"
+          subtitle="كشف بنك الراجحي + تقرير الكاشير · ديسمبر 2025 – أبريل 2026"
+          badge="مباشر"
+        />
+      )}
 
       {/* ═══════ Hero KPIs ═══════ */}
       <div className="grid grid-cols-5 gap-4 mb-6">
