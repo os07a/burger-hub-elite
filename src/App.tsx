@@ -17,7 +17,6 @@ import MenuAnalysis from "@/pages/MenuAnalysis";
 import InventoryHub from "@/pages/InventoryHub";
 import SuppliersHub from "@/pages/SuppliersHub";
 import Profits from "@/pages/Profits";
-import BusinessAdvisor from "@/pages/BusinessAdvisor";
 import DeliveryApps from "@/pages/DeliveryApps";
 import SocialMedia from "@/pages/SocialMedia";
 import Messages from "@/pages/Messages";
@@ -57,7 +56,7 @@ const App = () => (
               <Route path="/suppliers" element={<SuppliersHub />} />
               <Route path="/archive" element={<Navigate to="/suppliers?tab=archive" replace />} />
               <Route path="/profits" element={<Profits />} />
-              <Route path="/advisor" element={<BusinessAdvisor />} />
+              <Route path="/advisor" element={<Navigate to="/" replace />} />
               <Route path="/delivery-apps" element={<DeliveryApps />} />
               <Route path="/social-media" element={<SocialMedia />} />
               <Route path="/messages" element={<Messages />} />
