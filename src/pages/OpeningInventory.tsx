@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import PageHeader from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,8 +80,6 @@ const OpeningInventory = () => {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="📦 الجرد الابتدائي" subtitle="إدخال الكميات الفعلية في المخزون قبل تفعيل الخصم التلقائي" />
-
       {/* Trigger status banner */}
       <div className={`sticky top-0 z-10 rounded-2xl border p-4 ${enabled ? "bg-success/10 border-success/30" : "bg-warning/10 border-warning/30"}`}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
