@@ -1,6 +1,4 @@
-import { useState } from "react";
-import PageHeader from "@/components/ui/PageHeader";
-import MetricCard from "@/components/ui/MetricCard";
+import { useMemo, useState } from "react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2 } from "lucide-react";
@@ -12,8 +10,15 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import type { StockFilter } from "@/components/inventory/InventoryFilterBar";
 
-const Inventory = () => {
+interface InventoryProps {
+  statusFilter?: StockFilter;
+  searchQuery?: string;
+  categoryFilter?: string | null;
+}
+
+const Inventory = ({ statusFilter = "all", searchQuery = "", categoryFilter = null }: InventoryProps) => {
   const { userRole } = useAuth();
   const isAdmin = userRole === "admin";
   const { data: items = [], isLoading } = useInventory();
@@ -23,12 +28,20 @@ const Inventory = () => {
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [confirmDel, setConfirmDel] = useState<InventoryItem | null>(null);
 
-  const withStatus = items.map((i) => ({ ...i, stock: getStockStatus(Number(i.quantity), Number(i.min_quantity)) }));
-  const sufficient = withStatus.filter((i) => i.stock.variant === "success").length;
-  const low = withStatus.filter((i) => i.stock.variant === "warning").length;
-  const critical = withStatus.filter((i) => i.stock.variant === "danger").length;
-  const categories = [...new Set(items.map((i) => i.category).filter(Boolean))];
-  const lowList = withStatus.filter((i) => i.stock.variant !== "success");
+  const withStatus = useMemo(
+    () => items.map((i) => ({ ...i, stock: getStockStatus(Number(i.quantity), Number(i.min_quantity)) })),
+    [items],
+  );
+
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return withStatus.filter((i) => {
+      if (statusFilter !== "all" && i.stock.variant !== statusFilter) return false;
+      if (categoryFilter && i.category !== categoryFilter) return false;
+      if (q && !`${i.name} ${i.supplier ?? ""}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [withStatus, statusFilter, categoryFilter, searchQuery]);
 
   const handleAdd = () => { setEditing(null); setDialogOpen(true); };
   const handleEdit = (i: InventoryItem) => { setEditing(i); setDialogOpen(true); };
@@ -45,21 +58,7 @@ const Inventory = () => {
   };
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader
-        title="المخزون"
-        subtitle="متابعة الكميات والتنبيهات"
-        badge={`${items.length} صنف`}
-        actions={isAdmin ? <Button size="sm" onClick={handleAdd}><Plus size={14} className="ml-1" /> إضافة صنف</Button> : undefined}
-      />
-
-      <div className="grid grid-cols-4 gap-3 mb-4">
-        <MetricCard label="📦 إجمالي الأصناف" value={items.length.toString()} sub={`${categories.length} تصنيف`} />
-        <MetricCard label="✅ كافٍ" value={sufficient.toString()} sub="لا يحتاج طلب" subColor="success" />
-        <MetricCard label="⚡ منخفض" value={low.toString()} sub="إعادة طلب قريباً" subColor="warning" />
-        <MetricCard label="🚨 حرج" value={critical.toString()} sub="طلب فوري" subColor="danger" />
-      </div>
-
+    <div>
       {isLoading && <div className="text-center text-muted-foreground py-8">جارٍ التحميل...</div>}
 
       {!isLoading && items.length === 0 && (
@@ -70,8 +69,20 @@ const Inventory = () => {
       )}
 
       {items.length > 0 && (
-        <div className="bg-surface border border-border rounded-lg p-4">
-          <div className="text-[9px] font-semibold text-gray-light uppercase tracking-wider mb-3">📦 جرد المخزون</div>
+        <div className="ios-card">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-semibold text-muted-foreground">
+              📦 جرد المخزون
+              <span className="mr-2 text-[10px] text-gray-light">
+                · يعرض {filtered.length} من {items.length}
+              </span>
+            </div>
+            {isAdmin && (
+              <Button size="sm" onClick={handleAdd}>
+                <Plus size={14} className="ml-1" /> إضافة صنف
+              </Button>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -82,7 +93,14 @@ const Inventory = () => {
                 </tr>
               </thead>
               <tbody>
-                {withStatus.map((item) => (
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center text-muted-foreground text-[12px] py-8">
+                      لا توجد أصناف مطابقة للفلتر الحالي
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((item) => (
                   <tr key={item.id} className="hover:bg-background/50">
                     <td className="px-2.5 py-2.5 border-b border-border font-semibold text-[12px] text-foreground">{item.name}</td>
                     <td className="px-2.5 py-2.5 border-b border-border text-[11px] text-gray">{item.supplier ?? "—"}</td>
@@ -110,15 +128,6 @@ const Inventory = () => {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {lowList.length > 0 && (
-        <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-          <div className="text-[11px] font-bold text-warning mb-1">⚠️ تنبيه: {lowList.length} أصناف تحتاج إعادة طلب</div>
-          <div className="text-[10px] text-gray leading-relaxed">
-            {lowList.map((i) => `${i.name}${i.supplier ? ` (${i.supplier})` : ""}`).join(" · ")}
           </div>
         </div>
       )}
