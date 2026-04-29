@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState } from "react";
-import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Loader2, Upload } from "lucide-react";
@@ -116,8 +115,6 @@ const Archive = () => {
 
   return (
     <div>
-      <PageHeader title="الأرشيف" subtitle="كشف المصروفات التأسيسي الكامل — مطعم برجر هم" badge={`${invoices.length} عملية`} />
-
       <div className="grid grid-cols-4 gap-3 mb-5">
         <MetricCard label="🛒 فواتير تموينية" value={supplyDocs.length.toString()} sub={`${Math.round(supplyTotal).toLocaleString()} ر.س إجمالي`} subColor="success" />
         <MetricCard label="🏗️ فواتير الأصول" value={assetDocs.length.toString()} sub={`${Math.round(assetTotal).toLocaleString()} ر.س إجمالي`} subColor="warning" />
