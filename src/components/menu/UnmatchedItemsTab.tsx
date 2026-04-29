@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Link2, Plus, Loader2, Search, Package } from "lucide-react";
+import { Link2, Plus, Loader2, Search, Package, Wand2, Sparkles } from "lucide-react";
 import type { UnmatchedSaleItem } from "@/hooks/useMenuEngineering";
 import { suggestProducts, type ProductLite } from "@/lib/menuMatching";
 
@@ -15,6 +15,21 @@ const UnmatchedItemsTab = ({ unmatched, products }: Props) => {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState<null | "safe" | "all">(null);
+
+  // Pre-compute auto-link candidates once for the strip counters
+  const candidates = useMemo(() => {
+    const safe: Array<{ u: UnmatchedSaleItem; pid: string; score: number }> = [];
+    const loose: Array<{ u: UnmatchedSaleItem; pid: string; score: number }> = [];
+    for (const u of unmatched) {
+      if (!u.loyverse_item_id) continue; // can only relink rows that have a POS id
+      const top = suggestProducts(u.display_name, products, 1)[0];
+      if (!top) continue;
+      if (top.score >= 0.75) safe.push({ u, pid: top.product.id, score: top.score });
+      else if (top.score >= 0.6) loose.push({ u, pid: top.product.id, score: top.score });
+    }
+    return { safe, loose };
+  }, [unmatched, products]);
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase();
@@ -66,6 +81,46 @@ const UnmatchedItemsTab = ({ unmatched, products }: Props) => {
     }
   };
 
+  const linkClosest = async (sale: UnmatchedSaleItem) => {
+    if (!sale.loyverse_item_id) {
+      toast.error("هذا الصنف لا يحمل معرّف من الكاشير، استخدم 'إنشاء منتج جديد' بدل ذلك.");
+      return;
+    }
+    const top = suggestProducts(sale.display_name, products, 1)[0];
+    if (!top || top.score < 0.5) {
+      toast.error("لم نجد منتجًا قريبًا بدرجة كافية. اختر يدويًا أو أنشئ منتج.");
+      return;
+    }
+    await linkToExisting(top.product.id, sale);
+  };
+
+  const bulkAutoLink = async (mode: "safe" | "all") => {
+    const list = mode === "safe" ? candidates.safe : [...candidates.safe, ...candidates.loose];
+    if (list.length === 0) {
+      toast.info("لا يوجد ما يمكن ربطه تلقائيًا بالحد المختار.");
+      return;
+    }
+    setBulkBusy(mode);
+    let ok = 0;
+    let fail = 0;
+    // sequential to keep load steady & easier to debug
+    for (const c of list) {
+      try {
+        const { error } = await supabase
+          .from("products")
+          .update({ loyverse_item_id: c.u.loyverse_item_id })
+          .eq("id", c.pid);
+        if (error) throw error;
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    qc.invalidateQueries({ queryKey: ["menu_engineering"] });
+    setBulkBusy(null);
+    toast.success(`تم ربط ${ok} صنف${fail ? ` · فشل ${fail}` : ""}`);
+  };
+
   if (unmatched.length === 0) {
     return (
       <div className="ios-card text-center py-10 text-muted-foreground text-[12px]" dir="rtl">
@@ -95,9 +150,40 @@ const UnmatchedItemsTab = ({ unmatched, products }: Props) => {
         </div>
       </div>
 
+      {/* Bulk auto-link toolbar */}
+      <div className="flex items-center justify-between gap-3 bg-primary/5 border border-primary/20 rounded-xl p-2.5 mb-3 flex-wrap">
+        <div className="text-[11px] text-foreground flex items-center gap-2">
+          <Sparkles size={12} className="text-primary" />
+          <span>
+            <b className="text-success">{candidates.safe.length}</b> جاهز للربط الآمن (تطابق ≥75%) ·{" "}
+            <b className="text-warning">{candidates.loose.length}</b> اقتراحات إضافية (≥60%) ·{" "}
+            <b className="text-muted-foreground">{unmatched.length - candidates.safe.length - candidates.loose.length}</b> يحتاج مراجعة
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => bulkAutoLink("safe")}
+            disabled={bulkBusy !== null || candidates.safe.length === 0}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-success/10 text-success hover:bg-success/20 disabled:opacity-50 px-3 py-1.5 rounded-lg border border-success/30 transition"
+          >
+            {bulkBusy === "safe" ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
+            ربط الواضح فقط ({candidates.safe.length})
+          </button>
+          <button
+            onClick={() => bulkAutoLink("all")}
+            disabled={bulkBusy !== null || candidates.safe.length + candidates.loose.length === 0}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 px-3 py-1.5 rounded-lg transition"
+          >
+            {bulkBusy === "all" ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
+            ربط الكل تلقائيًا ({candidates.safe.length + candidates.loose.length})
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-2">
         {filtered.map((u) => {
           const suggestions = suggestProducts(u.display_name, products, 3);
+          const top = suggestions[0];
           const isBusy = busy === u.key;
           return (
             <div key={u.key} className="border border-border rounded-xl p-3 hover:bg-muted/20 transition">
@@ -122,24 +208,37 @@ const UnmatchedItemsTab = ({ unmatched, products }: Props) => {
                     )}
                   </div>
                 </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {top && top.score >= 0.5 && u.loyverse_item_id && (
+                    <button
+                      onClick={() => linkClosest(u)}
+                      disabled={isBusy || bulkBusy !== null}
+                      title={`ربط بـ "${top.product.name}" (${Math.round(top.score * 100)}%)`}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-success hover:bg-success/10 px-2.5 py-1 rounded-lg transition border border-success/30"
+                    >
+                      {isBusy ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
+                      ربط بالأقرب
+                    </button>
+                  )}
                 <button
                   onClick={() => createNewProduct(u)}
-                  disabled={isBusy}
-                  className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:bg-primary/10 px-2.5 py-1 rounded-lg transition"
+                    disabled={isBusy || bulkBusy !== null}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:bg-primary/10 px-2.5 py-1 rounded-lg transition"
                 >
                   {isBusy ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
                   إنشاء منتج
                 </button>
+                </div>
               </div>
 
-              {suggestions.length > 0 && u.loyverse_item_id && (
+              {suggestions.length > 0 && u.loyverse_item_id ? (
                 <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-border/50">
-                  <span className="text-[10px] text-muted-foreground">ربط بمنتج موجود:</span>
+                  <span className="text-[10px] text-muted-foreground">أو اختر يدويًا:</span>
                   {suggestions.map((s) => (
                     <button
                       key={s.product.id}
                       onClick={() => linkToExisting(s.product.id, u)}
-                      disabled={isBusy}
+                      disabled={isBusy || bulkBusy !== null}
                       className="inline-flex items-center gap-1 text-[10px] bg-muted/40 hover:bg-primary/10 hover:text-primary px-2 py-0.5 rounded-md transition border border-border"
                     >
                       <Link2 size={9} />
@@ -147,6 +246,14 @@ const UnmatchedItemsTab = ({ unmatched, products }: Props) => {
                       <span className="text-muted-foreground">({Math.round(s.score * 100)}%)</span>
                     </button>
                   ))}
+                </div>
+              ) : !u.loyverse_item_id ? (
+                <div className="text-[10px] text-muted-foreground pt-2 border-t border-border/50">
+                  هذا الصنف لا يحمل معرّف من الكاشير — استخدم "إنشاء منتج جديد" فقط.
+                </div>
+              ) : (
+                <div className="text-[10px] text-muted-foreground pt-2 border-t border-border/50">
+                  لا توجد منتجات قريبة في القائمة — أنشئ منتجًا جديدًا.
                 </div>
               )}
             </div>
