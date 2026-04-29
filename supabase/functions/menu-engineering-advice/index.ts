@@ -39,6 +39,8 @@ serve(async (req) => {
         total_margin: z.number().finite(),
         margin_pct: z.number().finite(),
         quadrant: z.enum(["star", "plowhorse", "puzzle", "dog"]),
+        units_change_pct: z.number().nullable().optional(),
+        margin_change_pct: z.number().nullable().optional(),
       })).max(500),
       period_days: z.number().int().min(1).max(365),
       counts: z.object({
@@ -51,6 +53,10 @@ serve(async (req) => {
       total_margin: z.number().finite(),
       avg_units: z.number().finite(),
       avg_margin: z.number().finite(),
+      prev_total_revenue: z.number().finite().optional(),
+      prev_total_margin: z.number().finite().optional(),
+      revenue_change_pct: z.number().nullable().optional(),
+      margin_change_pct: z.number().nullable().optional(),
     });
     const parsed = BodySchema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) {
@@ -58,7 +64,10 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const { items, period_days, counts, total_revenue, total_margin, avg_units, avg_margin } = parsed.data;
+    const {
+      items, period_days, counts, total_revenue, total_margin, avg_units, avg_margin,
+      prev_total_revenue, prev_total_margin, revenue_change_pct, margin_change_pct,
+    } = parsed.data;
 
     if (items.length === 0) {
       return new Response(
@@ -83,39 +92,56 @@ serve(async (req) => {
         .filter((i: any) => i.quadrant === q)
         .sort((a: any, b: any) => b.total_margin - a.total_margin)
         .slice(0, 5)
-        .map((i: any) => `- ${i.name} (${i.units_sold} وحدة، هامش ${i.total_margin.toFixed(0)} ريال، ${i.margin_pct.toFixed(0)}%)`)
+        .map((i: any) => {
+          const trend = (i.units_change_pct === null || i.units_change_pct === undefined)
+            ? ""
+            : `، اتجاه ${i.units_change_pct > 0 ? "+" : ""}${Number(i.units_change_pct).toFixed(0)}%`;
+          return `- ${i.name} (${i.units_sold} وحدة، هامش ${i.total_margin.toFixed(0)} ريال، ${i.margin_pct.toFixed(0)}%${trend})`;
+        })
         .join("\n") || "(لا يوجد)";
 
-    const prompt = `أنت مستشار هندسة منيو خبير في مطاعم البرجر السعودية. تكلم بالعامية السعودية المباشرة.
+    const fmtChange = (v: number | null | undefined) =>
+      (v === null || v === undefined) ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(0)}%`;
 
-═══ بيانات تحليل المنيو لآخر ${period_days} يوم ═══
+    const comparisonBlock = (prev_total_revenue !== undefined || prev_total_margin !== undefined)
+      ? `\n[مقارنة بالفترة السابقة]
+- تغير الإيراد: ${fmtChange(revenue_change_pct ?? null)} (سابق: ${(prev_total_revenue ?? 0).toFixed(0)} ريال)
+- تغير الهامش: ${fmtChange(margin_change_pct ?? null)} (سابق: ${(prev_total_margin ?? 0).toFixed(0)} ريال)
+`
+      : "";
+
+    const prompt = `أنت مستشار هندسة منيو خبير في مطاعم البرجر السعودية. تكلم بالعامية السعودية المباشرة، بدون أي إيموجي أو رموز تعبيرية.
+
+[بيانات تحليل المنيو لآخر ${period_days} يوم]
 - إجمالي الإيراد: ${total_revenue.toFixed(0)} ريال
 - إجمالي الهامش: ${total_margin.toFixed(0)} ريال
 - متوسط الوحدات المباعة لكل صنف: ${avg_units.toFixed(1)}
 - متوسط هامش الصنف: ${avg_margin.toFixed(0)} ريال
+${comparisonBlock}
+[التوزيع]
+- النجوم: ${counts.star} صنف (شعبية + ربحية)
+- الجياد: ${counts.plowhorse} صنف (شعبية لكن هامش ضعيف)
+- الألغاز: ${counts.puzzle} صنف (هامش حلو لكن مبيعات ضعيفة)
+- الخاسرات: ${counts.dog} صنف (لا شعبية ولا هامش)
 
-═══ التوزيع ═══
-- ⭐ النجوم: ${counts.star} صنف (شعبية + ربحية)
-- 🐎 الجياد: ${counts.plowhorse} صنف (شعبية لكن هامش ضعيف)
-- 🧩 الألغاز: ${counts.puzzle} صنف (هامش حلو لكن مبيعات ضعيفة)
-- 🐕 الخاسرات: ${counts.dog} صنف (لا شعبية ولا هامش)
-
-═══ أبرز النجوم ⭐ ═══
+[أبرز النجوم]
 ${top("star")}
 
-═══ أبرز الجياد 🐎 ═══
+[أبرز الجياد]
 ${top("plowhorse")}
 
-═══ أبرز الألغاز 🧩 ═══
+[أبرز الألغاز]
 ${top("puzzle")}
 
-═══ أبرز الخاسرات 🐕 ═══
+[أبرز الخاسرات]
 ${top("dog")}
 
-═══ المطلوب ═══
+[المطلوب]
 أعطني:
-1. ملخص في سطرين عن صحة المنيو (summary)
-2. قائمة 4-6 توصيات تنفيذية مرتبة بالأولوية (recommendations) — كل توصية: عنوان قصير + سبب من البيانات + خطوة عملية واضحة
+1. ملخص في سطرين عن صحة المنيو واتجاهه مقارنة بالفترة السابقة (summary)
+2. قائمة 4-6 توصيات تنفيذية مرتبة بالأولوية (recommendations) — كل توصية: عنوان قصير + سبب من البيانات (استخدم الأرقام والاتجاهات) + خطوة عملية واضحة
+
+مهم: لا تستخدم أي إيموجي أو رموز تعبيرية في الرد.
 
 ردّ بـ JSON فقط بهذا الشكل:
 {
