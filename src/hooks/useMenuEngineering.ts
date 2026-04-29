@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Star, Zap, Puzzle, TrendingDown, type LucideIcon } from "lucide-react";
+import { matchSaleToProduct, normalizeName, type ProductLite } from "@/lib/menuMatching";
 
 export type MenuQuadrant = "star" | "plowhorse" | "puzzle" | "dog";
 
@@ -26,10 +27,25 @@ export interface MenuItem {
   prev_total_margin: number;
   units_change_pct: number | null;
   margin_change_pct: number | null;
+  match_via: "id" | "name" | "none"; // how this product got linked to POS sales
+  last_sold_date: string | null;
+}
+
+export interface UnmatchedSaleItem {
+  key: string; // normalized name
+  display_name: string;
+  loyverse_item_id: string | null;
+  units_sold: number;
+  net_revenue: number;
+  cost_total: number;
+  last_sold_date: string | null;
 }
 
 export interface MenuEngineeringResult {
   items: MenuItem[];
+  unmatched: UnmatchedSaleItem[];
+  unmatched_total_revenue: number;
+  unmatched_total_units: number;
   avg_units: number;
   avg_margin: number;
   total_units: number;
@@ -59,35 +75,68 @@ const pct = (cur: number, prev: number): number | null => {
 async function fetchLines(fromStr: string, toStr: string) {
   const { data, error } = await supabase
     .from("pos_receipt_items")
-    .select("loyverse_item_id,quantity,net_total,cost_total,receipt_date")
+    .select("loyverse_item_id,item_name,quantity,net_total,cost_total,receipt_date")
     .gte("receipt_date", fromStr)
-    .lte("receipt_date", toStr)
-    .not("loyverse_item_id", "is", null);
+    .lte("receipt_date", toStr);
   if (error) throw error;
   return data ?? [];
 }
 
-function aggregate(lines: { loyverse_item_id: string | null; quantity: number; net_total: number; cost_total: number }[]) {
-  const agg = new Map<string, { qty: number; net: number; cost: number }>();
+type SaleLine = {
+  loyverse_item_id: string | null;
+  item_name: string;
+  quantity: number;
+  net_total: number;
+  cost_total: number;
+  receipt_date: string;
+};
+
+/**
+ * Aggregate sale lines into per-product buckets using smart matching.
+ * Lines that cannot be matched are returned in `unmatched`.
+ */
+function aggregateWithMatching(lines: SaleLine[], products: ProductLite[]) {
+  const matched = new Map<string, { qty: number; net: number; cost: number; via: "id" | "name"; last: string | null }>();
+  const unmatched = new Map<string, { qty: number; net: number; cost: number; display: string; lid: string | null; last: string | null }>();
+
   for (const l of lines) {
-    const id = l.loyverse_item_id as string;
-    const cur = agg.get(id) ?? { qty: 0, net: 0, cost: 0 };
-    cur.qty += Number(l.quantity || 0);
-    cur.net += Number(l.net_total || 0);
-    cur.cost += Number(l.cost_total || 0);
-    agg.set(id, cur);
+    const qty = Number(l.quantity || 0);
+    const net = Number(l.net_total || 0);
+    const cost = Number(l.cost_total || 0);
+    const m = matchSaleToProduct(l.item_name, l.loyverse_item_id, products);
+    if (m.product_id && m.via) {
+      const cur = matched.get(m.product_id) ?? { qty: 0, net: 0, cost: 0, via: m.via, last: null };
+      cur.qty += qty;
+      cur.net += net;
+      cur.cost += cost;
+      // prefer "id" match info if any line was matched by id
+      if (m.via === "id") cur.via = "id";
+      if (!cur.last || l.receipt_date > cur.last) cur.last = l.receipt_date;
+      matched.set(m.product_id, cur);
+    } else {
+      const key = normalizeName(l.item_name) || `__${l.loyverse_item_id ?? "unknown"}`;
+      const cur = unmatched.get(key) ?? { qty: 0, net: 0, cost: 0, display: l.item_name || "(بدون اسم)", lid: l.loyverse_item_id, last: null };
+      cur.qty += qty;
+      cur.net += net;
+      cur.cost += cost;
+      if (!cur.last || l.receipt_date > cur.last) cur.last = l.receipt_date;
+      unmatched.set(key, cur);
+    }
   }
-  return agg;
+  return { matched, unmatched };
 }
 
 export const useMenuEngineering = (days = 30) => {
   const qc = useQueryClient();
 
-  // Realtime: refresh on any new POS line
+  // Realtime: refresh on any new POS line OR product change
   useEffect(() => {
     const ch = supabase
       .channel("menu_eng_pos_items")
       .on("postgres_changes", { event: "*", schema: "public", table: "pos_receipt_items" }, () => {
+        qc.invalidateQueries({ queryKey: ["menu_engineering"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
         qc.invalidateQueries({ queryKey: ["menu_engineering"] });
       })
       .subscribe();
@@ -120,18 +169,25 @@ export const useMenuEngineering = (days = 30) => {
       ]);
       if (pErr) throw pErr;
 
-      const aggCur = aggregate(curLines);
-      const aggPrev = aggregate(prevLines);
+      const productsLite: ProductLite[] = (products ?? []).map((p) => ({
+        id: p.id, name: p.name, loyverse_item_id: p.loyverse_item_id,
+      }));
+
+      const { matched: aggCur, unmatched: aggUnmatched } = aggregateWithMatching(curLines as SaleLine[], productsLite);
+      const { matched: aggPrev } = aggregateWithMatching(prevLines as SaleLine[], productsLite);
 
       const items: MenuItem[] = (products ?? []).map((p) => {
-        const a = (p.loyverse_item_id && aggCur.get(p.loyverse_item_id)) || { qty: 0, net: 0, cost: 0 };
-        const pv = (p.loyverse_item_id && aggPrev.get(p.loyverse_item_id)) || { qty: 0, net: 0, cost: 0 };
+        const a = aggCur.get(p.id) || { qty: 0, net: 0, cost: 0, via: undefined as any, last: null as string | null };
+        const pv = aggPrev.get(p.id) || { qty: 0, net: 0, cost: 0 };
         const price = Number(p.price);
         const cost = Number(p.cost);
         const units_sold = a.qty;
         const net_revenue = a.net;
-        const total_margin = a.net - a.cost;
-        const prev_total_margin = pv.net - pv.cost;
+        // If POS cost_total is missing/zero, fall back to catalog cost × units.
+        const effective_cost = a.cost > 0 ? a.cost : cost * units_sold;
+        const total_margin = a.net - effective_cost;
+        const prev_effective_cost = pv.cost > 0 ? pv.cost : cost * pv.qty;
+        const prev_total_margin = pv.net - prev_effective_cost;
         const margin_per_unit = units_sold > 0 ? total_margin / units_sold : (price - cost);
         const margin_pct = price > 0 ? ((price - cost) / price) * 100 : 0;
         return {
@@ -154,6 +210,8 @@ export const useMenuEngineering = (days = 30) => {
           prev_total_margin,
           units_change_pct: pct(units_sold, pv.qty),
           margin_change_pct: pct(total_margin, prev_total_margin),
+          match_via: a.via ?? "none",
+          last_sold_date: a.last,
         };
       });
 
@@ -184,8 +242,25 @@ export const useMenuEngineering = (days = 30) => {
         { star: 0, plowhorse: 0, puzzle: 0, dog: 0 }
       );
 
+      const unmatched: UnmatchedSaleItem[] = Array.from(aggUnmatched.entries())
+        .map(([key, v]) => ({
+          key,
+          display_name: v.display,
+          loyverse_item_id: v.lid,
+          units_sold: v.qty,
+          net_revenue: v.net,
+          cost_total: v.cost,
+          last_sold_date: v.last,
+        }))
+        .sort((a, b) => b.net_revenue - a.net_revenue);
+      const unmatched_total_units = unmatched.reduce((s, i) => s + i.units_sold, 0);
+      const unmatched_total_revenue = unmatched.reduce((s, i) => s + i.net_revenue, 0);
+
       return {
         items: items.sort((a, b) => b.total_margin - a.total_margin),
+        unmatched,
+        unmatched_total_revenue,
+        unmatched_total_units,
         avg_units,
         avg_margin,
         total_units,

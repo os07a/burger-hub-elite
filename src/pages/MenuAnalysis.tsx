@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sparkles, Loader2, TrendingUp, TrendingDown, Minus,
-  AlertTriangle, ChefHat, RefreshCw, Radio,
+  AlertTriangle, ChefHat, RefreshCw, Radio, Link2Off, Search,
 } from "lucide-react";
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Cell,
 } from "recharts";
 import { toast } from "sonner";
+import QuickReadStrip from "@/components/menu/QuickReadStrip";
+import UnmatchedItemsTab from "@/components/menu/UnmatchedItemsTab";
 
 const PERIODS = [
   { d: 7, label: "آخر 7 أيام" },
@@ -55,6 +57,8 @@ const MenuAnalysis = () => {
   const [advice, setAdvice] = useState<{ summary: string; recommendations: any[] } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("table");
+  const [tableSearch, setTableSearch] = useState("");
   const initialSyncDone = useRef(false);
   const { data, isLoading, error, refetch } = useMenuEngineering(days);
 
@@ -111,6 +115,9 @@ const MenuAnalysis = () => {
           prev_total_margin: data.prev_total_margin,
           revenue_change_pct: data.revenue_change_pct,
           margin_change_pct: data.margin_change_pct,
+          unmatched_count: data.unmatched.length,
+          unmatched_revenue: data.unmatched_total_revenue,
+          unmatched_top: data.unmatched.slice(0, 8).map((u) => ({ name: u.display_name, units: u.units_sold, revenue: u.net_revenue })),
         },
       });
       if (error) throw error;
@@ -128,7 +135,7 @@ const MenuAnalysis = () => {
       <PageHeader
         title="تحليل المنيو"
         subtitle="مصفوفة هندسة المنيو — صنّف منتجاتك واتخذ قرارات أذكى"
-        badge={data ? `${data.items.filter((i) => i.units_sold > 0).length} صنف نشط` : undefined}
+        badge={data ? `${data.items.filter((i) => i.units_sold > 0).length} صنف نشط · ${data.unmatched.length} غير مربوط` : undefined}
         actions={
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-2 py-1 rounded-lg">
@@ -167,6 +174,9 @@ const MenuAnalysis = () => {
 
       {data && (
         <>
+          {/* Smart insights at the very top — fastest read */}
+          <QuickReadStrip data={data} onOpenUnmatched={() => setActiveTab("unmatched")} />
+
           {/* KPIs with comparison */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             <MetricCard
@@ -228,10 +238,17 @@ const MenuAnalysis = () => {
             })}
           </div>
 
-          <Tabs defaultValue="matrix" dir="rtl" className="w-full">
-            <TabsList className="grid grid-cols-3 max-w-md mb-4">
-              <TabsTrigger value="matrix" className="text-[12px]">المصفوفة</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
+            <TabsList className="grid grid-cols-4 max-w-2xl mb-4">
               <TabsTrigger value="table" className="text-[12px]">الجدول</TabsTrigger>
+              <TabsTrigger value="matrix" className="text-[12px]">المصفوفة</TabsTrigger>
+              <TabsTrigger value="unmatched" className="text-[12px] gap-1.5">
+                {data.unmatched.length > 0 && (
+                  <span className="bg-danger text-white text-[9px] font-bold px-1.5 rounded-full">{data.unmatched.length}</span>
+                )}
+                <Link2Off size={11} />
+                غير مربوطة
+              </TabsTrigger>
               <TabsTrigger value="advice" className="text-[12px]">توصيات AI</TabsTrigger>
             </TabsList>
 
@@ -313,6 +330,21 @@ const MenuAnalysis = () => {
 
             <TabsContent value="table">
               <div className="ios-card overflow-x-auto">
+                <div className="flex items-center justify-between mb-3 gap-3">
+                  <div>
+                    <div className="text-[13px] font-bold text-foreground">قائمة المنتجات</div>
+                    <div className="text-[11px] text-muted-foreground">مرتبة حسب الهامش الإجمالي · الأصناف بدون مبيعات في الأسفل</div>
+                  </div>
+                  <div className="relative">
+                    <Search size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      value={tableSearch}
+                      onChange={(e) => setTableSearch(e.target.value)}
+                      placeholder="بحث منتج..."
+                      className="bg-muted/30 border border-border rounded-lg text-[11px] pr-7 pl-2.5 py-1.5 w-44 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                </div>
                 <table className="w-full text-[12px]">
                   <thead>
                     <tr className="text-[11px] text-muted-foreground border-b border-border">
@@ -327,11 +359,26 @@ const MenuAnalysis = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.items.map((i) => {
+                    {data.items
+                      .filter((i) => !tableSearch.trim() || i.name.toLowerCase().includes(tableSearch.toLowerCase()))
+                      .sort((a, b) => {
+                        // Sold first, then by total_margin desc; unsold at bottom
+                        if ((a.units_sold > 0) !== (b.units_sold > 0)) return a.units_sold > 0 ? -1 : 1;
+                        return b.total_margin - a.total_margin;
+                      })
+                      .map((i) => {
                       const meta = QUADRANT_META[i.quadrant];
+                      const dim = i.units_sold === 0 ? "opacity-50" : "";
                       return (
-                        <tr key={i.product_id} className="border-b border-border/50 hover:bg-muted/30 transition">
-                          <td className="py-2 px-2 font-semibold text-foreground">{i.name}</td>
+                        <tr key={i.product_id} className={`border-b border-border/50 hover:bg-muted/30 transition ${dim}`}>
+                          <td className="py-2 px-2 font-semibold text-foreground">
+                            <div className="flex items-center gap-1.5">
+                              <span>{i.name}</span>
+                              {i.match_via === "name" && (
+                                <span title="مربوط بمطابقة الاسم" className="text-[9px] text-warning bg-warning/10 px-1 rounded">~</span>
+                              )}
+                            </div>
+                          </td>
                           <td className="text-center text-muted-foreground text-[11px]">{i.category || "—"}</td>
                           <td className="text-end font-bold text-foreground">{i.units_sold}</td>
                           <td className="text-center"><TrendBadge pct={i.units_change_pct} /></td>
@@ -351,6 +398,13 @@ const MenuAnalysis = () => {
                 </table>
                 {data.items.length === 0 && <div className="text-center py-8 text-muted-foreground">لا توجد منتجات نشطة.</div>}
               </div>
+            </TabsContent>
+
+            <TabsContent value="unmatched">
+              <UnmatchedItemsTab
+                unmatched={data.unmatched}
+                products={data.items.map((i) => ({ id: i.product_id, name: i.name, loyverse_item_id: i.loyverse_item_id }))}
+              />
             </TabsContent>
 
             <TabsContent value="advice">

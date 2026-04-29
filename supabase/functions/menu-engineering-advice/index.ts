@@ -57,6 +57,13 @@ serve(async (req) => {
       prev_total_margin: z.number().finite().optional(),
       revenue_change_pct: z.number().nullable().optional(),
       margin_change_pct: z.number().nullable().optional(),
+      unmatched_count: z.number().int().min(0).optional(),
+      unmatched_revenue: z.number().finite().optional(),
+      unmatched_top: z.array(z.object({
+        name: z.string().max(300),
+        units: z.number().finite(),
+        revenue: z.number().finite(),
+      })).max(50).optional(),
     });
     const parsed = BodySchema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) {
@@ -67,6 +74,7 @@ serve(async (req) => {
     const {
       items, period_days, counts, total_revenue, total_margin, avg_units, avg_margin,
       prev_total_revenue, prev_total_margin, revenue_change_pct, margin_change_pct,
+      unmatched_count, unmatched_revenue, unmatched_top,
     } = parsed.data;
 
     if (items.length === 0) {
@@ -110,6 +118,13 @@ serve(async (req) => {
 `
       : "";
 
+    const unmatchedBlock = (unmatched_count && unmatched_count > 0)
+      ? `\n[تنبيه: ${unmatched_count} صنف من الكاشير غير مربوط بمنتج (بقيمة ${(unmatched_revenue ?? 0).toFixed(0)} ريال)]
+${(unmatched_top ?? []).map((u) => `- ${u.name}: ${u.units} وحدة، ${u.revenue.toFixed(0)} ريال`).join("\n")}
+اقترح ربط هذه الأصناف من تبويب "غير مربوطة" حتى يصير التحليل دقيق.
+`
+      : "";
+
     const prompt = `أنت مستشار هندسة منيو خبير في مطاعم البرجر السعودية. تكلم بالعامية السعودية المباشرة، بدون أي إيموجي أو رموز تعبيرية.
 
 [بيانات تحليل المنيو لآخر ${period_days} يوم]
@@ -118,6 +133,7 @@ serve(async (req) => {
 - متوسط الوحدات المباعة لكل صنف: ${avg_units.toFixed(1)}
 - متوسط هامش الصنف: ${avg_margin.toFixed(0)} ريال
 ${comparisonBlock}
+${unmatchedBlock}
 [التوزيع]
 - النجوم: ${counts.star} صنف (شعبية + ربحية)
 - الجياد: ${counts.plowhorse} صنف (شعبية لكن هامش ضعيف)
