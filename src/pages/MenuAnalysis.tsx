@@ -6,8 +6,8 @@ import MetricCard from "@/components/ui/MetricCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Sparkles, Loader2, TrendingUp, TrendingDown, Minus,
-  AlertTriangle, ChefHat, RefreshCw, Radio, Link2Off, Search,
+  Sparkles, Loader2, TrendingUp,
+  AlertTriangle, ChefHat, RefreshCw, Radio, Link2Off,
 } from "lucide-react";
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip,
@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import QuickReadStrip from "@/components/menu/QuickReadStrip";
 import UnmatchedItemsTab from "@/components/menu/UnmatchedItemsTab";
+import MenuListView from "@/components/menu/MenuListView";
 
 const PERIODS = [
   { d: 7, label: "آخر 7 أيام" },
@@ -35,22 +36,6 @@ const fmtPct = (v: number | null | undefined) => {
   return `${sign}${v.toFixed(0)}%`;
 };
 
-const TrendBadge = ({ pct }: { pct: number | null | undefined }) => {
-  if (pct === null || pct === undefined || !isFinite(pct)) {
-    return <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><Minus size={10} />—</span>;
-  }
-  const up = pct > 1;
-  const down = pct < -1;
-  const Icon = up ? TrendingUp : down ? TrendingDown : Minus;
-  const color = up ? "text-success" : down ? "text-danger" : "text-muted-foreground";
-  return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${color}`}>
-      <Icon size={10} />
-      {fmtPct(pct)}
-    </span>
-  );
-};
-
 const MenuAnalysis = () => {
   const [days, setDays] = useState(30);
   const [aiLoading, setAiLoading] = useState(false);
@@ -58,7 +43,6 @@ const MenuAnalysis = () => {
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<string>("table");
-  const [tableSearch, setTableSearch] = useState("");
   const initialSyncDone = useRef(false);
   const { data, isLoading, error, refetch } = useMenuEngineering(days);
 
@@ -208,39 +192,27 @@ const MenuAnalysis = () => {
             />
           </div>
 
-          {/* Quadrant cards — icons instead of emojis */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {(Object.keys(QUADRANT_META) as MenuQuadrant[]).map((q) => {
-              const meta = QUADRANT_META[q];
-              const Icon = meta.icon;
-              return (
-                <div
-                  key={q}
-                  className="ios-card flex items-start gap-3"
-                  style={{ borderInlineStartWidth: 4, borderInlineStartColor: meta.color, borderInlineStartStyle: "solid" }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: `${meta.color}1A`, color: meta.color }}
-                  >
-                    <Icon size={18} strokeWidth={2.2} />
+          {/* Compact quadrant counts strip — replaces the 4 cards */}
+          <div className="ios-card mb-6 flex items-center justify-between flex-wrap gap-3 py-2.5">
+            <div className="text-[11px] text-muted-foreground">توزيع الأصناف حسب التصنيف</div>
+            <div className="flex items-center gap-4 flex-wrap">
+              {(Object.keys(QUADRANT_META) as MenuQuadrant[]).map((q) => {
+                const meta = QUADRANT_META[q];
+                const Icon = meta.icon;
+                return (
+                  <div key={q} className="flex items-center gap-1.5" title={meta.action}>
+                    <Icon size={13} style={{ color: meta.color }} strokeWidth={2.2} />
+                    <span className="text-[12px] font-bold text-foreground">{data.counts[q]}</span>
+                    <span className="text-[11px]" style={{ color: meta.color }}>{meta.label}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] text-muted-foreground">{meta.description}</div>
-                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                      <span className="text-[20px] font-bold text-foreground">{data.counts[q]}</span>
-                      <span className="text-[11px] font-semibold" style={{ color: meta.color }}>{meta.label}</span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-1.5 leading-snug">{meta.action}</div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
             <TabsList className="grid grid-cols-4 max-w-2xl mb-4">
-              <TabsTrigger value="table" className="text-[12px]">الجدول</TabsTrigger>
+              <TabsTrigger value="table" className="text-[12px]">المنيو</TabsTrigger>
               <TabsTrigger value="matrix" className="text-[12px]">المصفوفة</TabsTrigger>
               <TabsTrigger value="unmatched" className="text-[12px] gap-1.5">
                 {data.unmatched.length > 0 && (
@@ -329,75 +301,7 @@ const MenuAnalysis = () => {
             </TabsContent>
 
             <TabsContent value="table">
-              <div className="ios-card overflow-x-auto">
-                <div className="flex items-center justify-between mb-3 gap-3">
-                  <div>
-                    <div className="text-[13px] font-bold text-foreground">قائمة المنتجات</div>
-                    <div className="text-[11px] text-muted-foreground">مرتبة حسب الهامش الإجمالي · الأصناف بدون مبيعات في الأسفل</div>
-                  </div>
-                  <div className="relative">
-                    <Search size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      value={tableSearch}
-                      onChange={(e) => setTableSearch(e.target.value)}
-                      placeholder="بحث منتج..."
-                      className="bg-muted/30 border border-border rounded-lg text-[11px] pr-7 pl-2.5 py-1.5 w-44 focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-                <table className="w-full text-[12px]">
-                  <thead>
-                    <tr className="text-[11px] text-muted-foreground border-b border-border">
-                      <th className="text-start py-2 px-2 font-semibold">المنتج</th>
-                      <th className="text-center font-semibold">التصنيف</th>
-                      <th className="text-end font-semibold">الوحدات</th>
-                      <th className="text-center font-semibold">الاتجاه</th>
-                      <th className="text-end font-semibold">الإيراد</th>
-                      <th className="text-end font-semibold">الهامش</th>
-                      <th className="text-end font-semibold">الهامش %</th>
-                      <th className="text-center font-semibold">الفئة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.items
-                      .filter((i) => !tableSearch.trim() || i.name.toLowerCase().includes(tableSearch.toLowerCase()))
-                      .sort((a, b) => {
-                        // Sold first, then by total_margin desc; unsold at bottom
-                        if ((a.units_sold > 0) !== (b.units_sold > 0)) return a.units_sold > 0 ? -1 : 1;
-                        return b.total_margin - a.total_margin;
-                      })
-                      .map((i) => {
-                      const meta = QUADRANT_META[i.quadrant];
-                      const dim = i.units_sold === 0 ? "opacity-50" : "";
-                      return (
-                        <tr key={i.product_id} className={`border-b border-border/50 hover:bg-muted/30 transition ${dim}`}>
-                          <td className="py-2 px-2 font-semibold text-foreground">
-                            <div className="flex items-center gap-1.5">
-                              <span>{i.name}</span>
-                              {i.match_via === "name" && (
-                                <span title="مربوط بمطابقة الاسم" className="text-[9px] text-warning bg-warning/10 px-1 rounded">~</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="text-center text-muted-foreground text-[11px]">{i.category || "—"}</td>
-                          <td className="text-end font-bold text-foreground">{i.units_sold}</td>
-                          <td className="text-center"><TrendBadge pct={i.units_change_pct} /></td>
-                          <td className="text-end text-foreground">{i.net_revenue.toFixed(0)}</td>
-                          <td className="text-end font-bold" style={{ color: i.total_margin >= 0 ? "hsl(142, 71%, 35%)" : "hsl(0, 70%, 50%)" }}>{i.total_margin.toFixed(0)}</td>
-                          <td className="text-end text-foreground">{i.margin_pct.toFixed(0)}%</td>
-                          <td className="text-center">
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold" style={{ background: `${meta.color}1A`, color: meta.color, border: `1px solid ${meta.color}40` }}>
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />
-                              {meta.label}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {data.items.length === 0 && <div className="text-center py-8 text-muted-foreground">لا توجد منتجات نشطة.</div>}
-              </div>
+              <MenuListView data={data} />
             </TabsContent>
 
             <TabsContent value="unmatched">
