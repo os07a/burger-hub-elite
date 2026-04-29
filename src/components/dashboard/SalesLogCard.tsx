@@ -100,7 +100,7 @@ const SalesLogCard = () => {
 
       {/* Sub-tabs */}
       <Tabs defaultValue="receipts" className="w-full">
-        <TabsList className="mb-3 h-8 bg-muted/40">
+        <TabsList className="mb-3 flex h-8 w-fit justify-start bg-muted/40">
           <TabsTrigger value="receipts" className="gap-1.5 text-[11px]">
             <Receipt className="h-3 w-3" />
             الإيصالات ({receipts.length})
@@ -125,17 +125,17 @@ const SalesLogCard = () => {
             ) : (
               <table className="w-full table-fixed text-[11px]">
                 <colgroup>
-                  <col style={{ width: "26%" }} />
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "22%" }} />
                   <col style={{ width: "30%" }} />
+                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "26%" }} />
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-card">
                   <tr className="border-b border-border text-[10px] text-muted-foreground">
-                    <th className="px-3 py-2 text-right font-medium">رقم</th>
-                    <th className="px-3 py-2 text-right font-medium">الوقت</th>
+                    <th className="px-3 py-2 text-right font-medium">المبلغ</th>
                     <th className="px-3 py-2 text-center font-medium">النوع</th>
-                    <th className="px-3 py-2 text-left font-medium">المبلغ</th>
+                    <th className="px-3 py-2 text-center font-medium">الوقت</th>
+                    <th className="px-3 py-2 text-left font-medium">رقم</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -295,22 +295,22 @@ const FragmentRow = ({
           isOpen && "bg-muted/30",
         )}
       >
-        <td className="truncate px-3 py-2 text-right font-semibold text-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <ChevronDown
-              className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
-            />
-            <span className="truncate">{receiptNumber}</span>
-          </span>
-        </td>
-        <td className="truncate px-3 py-2 text-right text-muted-foreground">{time}</td>
-        <td className="px-3 py-2 text-center">
-          <StatusBadge variant={isRefund ? "danger" : "success"}>{isRefund ? "استرجاع" : "بيع"}</StatusBadge>
-        </td>
-        <td className="px-3 py-2 text-left">
+        <td className="px-3 py-2 text-right">
           <span className={cn("inline-flex items-center gap-1 font-bold", isRefund ? "text-danger" : "text-foreground")}>
             {money(total)}
             <RiyalIcon size={9} />
+          </span>
+        </td>
+        <td className="px-3 py-2 text-center">
+          <StatusBadge variant={isRefund ? "danger" : "success"}>{isRefund ? "استرجاع" : "بيع"}</StatusBadge>
+        </td>
+        <td className="truncate px-3 py-2 text-center text-muted-foreground">{time}</td>
+        <td className="truncate px-3 py-2 text-left font-semibold text-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="truncate">{receiptNumber}</span>
+            <ChevronDown
+              className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
+            />
           </span>
         </td>
       </tr>
