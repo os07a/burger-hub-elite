@@ -9,8 +9,7 @@ import RiyalIcon from "@/components/ui/RiyalIcon";
 import { Plus, X, Check, RefreshCw, Settings2, Undo2, TicketPercent, Wallet, Banknote, CreditCard, Bike } from "lucide-react";
 import { toast } from "sonner";
 import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
-import PosReceiptsTable from "@/components/dashboard/PosReceiptsTable";
-import DailySalesSummaryTable from "@/components/dashboard/DailySalesSummaryTable";
+import SalesLogCard from "@/components/dashboard/SalesLogCard";
 import { supabase as sb } from "@/integrations/supabase/client";
 import { fmt, fmtPct } from "@/lib/format";
 
@@ -311,8 +310,7 @@ const Dashboard = ({ embedded = false }: DashboardProps) => {
         )}
       </div>
 
-      <DailySalesSummaryTable limit={30} />
-      <PosReceiptsTable date={todayStr} />
+      <SalesLogCard />
 
       <div className="mb-5 grid grid-cols-2 gap-4">
         <div className="ios-card">
