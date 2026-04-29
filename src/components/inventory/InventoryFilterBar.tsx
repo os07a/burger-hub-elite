@@ -67,34 +67,7 @@ const InventoryFilterBar = ({
         </div>
       </div>
 
-      {categories.length > 0 && (
-        <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-border">
-          <span className="text-[10px] text-muted-foreground font-medium ml-1">التصنيف:</span>
-          <button
-            onClick={() => onCategoryChange(null)}
-            className={`text-[10px] rounded-full px-2.5 py-1 border transition-colors ${
-              category === null
-                ? "bg-foreground text-background border-foreground"
-                : "bg-background text-muted-foreground hover:text-foreground border-border"
-            }`}
-          >
-            الكل
-          </button>
-          {categories.map((c) => (
-            <button
-              key={c}
-              onClick={() => onCategoryChange(category === c ? null : c)}
-              className={`text-[10px] rounded-full px-2.5 py-1 border transition-colors ${
-                category === c
-                  ? "bg-foreground text-background border-foreground"
-                  : "bg-background text-muted-foreground hover:text-foreground border-border"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Category filter row removed per user request */}
     </div>
   );
 };
