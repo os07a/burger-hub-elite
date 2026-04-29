@@ -119,7 +119,6 @@ const MenuAnalysis = () => {
       <PageHeader
         title="تحليل المنيو"
         subtitle="مصفوفة هندسة المنيو — صنّف منتجاتك واتخذ قرارات أذكى"
-        badge={data ? `${data.items.filter((i) => i.units_sold > 0).length} صنف نشط · ${data.unmatched.length} غير مربوط` : undefined}
         actions={
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-2 py-1 rounded-lg">
@@ -136,6 +135,17 @@ const MenuAnalysis = () => {
               {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
               مزامنة
             </Button>
+          </div>
+        }
+      />
+
+      {isLoading && <div className="ios-card text-center py-12 text-muted-foreground">جارٍ تحليل بيانات المنيو...</div>}
+      {error && <div className="ios-card text-center py-12 text-danger">حدث خطأ: {(error as any).message}</div>}
+
+      {data && (
+        <>
+          {/* Period selector — compact */}
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <div className="flex gap-1.5">
               {PERIODS.map((p) => (
                 <Button
@@ -149,65 +159,31 @@ const MenuAnalysis = () => {
                 </Button>
               ))}
             </div>
+            <div className="text-[11px] text-muted-foreground">
+              {data.items.filter((i) => i.units_sold > 0).length} صنف نشط
+              {data.unmatched.length > 0 && <> · <span className="text-danger">{data.unmatched.length} غير مربوط</span></>}
+            </div>
           </div>
-        }
-      />
 
-      {isLoading && <div className="ios-card text-center py-12 text-muted-foreground">جارٍ تحليل بيانات المنيو...</div>}
-      {error && <div className="ios-card text-center py-12 text-danger">حدث خطأ: {(error as any).message}</div>}
-
-      {data && (
-        <>
           {/* Smart insights at the very top — fastest read */}
           <QuickReadStrip data={data} onOpenUnmatched={() => setActiveTab("unmatched")} />
 
-          {/* KPIs with comparison */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          {/* KPIs — only the two essentials */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <MetricCard
               label="إجمالي الإيراد"
               value={data.total_revenue.toFixed(0)}
-              sub={`${fmtPct(data.revenue_change_pct)} عن الفترة السابقة`}
+              sub={`${fmtPct(data.revenue_change_pct)} عن الفترة السابقة · متوسط ${data.avg_units.toFixed(1)} وحدة/صنف`}
               subColor={data.revenue_change_pct && data.revenue_change_pct >= 0 ? "success" : "danger"}
               showRiyal
             />
             <MetricCard
               label="إجمالي الهامش"
               value={data.total_margin.toFixed(0)}
-              sub={`${fmtPct(data.margin_change_pct)} عن الفترة السابقة`}
+              sub={`${fmtPct(data.margin_change_pct)} عن الفترة السابقة · متوسط ${data.avg_margin.toFixed(0)} ر.س/صنف`}
               subColor={data.margin_change_pct && data.margin_change_pct >= 0 ? "success" : "danger"}
               showRiyal
             />
-            <MetricCard
-              label="متوسط مبيعات الصنف"
-              value={data.avg_units.toFixed(1)}
-              sub={`${fmtPct(data.units_change_pct)} عن الفترة السابقة`}
-              subColor={data.units_change_pct && data.units_change_pct >= 0 ? "success" : "danger"}
-            />
-            <MetricCard
-              label="متوسط هامش الصنف"
-              value={data.avg_margin.toFixed(0)}
-              sub="ريال لكل صنف"
-              subColor={data.avg_margin >= 0 ? "success" : "danger"}
-              showRiyal
-            />
-          </div>
-
-          {/* Compact quadrant counts strip — replaces the 4 cards */}
-          <div className="ios-card mb-6 flex items-center justify-between flex-wrap gap-3 py-2.5">
-            <div className="text-[11px] text-muted-foreground">توزيع الأصناف حسب التصنيف</div>
-            <div className="flex items-center gap-4 flex-wrap">
-              {(Object.keys(QUADRANT_META) as MenuQuadrant[]).map((q) => {
-                const meta = QUADRANT_META[q];
-                const Icon = meta.icon;
-                return (
-                  <div key={q} className="flex items-center gap-1.5" title={meta.action}>
-                    <Icon size={13} style={{ color: meta.color }} strokeWidth={2.2} />
-                    <span className="text-[12px] font-bold text-foreground">{data.counts[q]}</span>
-                    <span className="text-[11px]" style={{ color: meta.color }}>{meta.label}</span>
-                  </div>
-                );
-              })}
-            </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">

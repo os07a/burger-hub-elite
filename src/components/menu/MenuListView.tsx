@@ -1,13 +1,12 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronLeft, Search, TrendingUp, TrendingDown, Minus, Flame, Snowflake, Wallet, AlertCircle } from "lucide-react";
-import { QUADRANT_META, type MenuEngineeringResult, type MenuItem, type MenuQuadrant } from "@/hooks/useMenuEngineering";
+import { ChevronDown, ChevronLeft, Search, TrendingUp, TrendingDown, Minus, AlertCircle } from "lucide-react";
+import { QUADRANT_META, type MenuEngineeringResult, type MenuItem } from "@/hooks/useMenuEngineering";
 
 interface Props {
   data: MenuEngineeringResult;
 }
 
 type PopLevel = "high" | "mid" | "low";
-type ProfLevel = "high" | "mid" | "low";
 
 const popularityLevel = (i: MenuItem): PopLevel => {
   if (i.units_sold === 0) return "low";
@@ -16,22 +15,10 @@ const popularityLevel = (i: MenuItem): PopLevel => {
   return "low";
 };
 
-const profitabilityLevel = (i: MenuItem): ProfLevel => {
-  if (i.margin_pct >= 50) return "high";
-  if (i.margin_pct >= 30) return "mid";
-  return "low";
-};
-
-const POP_META: Record<PopLevel, { label: string; cls: string; icon: typeof Flame }> = {
-  high: { label: "شعبية عالية", cls: "bg-success/10 text-success border-success/30", icon: Flame },
-  mid:  { label: "شعبية متوسطة", cls: "bg-warning/10 text-warning border-warning/30", icon: Minus },
-  low:  { label: "شعبية ضعيفة", cls: "bg-muted text-muted-foreground border-border", icon: Snowflake },
-};
-
-const PROF_META: Record<ProfLevel, { label: string; cls: string }> = {
-  high: { label: "ربحية عالية", cls: "bg-success/10 text-success border-success/30" },
-  mid:  { label: "ربحية متوسطة", cls: "bg-warning/10 text-warning border-warning/30" },
-  low:  { label: "ربحية ضعيفة", cls: "bg-danger/10 text-danger border-danger/30" },
+const POP_META: Record<PopLevel, { label: string; dot: string }> = {
+  high: { label: "شعبية عالية",   dot: "bg-success" },
+  mid:  { label: "شعبية متوسطة", dot: "bg-muted-foreground/60" },
+  low:  { label: "شعبية ضعيفة",  dot: "bg-border" },
 };
 
 const fmtPct = (v: number | null | undefined) => {
@@ -88,15 +75,18 @@ const MenuListView = ({ data }: Props) => {
 
   const renderItem = (i: MenuItem) => {
     const pop = popularityLevel(i);
-    const prof = profitabilityLevel(i);
     const popMeta = POP_META[pop];
-    const profMeta = PROF_META[prof];
     const qmeta = QUADRANT_META[i.quadrant];
-    const PopIcon = popMeta.icon;
+    const marginColor =
+      i.total_margin < 0
+        ? "hsl(0, 70%, 50%)"
+        : i.margin_pct >= 50
+        ? "hsl(142, 71%, 35%)"
+        : "hsl(var(--foreground))";
     return (
       <div
         key={i.product_id}
-        className="flex items-center gap-3 py-2.5 px-3 hover:bg-muted/30 transition border-b border-border/40 last:border-0"
+        className="flex items-center gap-3 py-2 px-3 hover:bg-muted/30 transition border-b border-border/40 last:border-0"
       >
         {/* Quadrant dot + name */}
         <div className="flex-1 min-w-0">
@@ -104,21 +94,16 @@ const MenuListView = ({ data }: Props) => {
             <span className="w-2 h-2 rounded-full shrink-0" style={{ background: qmeta.color }} title={qmeta.label} />
             <span className="text-[13px] font-bold text-foreground truncate">{i.name}</span>
             {i.match_via === "name" && (
-              <span title="مربوط بمطابقة الاسم" className="text-[9px] text-warning bg-warning/10 px-1 rounded shrink-0">~</span>
+              <span title="مربوط بمطابقة الاسم" className="text-[9px] text-muted-foreground bg-muted px-1 rounded shrink-0">~</span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${popMeta.cls}`}>
-              <PopIcon size={9} />
+          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${popMeta.dot}`} />
               {popMeta.label}
             </span>
-            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${profMeta.cls}`}>
-              <Wallet size={9} />
-              {profMeta.label}
-            </span>
-            <span className="text-[10px] text-muted-foreground" style={{ color: qmeta.color }}>
-              · {qmeta.label}
-            </span>
+            <span>·</span>
+            <span>{qmeta.label}</span>
           </div>
         </div>
 
@@ -139,7 +124,7 @@ const MenuListView = ({ data }: Props) => {
 
         {/* Margin */}
         <div className="text-end shrink-0 w-24">
-          <div className="text-[12px] font-bold" style={{ color: i.total_margin >= 0 ? "hsl(142, 71%, 35%)" : "hsl(0, 70%, 50%)" }}>
+          <div className="text-[12px] font-bold" style={{ color: marginColor }}>
             {Math.round(i.total_margin).toLocaleString("ar-SA")}
           </div>
           <div className="text-[10px] text-muted-foreground">هامش · {i.margin_pct.toFixed(0)}%</div>
