@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMenuEngineering, QUADRANT_META, type MenuQuadrant } from "@/hooks/useMenuEngineering";
 import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
-import RiyalIcon from "@/components/ui/RiyalIcon";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Loader2, TrendingUp, AlertTriangle, ChefHat } from "lucide-react";
+import {
+  Sparkles, Loader2, TrendingUp, TrendingDown, Minus,
+  AlertTriangle, ChefHat, RefreshCw, Radio,
+} from "lucide-react";
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Cell,
@@ -25,11 +27,71 @@ const PRIORITY_META: Record<string, { label: string; cls: string }> = {
   low: { label: "منخفضة", cls: "bg-muted text-muted-foreground border-border" },
 };
 
+const fmtPct = (v: number | null | undefined) => {
+  if (v === null || v === undefined || !isFinite(v)) return "—";
+  const sign = v > 0 ? "+" : "";
+  return `${sign}${v.toFixed(0)}%`;
+};
+
+const TrendBadge = ({ pct }: { pct: number | null | undefined }) => {
+  if (pct === null || pct === undefined || !isFinite(pct)) {
+    return <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><Minus size={10} />—</span>;
+  }
+  const up = pct > 1;
+  const down = pct < -1;
+  const Icon = up ? TrendingUp : down ? TrendingDown : Minus;
+  const color = up ? "text-success" : down ? "text-danger" : "text-muted-foreground";
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${color}`}>
+      <Icon size={10} />
+      {fmtPct(pct)}
+    </span>
+  );
+};
+
 const MenuAnalysis = () => {
   const [days, setDays] = useState(30);
   const [aiLoading, setAiLoading] = useState(false);
   const [advice, setAdvice] = useState<{ summary: string; recommendations: any[] } | null>(null);
-  const { data, isLoading, error } = useMenuEngineering(days);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const initialSyncDone = useRef(false);
+  const { data, isLoading, error, refetch } = useMenuEngineering(days);
+
+  const runSync = async (silent = false) => {
+    setSyncing(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const { error } = await supabase.functions.invoke("sync-loyverse-sales", {
+        body: { date: today },
+      });
+      if (error) throw error;
+      setLastSync(new Date());
+      await refetch();
+      if (!silent) toast.success("تم تحديث البيانات من الكاشير");
+    } catch (e: any) {
+      if (!silent) toast.error("فشل المزامنة: " + (e?.message ?? e));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Auto-sync on first mount (silent)
+  useEffect(() => {
+    if (initialSyncDone.current) return;
+    initialSyncDone.current = true;
+    runSync(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const lastSyncLabel = (() => {
+    if (!lastSync) return "لم يتم التحديث بعد";
+    const mins = Math.floor((Date.now() - lastSync.getTime()) / 60000);
+    if (mins < 1) return "قبل لحظات";
+    if (mins < 60) return `قبل ${mins} دقيقة`;
+    const hrs = Math.floor(mins / 60);
+    return `قبل ${hrs} ساعة`;
+  })();
 
   const requestAdvice = async () => {
     if (!data) return;
@@ -45,6 +107,10 @@ const MenuAnalysis = () => {
           total_margin: data.total_margin,
           avg_units: data.avg_units,
           avg_margin: data.avg_margin,
+          prev_total_revenue: data.prev_total_revenue,
+          prev_total_margin: data.prev_total_margin,
+          revenue_change_pct: data.revenue_change_pct,
+          margin_change_pct: data.margin_change_pct,
         },
       });
       if (error) throw error;
@@ -64,18 +130,34 @@ const MenuAnalysis = () => {
         subtitle="مصفوفة هندسة المنيو — صنّف منتجاتك واتخذ قرارات أذكى"
         badge={data ? `${data.items.filter((i) => i.units_sold > 0).length} صنف نشط` : undefined}
         actions={
-          <div className="flex gap-1.5">
-            {PERIODS.map((p) => (
-              <Button
-                key={p.d}
-                size="sm"
-                variant={days === p.d ? "default" : "outline"}
-                onClick={() => setDays(p.d)}
-                className="h-7 text-[11px]"
-              >
-                {p.label}
-              </Button>
-            ))}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-2 py-1 rounded-lg">
+              <Radio size={10} className="text-success animate-pulse" />
+              <span>{lastSyncLabel}</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => runSync(false)}
+              disabled={syncing}
+              className="h-7 gap-1.5 text-[11px]"
+            >
+              {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              مزامنة
+            </Button>
+            <div className="flex gap-1.5">
+              {PERIODS.map((p) => (
+                <Button
+                  key={p.d}
+                  size="sm"
+                  variant={days === p.d ? "default" : "outline"}
+                  onClick={() => setDays(p.d)}
+                  className="h-7 text-[11px]"
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </div>
           </div>
         }
       />
@@ -85,28 +167,61 @@ const MenuAnalysis = () => {
 
       {data && (
         <>
-          {/* KPIs */}
+          {/* KPIs with comparison */}
           <div className="grid grid-cols-4 gap-4 mb-6">
-            <MetricCard label="إجمالي الإيراد" value={data.total_revenue.toFixed(0)} sub={`${data.period_days} يوم`} showRiyal />
-            <MetricCard label="إجمالي الهامش" value={data.total_margin.toFixed(0)} sub={`${data.total_revenue > 0 ? ((data.total_margin / data.total_revenue) * 100).toFixed(0) : 0}% من الإيراد`} subColor="success" showRiyal />
-            <MetricCard label="متوسط مبيعات الصنف" value={data.avg_units.toFixed(1)} sub="وحدة" />
-            <MetricCard label="متوسط هامش الصنف" value={data.avg_margin.toFixed(0)} sub="ريال لكل صنف" subColor={data.avg_margin >= 0 ? "success" : "danger"} showRiyal />
+            <MetricCard
+              label="إجمالي الإيراد"
+              value={data.total_revenue.toFixed(0)}
+              sub={`${fmtPct(data.revenue_change_pct)} عن الفترة السابقة`}
+              subColor={data.revenue_change_pct && data.revenue_change_pct >= 0 ? "success" : "danger"}
+              showRiyal
+            />
+            <MetricCard
+              label="إجمالي الهامش"
+              value={data.total_margin.toFixed(0)}
+              sub={`${fmtPct(data.margin_change_pct)} عن الفترة السابقة`}
+              subColor={data.margin_change_pct && data.margin_change_pct >= 0 ? "success" : "danger"}
+              showRiyal
+            />
+            <MetricCard
+              label="متوسط مبيعات الصنف"
+              value={data.avg_units.toFixed(1)}
+              sub={`${fmtPct(data.units_change_pct)} عن الفترة السابقة`}
+              subColor={data.units_change_pct && data.units_change_pct >= 0 ? "success" : "danger"}
+            />
+            <MetricCard
+              label="متوسط هامش الصنف"
+              value={data.avg_margin.toFixed(0)}
+              sub="ريال لكل صنف"
+              subColor={data.avg_margin >= 0 ? "success" : "danger"}
+              showRiyal
+            />
           </div>
 
-          {/* Quadrant counts */}
+          {/* Quadrant cards — icons instead of emojis */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             {(Object.keys(QUADRANT_META) as MenuQuadrant[]).map((q) => {
               const meta = QUADRANT_META[q];
+              const Icon = meta.icon;
               return (
-                <div key={q} className="ios-card flex items-start gap-3" style={{ borderInlineStartWidth: 4, borderInlineStartColor: meta.color, borderInlineStartStyle: "solid" }}>
-                  <div className="text-[28px] leading-none">{meta.emoji}</div>
-                  <div className="flex-1">
+                <div
+                  key={q}
+                  className="ios-card flex items-start gap-3"
+                  style={{ borderInlineStartWidth: 4, borderInlineStartColor: meta.color, borderInlineStartStyle: "solid" }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: `${meta.color}1A`, color: meta.color }}
+                  >
+                    <Icon size={18} strokeWidth={2.2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
                     <div className="text-[11px] text-muted-foreground">{meta.description}</div>
                     <div className="flex items-baseline gap-1.5 mt-0.5">
                       <span className="text-[20px] font-bold text-foreground">{data.counts[q]}</span>
                       <span className="text-[11px] font-semibold" style={{ color: meta.color }}>{meta.label}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-1.5">{meta.action}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1.5 leading-snug">{meta.action}</div>
                   </div>
                 </div>
               );
@@ -132,7 +247,7 @@ const MenuAnalysis = () => {
 
                 {data.items.filter((i) => i.units_sold > 0).length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground text-[13px]">
-                    لا توجد مبيعات في هذه الفترة. شغّل مزامنة Loyverse من الداشبورد أولاً.
+                    لا توجد مبيعات في هذه الفترة. اضغط "مزامنة" لجلب آخر البيانات من الكاشير.
                   </div>
                 ) : (
                   <div style={{ width: "100%", height: 480 }}>
@@ -167,7 +282,7 @@ const MenuAnalysis = () => {
                             return (
                               <div className="bg-background border border-border rounded-xl p-3 shadow-lg text-[11px]" dir="rtl">
                                 <div className="font-bold text-[13px] mb-1.5 flex items-center gap-1.5">
-                                  <span>{meta.emoji}</span>
+                                  <span className="w-2 h-2 rounded-full" style={{ background: meta.color }} />
                                   <span>{i.name}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
@@ -175,6 +290,7 @@ const MenuAnalysis = () => {
                                   <span>الإيراد:</span><span className="text-foreground font-semibold text-end">{i.net_revenue.toFixed(0)} ر.س</span>
                                   <span>الهامش:</span><span className="text-success font-bold text-end">{i.total_margin.toFixed(0)} ر.س</span>
                                   <span>الهامش %:</span><span className="text-foreground font-semibold text-end">{i.margin_pct.toFixed(0)}%</span>
+                                  <span>اتجاه الوحدات:</span><span className="text-end">{fmtPct(i.units_change_pct)}</span>
                                 </div>
                                 <div className="mt-1.5 pt-1.5 border-t border-border text-[10px]" style={{ color: meta.color }}>
                                   {meta.label} — {meta.action}
@@ -203,6 +319,7 @@ const MenuAnalysis = () => {
                       <th className="text-start py-2 px-2 font-semibold">المنتج</th>
                       <th className="text-center font-semibold">التصنيف</th>
                       <th className="text-end font-semibold">الوحدات</th>
+                      <th className="text-center font-semibold">الاتجاه</th>
                       <th className="text-end font-semibold">الإيراد</th>
                       <th className="text-end font-semibold">الهامش</th>
                       <th className="text-end font-semibold">الهامش %</th>
@@ -217,12 +334,14 @@ const MenuAnalysis = () => {
                           <td className="py-2 px-2 font-semibold text-foreground">{i.name}</td>
                           <td className="text-center text-muted-foreground text-[11px]">{i.category || "—"}</td>
                           <td className="text-end font-bold text-foreground">{i.units_sold}</td>
+                          <td className="text-center"><TrendBadge pct={i.units_change_pct} /></td>
                           <td className="text-end text-foreground">{i.net_revenue.toFixed(0)}</td>
                           <td className="text-end font-bold" style={{ color: i.total_margin >= 0 ? "hsl(142, 71%, 35%)" : "hsl(0, 70%, 50%)" }}>{i.total_margin.toFixed(0)}</td>
                           <td className="text-end text-foreground">{i.margin_pct.toFixed(0)}%</td>
                           <td className="text-center">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold" style={{ background: `${meta.color}1A`, color: meta.color, border: `1px solid ${meta.color}40` }}>
-                              <span>{meta.emoji}</span>{meta.label}
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold" style={{ background: `${meta.color}1A`, color: meta.color, border: `1px solid ${meta.color}40` }}>
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />
+                              {meta.label}
                             </span>
                           </td>
                         </tr>
@@ -241,7 +360,7 @@ const MenuAnalysis = () => {
                     <ChefHat size={18} className="text-primary" />
                     <div>
                       <div className="text-[13px] font-bold text-foreground">توصيات هندسة المنيو الذكية</div>
-                      <div className="text-[11px] text-muted-foreground">تحليل بالذكاء الاصطناعي بناءً على بيانات آخر {days} يوم</div>
+                      <div className="text-[11px] text-muted-foreground">تحليل بالذكاء الاصطناعي بناءً على بيانات آخر {days} يوم مقارنة بالفترة السابقة</div>
                     </div>
                   </div>
                   <Button size="sm" onClick={requestAdvice} disabled={aiLoading} className="gap-1.5">
