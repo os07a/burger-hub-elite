@@ -1,51 +1,86 @@
-# إصلاح محاذاة سجل الإيصالات + تفاصيل الطلب عند الضغط
+## الهدف
+تحسين صفحة **تحليل المنيو** بحيث:
+1. تشيل كل الإيموجيات وتُستبدل بمؤشرات بصرية احترافية (نقاط ملونة، شرائط، وسوم نصية).
+2. تتحدث تلقائياً من الكاشير (Loyverse) عبر مزامنة دورية + تحديث فوري للواجهة.
+3. تعرض **مقارنة مع الفترة السابقة** (آخر 7/30/90 يوم مقابل الفترة السابقة لها) لرؤية الاتجاه.
 
-## المشاكل الحالية
-1. أعمدة جدول الإيصالات (رقم/الوقت/النوع/المبلغ) تظهر بمسافات كبيرة وغير منسقة في RTL — كل عمود ياخذ مساحة عشوائية لأن الجدول بدون عرض ثابت للأعمدة وبدون توسيط لشارة "النوع".
-2. لما يضغط المستخدم على إيصال، ما يحصل شيء — يبي يشوف تفاصيل الأصناف داخل ذلك الإيصال.
+---
 
-## التغييرات
+## 1) إزالة الإيموجيات وتحسين الشكل البصري
 
-### 1) إصلاح المحاذاة في `src/components/dashboard/SalesLogCard.tsx`
+في `src/hooks/useMenuEngineering.ts`:
+- إزالة حقل `emoji` من `QUADRANT_META` واستبداله بـ `dot` (نقطة ملونة CSS) أو أيقونة Lucide مناسبة:
+  - النجوم → `Star` (lucide)
+  - الجياد → `Zap`
+  - الألغاز → `Puzzle`
+  - الخاسرات → `TrendingDown`
 
-داخل `<table>` تحت تبويب "الإيصالات":
-- إضافة `table-fixed` وتحديد عرض كل عمود عبر `<colgroup>`:
-  - رقم: 22%
-  - الوقت: 22%
-  - النوع: 26% (وسط)
-  - المبلغ: 30% (يسار)
-- توسيط عمود "النوع" بـ `text-center` للهيدر والخلية، وإلغاء `inline-flex` على الـ StatusBadge بحيث ما تتمدد.
-- التأكد من `text-right` و`text-left` يطبقون فعلاً (الجدول داخل `dir="rtl"` من السايدبار، لكن نضمن المحاذاة بكلاسات صريحة).
+في `src/pages/MenuAnalysis.tsx`:
+- بطاقات الـ4 quadrants: استبدال الإيموجي الكبير بـ **أيقونة Lucide داخل دائرة ملونة خفيفة** (12-14px) + شريط جانبي ملون يمين.
+- جدول التصنيف: استبدال `<span>{meta.emoji}</span>` بنقطة `<span className="w-1.5 h-1.5 rounded-full" style={{background: meta.color}} />`.
+- Tooltip في المصفوفة: إزالة الإيموجي، إبقاء اسم المنتج بخط بولد + الوسم الملوّن.
+- إزالة الإيموجيات من prompt الـ AI في `supabase/functions/menu-engineering-advice/index.ts` (تستبدل بـ `[نجوم]`, `[جياد]`, `[ألغاز]`, `[خاسرات]`) عشان التوصيات ما ترجع نص فيه إيموجي.
 
-### 2) صف قابل للتوسعة لعرض تفاصيل الإيصال
+---
 
-- إضافة state محلية: `const [expanded, setExpanded] = useState<string | null>(null)` (نخزن `receipt_number`).
-- تحويل صف الإيصال (`<tr>`) لزر قابل للضغط (cursor-pointer + aria-expanded). الضغط يبدّل `expanded`.
-- إضافة أيقونة Chevron (ChevronDown/ChevronLeft) في بداية الصف تتدوّر عند التوسع.
-- عند التوسع: إضافة `<tr>` ثاني بـ `colSpan={4}` يعرض الأصناف الخاصة بهذا الإيصال:
-  - استخدام البيانات الموجودة في `items` (المُجمَّعة باليوم) **لا يكفي** — لأنها مُجمَّعة لكل اليوم بدون `receipt_number`.
-  - الحل: إنشاء hook جديد `useReceiptItemsByReceipt(receiptNumber)` يجلب من `pos_receipt_items` بـ `eq("receipt_number", n)` ويعرض: اسم الصنف، الكمية، السعر، الإجمالي.
-  - يستعمل `enabled: !!receiptNumber` بحيث ما يجلب إلا للإيصال الموسَّع.
-- تصميم لوحة التفاصيل: خلفية `bg-muted/20`, padding خفيف, جدول داخلي صغير بأعمدة (الصنف / الكمية / المبلغ).
+## 2) ربط مباشر بالكاشير + تحديث تلقائي
 
-### 3) ملف جديد: `src/hooks/useReceiptItemByReceipt.ts`
+حالياً المزامنة يدوية من زر في الداشبورد. سنضيف:
 
-```ts
-useQuery({
-  queryKey: ["pos_receipt_items_by_receipt", receiptNumber],
-  enabled: !!receiptNumber,
-  queryFn: () => supabase.from("pos_receipt_items")
-    .select("item_name, variant_name, quantity, price, net_total")
-    .eq("receipt_number", receiptNumber)
-    .order("item_name")
-})
+**أ. مزامنة تلقائية في الخلفية عند فتح الصفحة:**
+- في `MenuAnalysis.tsx` نضيف `useEffect` يستدعي `supabase.functions.invoke("sync-loyverse-sales", { body: { date: today } })` بصمت عند أول فتح، ثم يعيد جلب البيانات (`refetch`).
+- حالة "آخر تحديث: قبل X دقيقة" تظهر بجانب العنوان مع زر تحديث يدوي صغير (`RefreshCw`).
+
+**ب. Realtime على جدول `pos_receipt_items`:**
+- في `useMenuEngineering` نشترك في Postgres Changes على `pos_receipt_items` (insert/update) ونعمل `queryClient.invalidateQueries(["menu_engineering"])` عند أي تغيير → الواجهة تتحدث فوراً عند دخول إيصال جديد.
+- يتطلب: تشغيل Realtime على الجدول عبر migration:
+  ```sql
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.pos_receipt_items;
+  ```
+
+**ج. Auto-refresh كل دقيقتين كاحتياط:**
+- إضافة `refetchInterval: 120000` و `refetchOnWindowFocus: true` على `useQuery` في `useMenuEngineering`.
+
+---
+
+## 3) مقارنة مع الفترة السابقة
+
+تحديث `useMenuEngineering` ليجلب **فترتين**:
+- الفترة الحالية: `now - days` → `now`
+- الفترة السابقة: `now - 2*days` → `now - days`
+
+ويرجع لكل صنف بالإضافة للحقول الحالية:
+- `prev_units_sold`, `prev_total_margin`, `prev_net_revenue`
+- `units_change_pct`, `margin_change_pct`
+
+وعلى مستوى الإجمالي:
+- `prev_total_revenue`, `prev_total_margin`, `revenue_change_pct`, `margin_change_pct`.
+
+في الواجهة:
+- بطاقات KPI الأربع: إضافة سطر صغير "▲ 12% من الفترة السابقة" بالأخضر/الأحمر تحت الرقم (نستخدم `MetricCard`'s `sub` أو نضيف badge صغير).
+- في الجدول: عمود جديد **"الاتجاه"** يعرض سهم + نسبة التغير في الوحدات (أخضر صاعد / أحمر نازل / رمادي ثابت).
+- في الـ AI prompt: إضافة سياق المقارنة عشان التوصيات تكون مبنية على الاتجاه (مثلاً "البرجر الكلاسيك نزل 30% — راجع الجودة أو السعر").
+
+---
+
+## التفاصيل التقنية (للمطور)
+
+**ملفات معدّلة:**
+- `src/hooks/useMenuEngineering.ts` — إضافة استعلام للفترة السابقة + Realtime subscription + auto-refetch.
+- `src/pages/MenuAnalysis.tsx` — استبدال الإيموجيات بأيقونات Lucide، إضافة عمود الاتجاه، شارة "آخر تحديث"، استدعاء auto-sync.
+- `supabase/functions/menu-engineering-advice/index.ts` — إزالة الإيموجيات من prompt + استقبال بيانات المقارنة.
+
+**Migration واحد:**
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.pos_receipt_items;
+ALTER TABLE public.pos_receipt_items REPLICA IDENTITY FULL;
 ```
 
-## ملفات ستتغير
-- `src/components/dashboard/SalesLogCard.tsx` — تعديل
-- `src/hooks/useReceiptItemByReceipt.ts` — إنشاء
+**ملاحظة على الأداء:** استعلام الفترة السابقة يُنفّذ بالتوازي مع الحالي عبر `Promise.all` داخل `queryFn` — ما يضيف latency يذكر.
+
+---
 
 ## النتيجة المتوقعة
-- جدول الإيصالات منظَّم بأعمدة متساوية وشارة "النوع" في الوسط.
-- الضغط على أي إيصال يفتح أسفله تفاصيل الأصناف (اسم/كمية/سعر) فوراً، والضغط مرة ثانية يطويه.
-- ضغط إيصال آخر يطوي السابق ويفتح الجديد (تجربة accordion).
+- شكل أنظف وأكثر احترافية بدون إيموجيات.
+- البيانات تتحدث تلقائياً بدون ما يحتاج المستخدم يضغط مزامنة.
+- رؤية واضحة للاتجاه: أي صنف يصعد، أي صنف ينزل.
