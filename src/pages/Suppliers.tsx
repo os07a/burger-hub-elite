@@ -1,5 +1,4 @@
 import { useState } from "react";
-import PageHeader from "@/components/ui/PageHeader";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import RiyalIcon from "@/components/ui/RiyalIcon";
@@ -15,14 +14,25 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-const Suppliers = () => {
+interface SuppliersProps {
+  externalDialogOpen?: boolean;
+  setExternalDialogOpen?: (v: boolean) => void;
+}
+
+const Suppliers = ({ externalDialogOpen, setExternalDialogOpen }: SuppliersProps = {}) => {
   const { userRole } = useAuth();
   const isAdmin = userRole === "admin";
   const { data: suppliers = [], isLoading } = useSuppliers();
   const delSup = useDeleteSupplier();
   const delInv = useDeleteInvoice();
 
-  const [supDialog, setSupDialog] = useState(false);
+  const [internalDialog, setInternalDialog] = useState(false);
+  const supDialog = externalDialogOpen ?? internalDialog;
+  const setSupDialog = (v: boolean) => {
+    if (setExternalDialogOpen) setExternalDialogOpen(v);
+    else setInternalDialog(v);
+    if (!v) setEditing(null);
+  };
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [invDialog, setInvDialog] = useState<{ open: boolean; supplierId: string }>({ open: false, supplierId: "" });
   const [confirmDelSup, setConfirmDelSup] = useState<Supplier | null>(null);
@@ -62,13 +72,6 @@ const Suppliers = () => {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader
-        title="الموردون والفواتير"
-        subtitle="إدارة الموردين وسجل الفواتير"
-        badge={`${suppliers.length} مورد`}
-        actions={isAdmin ? <Button size="sm" onClick={handleAddSup}><Plus size={14} className="ml-1" /> إضافة مورد</Button> : undefined}
-      />
-
       <div className="grid grid-cols-4 gap-4 mb-6">
         <MetricCard label="🏢 الموردون" value={suppliers.length.toString()} sub={`${[...new Set(suppliers.map(s => s.category).filter(Boolean))].length} تصنيف`} />
         <MetricCard label="📄 الفواتير" value={totalInvoices.toString()} sub="إجمالي" />
@@ -91,7 +94,7 @@ const Suppliers = () => {
           const supTotal = sup.invoices.reduce((a, i) => a + Number(i.amount), 0);
           return (
             <div key={sup.id} className="ios-card !p-0 overflow-hidden">
-              <div className="flex items-center justify-between gap-3 px-5 py-4">
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
                 <div
                   className="flex-1 cursor-pointer flex items-center gap-3"
                   onClick={() => setExpanded(isOpen ? null : sup.id)}
@@ -102,14 +105,11 @@ const Suppliers = () => {
                     <div className="text-[10px] text-muted-foreground truncate">{sup.category ?? "—"}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="text-left">
-                    <div className="text-[10px] text-muted-foreground">إجمالي</div>
-                    <div className="text-[13px] font-bold text-primary flex items-center gap-1 justify-end">
-                      {supTotal.toFixed(0)} <RiyalIcon size={10} />
-                    </div>
-                  </div>
+                <div className="flex items-center gap-4 flex-shrink-0">
                   <StatusBadge variant="info">{sup.invoices.length} فاتورة</StatusBadge>
+                  <div className="text-[14px] font-bold text-foreground flex items-center gap-1">
+                    {supTotal.toFixed(0)} <RiyalIcon size={11} />
+                  </div>
                   {isAdmin && (
                     <>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditSup(sup)}>
@@ -149,7 +149,7 @@ const Suppliers = () => {
                   ) : (
                     <div className="space-y-2">
                       {sup.invoices.sort((a, b) => b.date.localeCompare(a.date)).map((inv) => (
-                        <div key={inv.id} className="flex items-center justify-between gap-3 bg-background rounded-lg px-3 py-2 border border-border">
+                        <div key={inv.id} className="flex items-center gap-4 bg-background rounded-lg px-3 py-2 border border-border">
                           <div className="flex-1 min-w-0">
                             <div className="text-[12px] font-semibold">{inv.invoice_number || "—"}</div>
                             <div className="text-[10px] text-muted-foreground">{inv.date}</div>
@@ -158,8 +158,8 @@ const Suppliers = () => {
                           <StatusBadge variant={inv.status === "مدفوعة" ? "success" : inv.status === "معلقة" ? "warning" : "danger"}>
                             {inv.status}
                           </StatusBadge>
-                          <div className="text-[13px] font-bold text-primary flex items-center gap-1">
-                            {Number(inv.amount).toFixed(2)} <RiyalIcon size={9} />
+                          <div className="text-[13px] font-bold text-foreground flex items-center gap-1 min-w-[70px] justify-end">
+                            {Number(inv.amount).toFixed(0)} <RiyalIcon size={10} />
                           </div>
                           {isAdmin && (
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-danger" onClick={() => setConfirmDelInv({ id: inv.id, number: inv.invoice_number || inv.date })}>
