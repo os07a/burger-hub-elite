@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import type { MenuEngineeringResult } from "@/hooks/useMenuEngineering";
-import { Star, AlertTriangle, Sparkles, Link2Off, Ban } from "lucide-react";
+import { Star, AlertTriangle, Sparkles, Link2Off, Ban, type LucideIcon } from "lucide-react";
 
 type Insight = {
   key: string;
   tone: "success" | "warning" | "info" | "danger" | "neutral";
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   title: string;
   body: string;
   cta?: { label: string; onClick: () => void };
