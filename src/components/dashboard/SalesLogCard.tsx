@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { Package, Receipt, CalendarDays, ChevronDown } from "lucide-react";
+import { Package, Receipt, CalendarDays, ChevronDown, CreditCard, Banknote, Bike, User, Undo2, TicketPercent } from "lucide-react";
 import RiyalIcon from "@/components/ui/RiyalIcon";
-import StatusBadge from "@/components/ui/StatusBadge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { fmt, fmtPct, formatArabicDayMonth, getArabicWeekday } from "@/lib/format";
 import { useDailySalesSummary } from "@/hooks/useDailySalesSummary";
@@ -123,42 +122,25 @@ const SalesLogCard = () => {
             ) : receipts.length === 0 ? (
               <Empty text='لا توجد إيصالات لهذا اليوم — اضغط "مزامنة من الكاشير"' />
             ) : (
-              <table className="w-full table-fixed text-[11px]">
-                <colgroup>
-                  <col style={{ width: "30%" }} />
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "26%" }} />
-                </colgroup>
-                <thead className="sticky top-0 z-10 bg-card">
-                  <tr className="border-b border-border text-[10px] text-muted-foreground">
-                    <th className="px-3 py-2 text-right font-medium">المبلغ</th>
-                    <th className="px-3 py-2 text-center font-medium">النوع</th>
-                    <th className="px-3 py-2 text-center font-medium">الوقت</th>
-                    <th className="px-3 py-2 text-left font-medium">رقم</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {receipts.map((r) => {
-                    const isRefund = r.receipt_type === "REFUND";
-                    const time = r.created_at_pos
-                      ? new Date(r.created_at_pos).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
-                      : "-";
-                    const isOpen = expanded === r.receipt_number;
-                    return (
-                      <FragmentRow
-                        key={r.id}
-                        isOpen={isOpen}
-                        onToggle={() => setExpanded(isOpen ? null : r.receipt_number)}
-                        receiptNumber={r.receipt_number}
-                        time={time}
-                        isRefund={isRefund}
-                        total={Number(r.total)}
-                      />
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="divide-y divide-border/40">
+                {receipts.map((r) => {
+                  const isRefund = r.receipt_type === "REFUND";
+                  const time = r.created_at_pos
+                    ? new Date(r.created_at_pos).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
+                    : "-";
+                  const isOpen = expanded === r.receipt_number;
+                  return (
+                    <ReceiptRow
+                      key={r.id}
+                      isOpen={isOpen}
+                      onToggle={() => setExpanded(isOpen ? null : r.receipt_number)}
+                      receipt={r}
+                      isRefund={isRefund}
+                      time={time}
+                    />
+                  );
+                })}
+              </div>
             )}
           </div>
         </TabsContent>
@@ -271,59 +253,199 @@ const Empty = ({ text }: { text: string }) => (
   <div className="py-6 text-center text-[11px] text-muted-foreground">{text}</div>
 );
 
-const FragmentRow = ({
+type PosReceiptLite = {
+  id: string;
+  receipt_number: string;
+  total: number;
+  cash: number;
+  card: number;
+  delivery: number;
+  gross: number;
+  discount: number;
+  tax: number;
+  cashier_name: string | null;
+  receipt_type: string;
+};
+
+const ReceiptRow = ({
   isOpen,
   onToggle,
-  receiptNumber,
-  time,
+  receipt,
   isRefund,
-  total,
+  time,
 }: {
   isOpen: boolean;
   onToggle: () => void;
-  receiptNumber: string;
-  time: string;
+  receipt: PosReceiptLite;
   isRefund: boolean;
-  total: number;
+  time: string;
 }) => {
+  const total = Number(receipt.total);
+  const discount = Math.abs(Number(receipt.discount || 0));
+  const cash = Math.abs(Number(receipt.cash || 0));
+  const card = Math.abs(Number(receipt.card || 0));
+  const delivery = Math.abs(Number(receipt.delivery || 0));
+
+  // Pick dominant payment method
+  const payMethod = (() => {
+    if (delivery > card && delivery > cash) return { icon: Bike, label: "توصيل", color: "text-warning" };
+    if (cash > card) return { icon: Banknote, label: "كاش", color: "text-success" };
+    return { icon: CreditCard, label: "شبكة", color: "text-primary" };
+  })();
+  const PayIcon = payMethod.icon;
+
   return (
-    <>
-      <tr
-        onClick={onToggle}
-        className={cn(
-          "cursor-pointer border-b border-border/40 transition-colors hover:bg-muted/40",
-          isOpen && "bg-muted/30",
-        )}
-      >
-        <td className="px-3 py-2 text-right">
-          <span className={cn("inline-flex items-center gap-1 font-bold", isRefund ? "text-danger" : "text-foreground")}>
-            {money(total)}
-            <RiyalIcon size={9} />
-          </span>
-        </td>
-        <td className="px-3 py-2 text-center">
-          <StatusBadge variant={isRefund ? "danger" : "success"}>{isRefund ? "استرجاع" : "بيع"}</StatusBadge>
-        </td>
-        <td className="truncate px-3 py-2 text-center text-muted-foreground">{time}</td>
-        <td className="truncate px-3 py-2 text-left font-semibold text-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="truncate">{receiptNumber}</span>
-            <ChevronDown
-              className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
-            />
-          </span>
-        </td>
-      </tr>
-      {isOpen && (
-        <tr className="border-b border-border/40 bg-muted/10">
-          <td colSpan={4} className="px-3 py-2.5">
-            <ReceiptDetails receiptNumber={receiptNumber} />
-          </td>
-        </tr>
+    <div
+      className={cn(
+        "cursor-pointer transition-colors hover:bg-muted/40",
+        isOpen && "bg-muted/30",
       )}
-    </>
+      onClick={onToggle}
+    >
+      {/* Main row */}
+      <div className="flex items-center gap-2 px-3 py-2">
+        {/* Right: receipt # + chevron */}
+        <div className="flex shrink-0 items-center gap-1.5 font-semibold text-foreground">
+          <ChevronDown
+            className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
+          />
+          <span className="text-[11px]">#{receipt.receipt_number}</span>
+        </div>
+
+        {/* Time */}
+        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{time}</span>
+
+        {/* Cashier — hidden on small */}
+        {receipt.cashier_name && (
+          <span className="hidden shrink-0 items-center gap-1 rounded-full bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline-flex">
+            <User className="h-2.5 w-2.5" />
+            {receipt.cashier_name}
+          </span>
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Badges: refund / discount */}
+        {isRefund && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-semibold text-danger">
+            <Undo2 className="h-2.5 w-2.5" /> استرجاع
+          </span>
+        )}
+        {discount > 0 && !isRefund && (
+          <span className="hidden shrink-0 items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 sm:inline-flex dark:bg-rose-900/30">
+            <TicketPercent className="h-2.5 w-2.5" /> −{money(discount)}
+          </span>
+        )}
+
+        {/* Payment method icon */}
+        <span
+          className={cn("inline-flex shrink-0 items-center gap-0.5 text-[10px]", payMethod.color)}
+          title={payMethod.label}
+        >
+          <PayIcon className="h-3 w-3" />
+        </span>
+
+        {/* Total */}
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 text-[12px] font-bold tabular-nums",
+            isRefund ? "text-danger" : "text-foreground",
+          )}
+        >
+          {money(total)}
+          <RiyalIcon size={9} />
+        </span>
+      </div>
+
+      {/* Expanded */}
+      {isOpen && (
+        <div className="border-t border-border/40 bg-muted/10 px-3 py-2.5">
+          <ReceiptMetaStrip receipt={receipt} time={time} />
+          <ReceiptDetails receiptNumber={receipt.receipt_number} />
+        </div>
+      )}
+    </div>
   );
 };
+
+const ReceiptMetaStrip = ({ receipt, time }: { receipt: PosReceiptLite; time: string }) => {
+  const isRefund = receipt.receipt_type === "REFUND";
+  const total = Math.abs(Number(receipt.total));
+  const gross = Math.abs(Number(receipt.gross || total));
+  const discount = Math.abs(Number(receipt.discount || 0));
+  const tax = Math.abs(Number(receipt.tax || 0));
+  const cash = Math.abs(Number(receipt.cash || 0));
+  const card = Math.abs(Number(receipt.card || 0));
+  const delivery = Math.abs(Number(receipt.delivery || 0));
+
+  return (
+    <div className="mb-2.5 rounded-lg border border-border/60 bg-background/60 p-2.5 text-[10.5px]">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-4">
+        <MetaItem label="إجمالي قبل الخصم" value={money(gross)} riyal />
+        {discount > 0 && (
+          <MetaItem label="الخصم" value={`−${money(discount)}`} riyal accent="rose" />
+        )}
+        {tax > 0 && <MetaItem label="الضريبة" value={money(tax)} riyal accent="muted" />}
+        <MetaItem label={isRefund ? "صافي المرتجع" : "صافي الإيصال"} value={money(total)} riyal accent={isRefund ? "danger" : "primary"} />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 pt-2 text-muted-foreground">
+        {card > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <CreditCard className="h-2.5 w-2.5 text-primary" /> شبكة {money(card)}
+          </span>
+        )}
+        {cash > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <Banknote className="h-2.5 w-2.5 text-success" /> كاش {money(cash)}
+          </span>
+        )}
+        {delivery > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <Bike className="h-2.5 w-2.5 text-warning" /> توصيل {money(delivery)}
+          </span>
+        )}
+        <span className="ms-auto inline-flex items-center gap-2">
+          {receipt.cashier_name && (
+            <span className="inline-flex items-center gap-1">
+              <User className="h-2.5 w-2.5" /> {receipt.cashier_name}
+            </span>
+          )}
+          <span className="tabular-nums">{time}</span>
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const MetaItem = ({
+  label,
+  value,
+  riyal,
+  accent,
+}: {
+  label: string;
+  value: string;
+  riyal?: boolean;
+  accent?: "primary" | "danger" | "rose" | "muted";
+}) => (
+  <div className="flex items-center justify-between gap-2">
+    <span className="text-[10px] text-muted-foreground">{label}</span>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 font-semibold tabular-nums",
+        accent === "primary" && "text-primary",
+        accent === "danger" && "text-danger",
+        accent === "rose" && "text-rose-700 dark:text-rose-400",
+        accent === "muted" && "text-muted-foreground",
+        !accent && "text-foreground",
+      )}
+    >
+      {value}
+      {riyal && <RiyalIcon size={8} />}
+    </span>
+  </div>
+);
 
 const ReceiptDetails = ({ receiptNumber }: { receiptNumber: string }) => {
   const { data = [], isLoading } = useReceiptItemByReceipt(receiptNumber);

@@ -39,12 +39,19 @@ interface LoyverseReceipt {
   total_cost_money?: number;
   cost_money?: number;
   line_items?: LoyverseLineItem[];
+  employee_id?: string;
 }
 
 interface PaymentType {
   id: string;
   name: string;
   type: string;
+}
+
+interface LoyverseEmployee {
+  id: string;
+  name?: string;
+  email?: string;
 }
 
 interface SyncBody {
@@ -125,6 +132,22 @@ Deno.serve(async (req) => {
     const ptJson = await ptRes.json();
     const paymentTypes: PaymentType[] = ptJson.payment_types ?? [];
     const ptMap = new Map(paymentTypes.map((p) => [p.id, p]));
+
+    // Fetch employees (cashiers) — non-fatal if it fails
+    const empMap = new Map<string, string>();
+    try {
+      const empRes = await fetch(`${LOYVERSE_BASE}/employees`, { headers: loyverseHeaders });
+      if (empRes.ok) {
+        const empJson = await empRes.json();
+        const employees: LoyverseEmployee[] = empJson.employees ?? [];
+        for (const e of employees) {
+          if (e.id && e.name) empMap.set(e.id, e.name);
+        }
+      }
+    } catch (e) {
+      console.warn("employees fetch failed", e);
+    }
+
     const { minIso, maxIso } = getUtcRangeForRiyadhDate(targetDate);
     const receipts = await fetchReceipts(loyverseHeaders, minIso, maxIso);
 
@@ -186,6 +209,8 @@ Deno.serve(async (req) => {
       const recDate = toRiyadhDate(rec.created_at) ?? targetDate;
 
       if (rec.receipt_number) {
+        const cashierId = rec.employee_id ?? null;
+        const cashierName = cashierId ? empMap.get(cashierId) ?? null : null;
         receiptRows.push({
           receipt_number: rec.receipt_number,
           receipt_date: recDate,
@@ -195,6 +220,11 @@ Deno.serve(async (req) => {
           cash: rCash,
           card: rCard,
           delivery: rDelivery,
+          gross: sign * absoluteTotal + sign * discount, // before discount
+          discount: sign * discount,
+          tax: sign * tax,
+          cashier_id: cashierId,
+          cashier_name: cashierName,
           synced_at: syncedAt,
         });
 

@@ -1,0 +1,6 @@
+ALTER TABLE public.pos_receipts
+  ADD COLUMN IF NOT EXISTS cashier_name text,
+  ADD COLUMN IF NOT EXISTS cashier_id text,
+  ADD COLUMN IF NOT EXISTS discount numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS tax numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS gross numeric NOT NULL DEFAULT 0;

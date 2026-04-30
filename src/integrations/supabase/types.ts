@@ -979,40 +979,55 @@ export type Database = {
         Row: {
           card: number
           cash: number
+          cashier_id: string | null
+          cashier_name: string | null
           created_at: string
           created_at_pos: string | null
           delivery: number
+          discount: number
+          gross: number
           id: string
           receipt_date: string
           receipt_number: string
           receipt_type: string
           synced_at: string
+          tax: number
           total: number
         }
         Insert: {
           card?: number
           cash?: number
+          cashier_id?: string | null
+          cashier_name?: string | null
           created_at?: string
           created_at_pos?: string | null
           delivery?: number
+          discount?: number
+          gross?: number
           id?: string
           receipt_date: string
           receipt_number: string
           receipt_type?: string
           synced_at?: string
+          tax?: number
           total?: number
         }
         Update: {
           card?: number
           cash?: number
+          cashier_id?: string | null
+          cashier_name?: string | null
           created_at?: string
           created_at_pos?: string | null
           delivery?: number
+          discount?: number
+          gross?: number
           id?: string
           receipt_date?: string
           receipt_number?: string
           receipt_type?: string
           synced_at?: string
+          tax?: number
           total?: number
         }
         Relationships: []
