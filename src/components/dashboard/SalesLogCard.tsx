@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Package, Receipt, CalendarDays, ChevronDown } from "lucide-react";
+import { Package, Receipt, CalendarDays, ChevronDown, CreditCard, Banknote, Bike, User, Undo2, TicketPercent } from "lucide-react";
 import RiyalIcon from "@/components/ui/RiyalIcon";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -123,42 +123,25 @@ const SalesLogCard = () => {
             ) : receipts.length === 0 ? (
               <Empty text='لا توجد إيصالات لهذا اليوم — اضغط "مزامنة من الكاشير"' />
             ) : (
-              <table className="w-full table-fixed text-[11px]">
-                <colgroup>
-                  <col style={{ width: "30%" }} />
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "26%" }} />
-                </colgroup>
-                <thead className="sticky top-0 z-10 bg-card">
-                  <tr className="border-b border-border text-[10px] text-muted-foreground">
-                    <th className="px-3 py-2 text-right font-medium">المبلغ</th>
-                    <th className="px-3 py-2 text-center font-medium">النوع</th>
-                    <th className="px-3 py-2 text-center font-medium">الوقت</th>
-                    <th className="px-3 py-2 text-left font-medium">رقم</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {receipts.map((r) => {
-                    const isRefund = r.receipt_type === "REFUND";
-                    const time = r.created_at_pos
-                      ? new Date(r.created_at_pos).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
-                      : "-";
-                    const isOpen = expanded === r.receipt_number;
-                    return (
-                      <FragmentRow
-                        key={r.id}
-                        isOpen={isOpen}
-                        onToggle={() => setExpanded(isOpen ? null : r.receipt_number)}
-                        receiptNumber={r.receipt_number}
-                        time={time}
-                        isRefund={isRefund}
-                        total={Number(r.total)}
-                      />
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="divide-y divide-border/40">
+                {receipts.map((r) => {
+                  const isRefund = r.receipt_type === "REFUND";
+                  const time = r.created_at_pos
+                    ? new Date(r.created_at_pos).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
+                    : "-";
+                  const isOpen = expanded === r.receipt_number;
+                  return (
+                    <ReceiptRow
+                      key={r.id}
+                      isOpen={isOpen}
+                      onToggle={() => setExpanded(isOpen ? null : r.receipt_number)}
+                      receipt={r}
+                      isRefund={isRefund}
+                      time={time}
+                    />
+                  );
+                })}
+              </div>
             )}
           </div>
         </TabsContent>
