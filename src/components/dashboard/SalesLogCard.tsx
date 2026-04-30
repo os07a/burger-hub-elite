@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Package, Receipt, CalendarDays, ChevronDown, CreditCard, Banknote, Bike, User, Undo2, TicketPercent } from "lucide-react";
 import RiyalIcon from "@/components/ui/RiyalIcon";
-import StatusBadge from "@/components/ui/StatusBadge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { fmt, fmtPct, formatArabicDayMonth, getArabicWeekday } from "@/lib/format";
 import { useDailySalesSummary } from "@/hooks/useDailySalesSummary";
