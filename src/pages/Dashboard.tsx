@@ -12,9 +12,11 @@ import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
 import SalesLogCard from "@/components/dashboard/SalesLogCard";
 import { supabase as sb } from "@/integrations/supabase/client";
 import { fmt, fmtPct } from "@/lib/format";
+import { useEmployees } from "@/hooks/useEmployees";
+import { useTodayAttendance, useActiveLeavesToday } from "@/hooks/useTodayAttendance";
+import { useRealtimeInvalidate } from "@/hooks/useRealtime";
 
-const totalSalaries = 10400;
-const avgDaily = 696;
+const FALLBACK_AVG_DAILY = 696;
 const todayStr = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Riyadh",
   year: "numeric",
