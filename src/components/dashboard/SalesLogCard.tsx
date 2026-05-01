@@ -315,10 +315,10 @@ const ReceiptRow = ({
       )}
       onClick={onToggle}
     >
-      {/* Main row — three RTL zones: identity (right) | smart middle | financial (left) */}
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2">
+      {/* Main row — identity (right) | spacer pushes total to far-left */}
+      <div className="flex items-center gap-3 px-3 py-2">
         {/* ── Identity zone (right in RTL) ── */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <ChevronDown
             className={cn(
               "h-3 w-3 shrink-0 text-muted-foreground transition-transform",
@@ -340,38 +340,30 @@ const ReceiptRow = ({
           </span>
         </div>
 
-        {/* ── Smart middle (truncates) ── */}
-        <div className="flex min-w-0 items-center gap-2 text-[10.5px] text-muted-foreground">
-          {receipt.cashier_name && (
-            <span className="inline-flex min-w-0 items-center gap-1 truncate">
-              <User className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">{receipt.cashier_name}</span>
-            </span>
-          )}
-          {discount > 0 && !isRefund && (
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/30">
-              <TicketPercent className="h-2.5 w-2.5" />
-              <span className="tabular-nums" dir="ltr">−{money(discount)}</span>
-            </span>
-          )}
-        </div>
+        {/* ── Spacer pushes financial zone all the way to the left ── */}
+        <div className="flex-1" />
 
-        {/* ── Financial zone (left in RTL) ── */}
-        <div className="flex items-center gap-2">
+        {/* Optional discount chip — kept inline near the total */}
+        {discount > 0 && !isRefund && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/30">
+            <TicketPercent className="h-2.5 w-2.5" />
+            <span className="tabular-nums" dir="ltr">−{money(discount)}</span>
+          </span>
+        )}
+
+        {/* ── Financial zone (pinned far-left in RTL) ── */}
+        <div className="flex shrink-0 items-center gap-2">
           {isRefund ? (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-semibold text-danger">
               <Undo2 className="h-2.5 w-2.5" /> استرجاع
             </span>
           ) : (
             <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium",
-                payMethod.color,
-              )}
+              className={cn("inline-flex items-center justify-center", payMethod.color)}
               title={payMethod.label}
+              aria-label={payMethod.label}
             >
-              <PayIcon className="h-2.5 w-2.5" />
-              {payMethod.label}
+              <PayIcon className="h-3.5 w-3.5" />
             </span>
           )}
 
