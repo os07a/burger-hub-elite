@@ -63,6 +63,18 @@ const Dashboard = ({ embedded = false }: DashboardProps) => {
   const [syncing, setSyncing] = useState(false);
   const lastSync = typeof window !== "undefined" ? localStorage.getItem("pos_last_sync") : null;
 
+  // Live staff data
+  const { data: employees = [] } = useEmployees();
+  const { data: todayAttendance = [] } = useTodayAttendance();
+  const { data: activeLeaves = [] } = useActiveLeavesToday();
+
+  // Realtime: any change in staff/attendance/leaves refreshes the dashboard card
+  useRealtimeInvalidate("employees", [["employees"]]);
+  useRealtimeInvalidate("attendance", [["attendance", "today"]]);
+  useRealtimeInvalidate("employee_leaves", [["employee_leaves", "today"]]);
+
+  const totalSalaries = employees.reduce((s, e) => s + Number(e.salary || 0), 0);
+
   const invalidateSalesQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["daily_sales"] });
     queryClient.invalidateQueries({ queryKey: ["daily-sales-summary"] });
