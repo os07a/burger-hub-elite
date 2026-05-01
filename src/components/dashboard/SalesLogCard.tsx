@@ -16,6 +16,21 @@ const todayKsa = (): string => {
   return fmtD.format(new Date());
 };
 
+// Latin 12-hour time formatter — e.g. "6:27 PM"
+const timeFmt = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "Asia/Riyadh",
+});
+const formatTimeLatin = (iso: string | null) => (iso ? timeFmt.format(new Date(iso)) : "—");
+
+// Strip the constant POS prefix ("1-2897" → "2897"); fall back to original.
+const shortReceiptNo = (s: string) => {
+  const m = /^\d+-(.+)$/.exec(s);
+  return m ? m[1] : s;
+};
+
 const SalesLogCard = () => {
   const { data: days = [], isLoading: daysLoading } = useDailySalesSummary({ limit: 30 });
   const defaultDate = days[0]?.date ?? todayKsa();
@@ -125,9 +140,7 @@ const SalesLogCard = () => {
               <div className="divide-y divide-border/40">
                 {receipts.map((r) => {
                   const isRefund = r.receipt_type === "REFUND";
-                  const time = r.created_at_pos
-                    ? new Date(r.created_at_pos).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
-                    : "-";
+                  const time = formatTimeLatin(r.created_at_pos);
                   const isOpen = expanded === r.receipt_number;
                   return (
                     <ReceiptRow
@@ -302,60 +315,77 @@ const ReceiptRow = ({
       )}
       onClick={onToggle}
     >
-      {/* Main row */}
-      <div className="flex items-center gap-2 px-3 py-2">
-        {/* Right: receipt # + chevron */}
-        <div className="flex shrink-0 items-center gap-1.5 font-semibold text-foreground">
+      {/* Main row — three RTL zones: identity (right) | smart middle | financial (left) */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2">
+        {/* ── Identity zone (right in RTL) ── */}
+        <div className="flex items-center gap-2">
           <ChevronDown
-            className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
+            className={cn(
+              "h-3 w-3 shrink-0 text-muted-foreground transition-transform",
+              isOpen && "rotate-180",
+            )}
           />
-          <span className="text-[11px]">#{receipt.receipt_number}</span>
+          <span
+            className="text-[11.5px] font-semibold tabular-nums text-foreground"
+            title={`#${receipt.receipt_number}`}
+            dir="ltr"
+          >
+            #{shortReceiptNo(receipt.receipt_number)}
+          </span>
+          <span
+            className="text-[10px] tabular-nums text-muted-foreground"
+            dir="ltr"
+          >
+            {time}
+          </span>
         </div>
 
-        {/* Time */}
-        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{time}</span>
-
-        {/* Cashier — hidden on small */}
-        {receipt.cashier_name && (
-          <span className="hidden shrink-0 items-center gap-1 rounded-full bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline-flex">
-            <User className="h-2.5 w-2.5" />
-            {receipt.cashier_name}
-          </span>
-        )}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Badges: refund / discount */}
-        {isRefund && (
-          <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-semibold text-danger">
-            <Undo2 className="h-2.5 w-2.5" /> استرجاع
-          </span>
-        )}
-        {discount > 0 && !isRefund && (
-          <span className="hidden shrink-0 items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 sm:inline-flex dark:bg-rose-900/30">
-            <TicketPercent className="h-2.5 w-2.5" /> −{money(discount)}
-          </span>
-        )}
-
-        {/* Payment method icon */}
-        <span
-          className={cn("inline-flex shrink-0 items-center gap-0.5 text-[10px]", payMethod.color)}
-          title={payMethod.label}
-        >
-          <PayIcon className="h-3 w-3" />
-        </span>
-
-        {/* Total */}
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1 text-[12px] font-bold tabular-nums",
-            isRefund ? "text-danger" : "text-foreground",
+        {/* ── Smart middle (truncates) ── */}
+        <div className="flex min-w-0 items-center gap-2 text-[10.5px] text-muted-foreground">
+          {receipt.cashier_name && (
+            <span className="inline-flex min-w-0 items-center gap-1 truncate">
+              <User className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">{receipt.cashier_name}</span>
+            </span>
           )}
-        >
-          {money(total)}
-          <RiyalIcon size={9} />
-        </span>
+          {discount > 0 && !isRefund && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/30">
+              <TicketPercent className="h-2.5 w-2.5" />
+              <span className="tabular-nums" dir="ltr">−{money(discount)}</span>
+            </span>
+          )}
+        </div>
+
+        {/* ── Financial zone (left in RTL) ── */}
+        <div className="flex items-center gap-2">
+          {isRefund ? (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-semibold text-danger">
+              <Undo2 className="h-2.5 w-2.5" /> استرجاع
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium",
+                payMethod.color,
+              )}
+              title={payMethod.label}
+            >
+              <PayIcon className="h-2.5 w-2.5" />
+              {payMethod.label}
+            </span>
+          )}
+
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 text-[12.5px] font-bold tabular-nums",
+              isRefund ? "text-danger" : "text-foreground",
+            )}
+            dir="ltr"
+          >
+            {money(total)}
+            <RiyalIcon size={10} />
+          </span>
+        </div>
       </div>
 
       {/* Expanded */}
