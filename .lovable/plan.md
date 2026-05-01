@@ -1,57 +1,71 @@
-## Goal
+# المشكلة
 
-Reorganize receipt rows in **سجل المبيعات** (Sales Log) so columns are clean, balanced, and easy to scan in RTL — with **Latin numerals everywhere** and smarter inline metadata.
+شريط النطاق الزمني (`TimeRangeBar`) في صفحة **مركز القيادة** يكتب القيمة في رابط الصفحة (`?range=7`) ويغيّر مظهر الزر فقط، لكن **لا أحد من الكروت يقرأ هذه القيمة**. كل مكوّن داخلي يجلب بياناته بشكل مستقل:
 
-## Problems with current row
+- `DailyStoryCard` يقرأ **اليوم فقط** دائماً (مفلتر بـ `todayStr`).
+- `SalesLogCard` يقرأ آخر **30 يوم ثابتة** (`limit: 30`).
+- `Dashboard` (نظرة عامة), `SalesIndicator`, `ProjectStatus`, `Behavior` كلها تستخدم `useState` محلي خاص بها للنطاق وتتجاهل الـ URL.
 
-Looking at the screenshot:
-- Time uses Arabic-Indic digits (`٦:٢٧ م`) while receipt # uses Latin (`#1-2897`) → inconsistent.
-- Right side feels crammed (`v #1-2897 ٦:٢٧ م`) while the middle is empty whitespace.
-- Left side only shows a tiny icon + amount → no real "smart" info (no cashier, no item count, no discount visible at a glance).
-- Cashier badge only appears on `sm:` screens and is hidden on this viewport — wasted intelligence.
-- Payment icon is just a generic card glyph with no distinction between cash / network / delivery in the compact view.
+النتيجة: ضغط "أمس" أو "7 أيام" أو "90+" يُحدّث اللون فقط بدون أي تأثير على الأرقام.
 
-## New row layout (RTL — reading right → left)
+# الحل
+
+جعل `useRangeDays` (الموجود في `TimeRangeBar.tsx`) هو **مصدر الحقيقة الوحيد** للنطاق الزمني داخل مركز القيادة، ثم تمرير `fromDate / toDate` المحسوبة لكل الكروت.
+
+## الخطوات
+
+### 1. توحيد منطق حساب النطاق
+إنشاء `src/lib/dateRange.ts` يحتوي:
+- `computeRange(rangeDays)` يُرجع `{ fromDate, toDate, label }` بصيغة `YYYY-MM-DD` بتوقيت الرياض.
+- المنطق:
+  - `1` → اليوم فقط (from = to = اليوم)
+  - `-1` → أمس فقط (from = to = أمس)
+  - `7` → آخر 7 أيام (to = اليوم، from = اليوم - 6)
+  - `30` → آخر 30 يوم
+  - `0` → بدون فلتر (90+ يوم / كل البيانات)
+
+### 2. تحديث `useRangeDays` في `TimeRangeBar.tsx`
+إضافة دالة مساعدة `useDateRange()` تستدعي `useRangeDays` ثم `computeRange` وتُرجع `{ rangeDays, fromDate, toDate }` جاهزة للاستخدام.
+
+### 3. تحديث الكروت لاستهلاك النطاق
+
+**أ. `DailyStoryCard.tsx`**
+- بدل قراءة `todayStr` ثابتة، يقرأ `useDateRange()`.
+- إذا `rangeDays === 1` → يبقى نفس السلوك (يوم واحد).
+- إذا نطاق متعدد الأيام → يجمع `total_sales / net_sales / orders_count` من `daily_sales` بين `fromDate` و `toDate`، ويعرض القصة بصيغة "خلال آخر X يوم: …" بدل "اليوم".
+
+**ب. `SalesLogCard.tsx`**
+- استبدال `useDailySalesSummary({ limit: 30 })` بـ `useDailySalesSummary({ fromDate, toDate, limit: 90 })` المأخوذتين من `useDateRange()`.
+- في حالة `rangeDays === 1` أو `-1` يُختار اليوم/الأمس تلقائياً كالتاريخ الافتراضي للسجل.
+
+**ج. `Dashboard.tsx` (تبويب نظرة عامة)**
+- البحث عن أي `useState` محلي للنطاق واستبداله بـ `useDateRange()` عند تشغيله مع `embedded`.
+
+**د. `SalesIndicator.tsx` و `ProjectStatus.tsx`**
+- نفس المعالجة: عند `embedded` يقرأ `useDateRange()` بدل `useState` المحلي، ويُخفي شريط الفلاتر الداخلي لتجنب التكرار. خارج مركز القيادة يحتفظ بالسلوك الحالي.
+
+**هـ. `Behavior.tsx`**
+- ليس داخل مركز القيادة، يبقى كما هو (شريط محلي).
+
+### 4. مؤشّر بصري للنطاق النشط
+إضافة سطر صغير تحت `PageHeader` في `CommandCenter.tsx` يعرض الفترة الفعلية المستخدمة:
+`الفترة: 24 أبريل – 30 أبريل 2026 (7 أيام)` — يُحدَّث تلقائياً مع الزر.
+
+## الملفات المتأثرة
 
 ```text
-[ ▾ ]  [ #2897 ]  [ 6:27 PM ]  [ 👤 محمد ]  [ ⚡ 3 أصناف ]      [ −5.00 ﷼ ]  [ 💳 شبكة ]  [ 58.00 ﷼ ]
- ──────── identity (right) ────────────  ── smart middle ──   ──────── financial (left) ────────
+src/lib/dateRange.ts                              [جديد]
+src/components/dashboard/TimeRangeBar.tsx         [إضافة useDateRange]
+src/components/dashboard/DailyStoryCard.tsx       [قراءة fromDate/toDate]
+src/components/dashboard/SalesLogCard.tsx         [تمرير fromDate/toDate]
+src/pages/Dashboard.tsx                           [قراءة النطاق عند embedded]
+src/pages/SalesIndicator.tsx                      [قراءة النطاق عند embedded]
+src/pages/ProjectStatus.tsx                       [قراءة النطاق عند embedded]
+src/pages/CommandCenter.tsx                       [عرض ملصق الفترة]
 ```
 
-Three balanced zones:
-
-1. **Identity zone (right, fixed)** — chevron + `#2897` (drop the redundant `1-` prefix; keep full # in tooltip) + time in **Latin 12-hour format** (`6:27 PM`).
-2. **Smart middle (flex, truncates)** — cashier name (always shown, not just `sm:`) + item count badge (e.g. `3 أصناف`) so the row tells a story.
-3. **Financial zone (left, fixed)** — discount chip (if any) → payment-method chip with **Arabic label + colored icon** (شبكة / كاش / توصيل) → total in bold.
-
-Refund rows: replace payment chip with a red `استرجاع` chip and color the total red.
-
-## Numeric formatting
-
-- All numbers (receipt #, time, amounts, item counts) → **Latin digits** via `toLocaleString("en-US", …)` and `Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true })`.
-- Add `tabular-nums` everywhere for clean column alignment.
-- Currency stays as `RiyalIcon` SVG (per project rule).
-
-## Smart additions
-
-- **Item count per receipt**: derive from `useReceiptItemsByDate` — group by `receipt_number` once, pass count into each row. Shown as a subtle pill `3 أصناف`.
-- **Cashier always visible** (truncates with ellipsis if long), no responsive hiding.
-- **Payment chip** shows method label + icon together (not just icon), color-coded:
-  - شبكة → primary, کاش → success, توصیل → warning.
-- **Discount chip** stays inline only when discount > 0 (and not refund).
-- Receipt number trimmed: `1-2897` → `#2897` (POS prefix is constant; full value still in `title=` for accessibility).
-
-## Files to edit
-
-- `src/components/dashboard/SalesLogCard.tsx` — only file changed.
-  - New helper `formatTimeLatin(date)` using `en-US`.
-  - New helper `shortReceiptNo(s)` stripping leading `\d+-`.
-  - Pass `itemCount` map from `useReceiptItemsByDate` aggregation into each `ReceiptRow`.
-  - Rewrite `ReceiptRow` main row markup with the three-zone layout above.
-  - Update `Kpi`, `last 7 days`, and items tab to also use `tabular-nums` + Latin digits (already mostly Latin via `fmt`).
-
-## Out of scope
-
-- No DB / edge-function changes.
-- No layout changes to the KPI cards or payment-split bar (already clean).
-- Expanded `ReceiptMetaStrip` stays as-is (already good after last iteration).
+## النتيجة المتوقعة
+- ضغط **أمس** → كل الكروت تعرض بيانات يوم أمس فقط.
+- ضغط **7 أيام** → الكروت تجمع/تعرض آخر 7 أيام.
+- ضغط **90+ يوم** → بدون فلتر تاريخي، كل البيانات.
+- شريط واحد يتحكم بكل شيء في مركز القيادة.
