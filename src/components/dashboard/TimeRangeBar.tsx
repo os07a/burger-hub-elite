@@ -1,4 +1,5 @@
 import { useSearchParams } from "react-router-dom";
+import { computeRange, type DateRange } from "@/lib/dateRange";
 
 const RANGES = [
   { label: "اليوم", value: 1 },
@@ -20,11 +21,20 @@ export const useRangeDays = (): [number, (n: number) => void] => {
   return [Number.isFinite(days) ? days : 30, set];
 };
 
+export const useDateRange = (): DateRange => {
+  const [days] = useRangeDays();
+  return computeRange(days);
+};
+
 const TimeRangeBar = () => {
   const [rangeDays, setRangeDays] = useRangeDays();
+  const range = computeRange(rangeDays);
   return (
-    <div className="ios-card mb-5 flex items-center justify-between gap-3 py-3">
-      <div className="text-[11px] font-semibold text-muted-foreground">📅 النطاق الزمني</div>
+    <div className="ios-card mb-5 flex items-center justify-between gap-3 py-3 flex-wrap">
+      <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+        <span>📅 النطاق الزمني</span>
+        <span className="text-foreground font-bold" dir="rtl">{range.label}</span>
+      </div>
       <div className="flex items-center gap-1.5">
         {RANGES.map((p) => (
           <button

@@ -3,13 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import RiyalIcon from "@/components/ui/RiyalIcon";
 import { fmt } from "@/lib/format";
 import { Sparkles, TrendingUp, TrendingDown, Wallet, AlertTriangle } from "lucide-react";
-
-const todayStr = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Riyadh",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-}).format(new Date());
+import { useDateRange } from "@/components/dashboard/TimeRangeBar";
 
 const todayWeekday = new Intl.DateTimeFormat("ar-SA", {
   timeZone: "Asia/Riyadh",
@@ -27,27 +21,33 @@ interface DailyRow {
 }
 
 const DailyStoryCard = () => {
-  const { data: today } = useQuery({
-    queryKey: ["daily_sales", todayStr, "story"],
-    queryFn: async (): Promise<DailyRow | null> => {
-      const { data } = await supabase
-        .from("daily_sales")
-        .select("total_sales,net_sales,orders_count")
-        .eq("date", todayStr)
-        .maybeSingle();
-      return (data as unknown as DailyRow | null) ?? null;
+  const { fromDate, toDate, label, rangeDays } = useDateRange();
+  const { data: rows = [] } = useQuery({
+    queryKey: ["daily_sales_story", fromDate, toDate],
+    queryFn: async (): Promise<DailyRow[]> => {
+      let q = supabase.from("daily_sales").select("total_sales,net_sales,orders_count");
+      if (fromDate) q = q.gte("date", fromDate);
+      if (toDate) q = q.lte("date", toDate);
+      const { data } = await q;
+      return (data as unknown as DailyRow[]) ?? [];
     },
   });
 
-  const todaySales = Number(today?.net_sales ?? today?.total_sales ?? 0);
-  const orders = Number(today?.orders_count ?? 0);
-  const diffPct = AVG_DAILY > 0 ? Math.round(((todaySales - AVG_DAILY) / AVG_DAILY) * 100) : 0;
+  const todaySales = rows.reduce(
+    (s, r) => s + Number(r?.net_sales ?? r?.total_sales ?? 0),
+    0,
+  );
+  const orders = rows.reduce((s, r) => s + Number(r?.orders_count ?? 0), 0);
+  const dayCount = Math.max(1, rows.length || 1);
+  const isSingleDay = rangeDays === 1 || rangeDays === -1;
+  const benchmark = isSingleDay ? AVG_DAILY : AVG_DAILY * dayCount;
+  const diffPct = benchmark > 0 ? Math.round(((todaySales - benchmark) / benchmark) * 100) : 0;
   const above = diffPct >= 0;
   const runwayDays = Math.max(1, Math.round(BANK_BALANCE / Math.max(1, BURN_PER_DAY - AVG_DAILY)));
   const inventoryAlerts = 4;
 
   const tone: "success" | "warning" | "danger" =
-    todaySales >= AVG_DAILY ? "success" : todaySales >= AVG_DAILY * 0.7 ? "warning" : "danger";
+    todaySales >= benchmark ? "success" : todaySales >= benchmark * 0.7 ? "warning" : "danger";
   const toneClasses = {
     success: { bg: "bg-success/10", text: "text-success", icon: TrendingUp },
     warning: { bg: "bg-warning/15", text: "text-warning", icon: Sparkles },
@@ -56,12 +56,15 @@ const DailyStoryCard = () => {
   const Icon = toneClasses.icon;
 
   let storyText: string;
+  const periodLabel = isSingleDay
+    ? (rangeDays === -1 ? "أمس" : `اليوم ${todayWeekday}`)
+    : `خلال ${label}`;
   if (todaySales === 0) {
-    storyText = `اليوم ${todayWeekday}. ما تسجّل دخل بعد — أضف الإيرادات أو شغّل المزامنة من تبويب نظرة عامة لعرض القصة الكاملة.`;
+    storyText = `${periodLabel}: ما تسجّل دخل بعد — أضف الإيرادات أو شغّل المزامنة من تبويب نظرة عامة لعرض القصة الكاملة.`;
   } else {
     storyText = above
-      ? `اليوم ${todayWeekday} — أداء قوي. الإيراد حتى الآن ${fmt(todaySales)} ر.س، أعلى من متوسطك بـ ${diffPct}%. السيولة تكفي ~${runwayDays} يوم، وعندك ${inventoryAlerts} تنبيهات مخزون.`
-      : `اليوم ${todayWeekday} — يوم هادئ. الإيراد ${fmt(todaySales)} ر.س، أقل من المتوسط بـ ${Math.abs(diffPct)}%. السيولة تكفي ~${runwayDays} يوم، وعندك ${inventoryAlerts} تنبيهات مخزون.`;
+      ? `${periodLabel} — أداء قوي. الإيراد ${fmt(todaySales)} ر.س، أعلى من المتوقع بـ ${diffPct}%. السيولة تكفي ~${runwayDays} يوم، وعندك ${inventoryAlerts} تنبيهات مخزون.`
+      : `${periodLabel} — أداء هادئ. الإيراد ${fmt(todaySales)} ر.س، أقل من المتوقع بـ ${Math.abs(diffPct)}%. السيولة تكفي ~${runwayDays} يوم، وعندك ${inventoryAlerts} تنبيهات مخزون.`;
   }
 
   return (
@@ -77,18 +80,18 @@ const DailyStoryCard = () => {
       </div>
       <div className="grid grid-cols-3 gap-3 mt-4">
         <div className="rounded-xl bg-background p-3">
-          <div className="text-[10px] text-muted-foreground mb-1">دخل اليوم</div>
+          <div className="text-[10px] text-muted-foreground mb-1">{isSingleDay ? "دخل اليوم" : `دخل الفترة (${dayCount} يوم)`}</div>
           <div className={`text-[16px] font-bold ${toneClasses.text} flex items-center gap-1`}>
             {fmt(todaySales)} <RiyalIcon size={10} />
           </div>
           <div className="text-[10px] text-muted-foreground mt-0.5">{orders} طلب</div>
         </div>
         <div className="rounded-xl bg-background p-3">
-          <div className="text-[10px] text-muted-foreground mb-1">مقابل المتوسط</div>
+          <div className="text-[10px] text-muted-foreground mb-1">مقابل المتوقع</div>
           <div className={`text-[16px] font-bold ${above ? "text-success" : "text-danger"} flex items-center gap-1`}>
             {above ? "+" : ""}{diffPct}%
           </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">متوسط {fmt(AVG_DAILY)} ر.س</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{isSingleDay ? `متوسط ${fmt(AVG_DAILY)} ر.س` : `متوقع ${fmt(benchmark)} ر.س`}</div>
         </div>
         <div className="rounded-xl bg-background p-3">
           <div className="text-[10px] text-muted-foreground mb-1 flex items-center gap-1">

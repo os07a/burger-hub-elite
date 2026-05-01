@@ -7,6 +7,7 @@ import { useDailySalesSummary } from "@/hooks/useDailySalesSummary";
 import { usePosReceipts } from "@/hooks/usePosReceipts";
 import { useReceiptItemsByDate } from "@/hooks/useReceiptItemsByDate";
 import { useReceiptItemByReceipt } from "@/hooks/useReceiptItemByReceipt";
+import { useDateRange } from "@/components/dashboard/TimeRangeBar";
 import { cn } from "@/lib/utils";
 
 const money = (v: number) => fmt(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -32,10 +33,18 @@ const shortReceiptNo = (s: string) => {
 };
 
 const SalesLogCard = () => {
-  const { data: days = [], isLoading: daysLoading } = useDailySalesSummary({ limit: 30 });
-  const defaultDate = days[0]?.date ?? todayKsa();
+  const { fromDate, toDate, rangeDays } = useDateRange();
+  const { data: days = [], isLoading: daysLoading } = useDailySalesSummary({
+    fromDate,
+    toDate,
+    limit: 90,
+  });
+  // Default selected date = first day in range (most recent given desc order).
+  const defaultDate = days[0]?.date ?? toDate ?? todayKsa();
   const [selected, setSelected] = useState<string | null>(null);
-  const date = selected ?? defaultDate;
+  // Reset selection when range changes (user picks new period → use its head).
+  const date =
+    selected && days.some((d) => d.date === selected) ? selected : defaultDate;
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const row = days.find((d) => d.date === date);
