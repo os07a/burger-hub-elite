@@ -1,66 +1,50 @@
-# خطة ترتيب صفحة الطاقم وإضافة الإقامات
+## المشكلة
 
-## 1) إصلاح المحاذاة (RTL) في صفحة الطاقم
+بطاقة **"👥 حالة الطاقم اليوم"** في مركز القيادة (داخل `src/pages/Dashboard.tsx` السطور 350-370) مكتوبة بأسماء وهمية ثابتة في الكود:
+- 4 موظفين ثابتين (يونس، شيمول، ميراج، ريان) بحالات وهمية
+- إجمالي رواتب ثابت = 10,400 ريال
+- متوسط يومي ثابت = 696 ريال
 
-**المشكلة الحالية:** في `src/pages/Staff.tsx` الـ `PageHeader` ملفوف داخل `flex justify-between` خارجي مع أزرار "إضافة موظف" و"كشف رواتب" — هذا يتعارض مع الـ `flex justify-between` الموجود أصلاً داخل `PageHeader` نفسه، فيُكسر المحاذاة ويخلي العنوان يطفو في النص.
+لذلك أي إضافة/تعديل/حذف في صفحة الطاقم **لا ينعكس** أبداً في مركز القيادة.
 
-**الحل (بنفس نمط `CommandCenter.tsx`):**
-- إضافة `dir="rtl"` على الحاوية الجذرية.
-- استخدام prop `actions` المدمج في `PageHeader` لتمرير الأزرار بدل اللف الخارجي → العنوان يثبت يمين تلقائياً والأزرار يسار.
-- توحيد العنوان "الطاقم" + subtitle + badge "X موظف" بنفس نمط مركز القيادة.
+## الحل
 
-```tsx
-<div className="animate-fade-in" dir="rtl">
-  <PageHeader
-    title="الطاقم"
-    subtitle="نظام إدارة موارد بشرية ذكي — وثائق، إجازات، تقييمات، ورواتب"
-    badge={`${employees.length} موظف`}
-    actions={isAdmin && (
-      <>
-        <Button variant="outline" onClick={exportPayrollCsv} className="gap-1.5">
-          <Download size={16} /> كشف رواتب {monthYM}
-        </Button>
-        <Button onClick={() => { setEditingEmployee(null); setEmpDialogOpen(true); }} className="gap-1.5">
-          <Plus size={16} /> إضافة موظف
-        </Button>
-      </>
-    )}
-  />
-  ...
-</div>
-```
+### 1) ربط البطاقة بالموظفين الفعليين
+- استبدال المصفوفة الثابتة باستخدام `useEmployees()` الموجود مسبقاً.
+- عرض كل الموظفين النشطين، مع اسم مختصر (أول كلمة) ومسمى وظيفي مختصر (`role_short` أو أول 8 أحرف من `role`).
+- تخطيط شبكي متجاوب (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4`) عشان يستوعب 5+ موظفين بدون كسر.
 
-- مراجعة شريط التنبيهات الذكية (border-r-4) والفلاتر وبطاقات المؤشرات للتأكد إنها كلها متناسقة مع RTL (text-right حيث يلزم).
-- التأكد إن `EmployeeProfileCard` نفسه يحترم RTL (سأفحصه عند التنفيذ وأعدّله لو فيه `flex` بدون `dir`).
+### 2) ربط حالة الحضور الحقيقية
+- جلب سجلات `attendance` لتاريخ اليوم عبر hook بسيط (`useTodayAttendance`).
+- لكل موظف: 
+  - إذا فيه `check_in` بدون `late_minutes` → "حاضر" (success)
+  - إذا `late_minutes > 0` → "تأخر Xد" (warning)
+  - إذا ما فيه سجل لليوم → "غائب" (danger)
+  - إذا فيه إجازة معتمدة في `employee_leaves` تشمل اليوم → "إجازة" (info)
 
-## 2) إضافة الإقامات لكل العمال
+### 3) حساب الرواتب الفعلية
+- `totalSalaries = sum(employees.salary)` بدل القيمة الثابتة 10,400.
+- `avgDaily` يُجلب من `daily_sales` آخر 30 يوم (متوسط `total_sales`) بدل 696 الثابت — موجود فعلاً عبر `useDailySalesSummary`.
 
-حالياً قاعدة البيانات فيها **موظف واحد فقط** (مد شيمول). علشان أضيف إقامات لكل العمال، أحتاج منك البيانات.
+### 4) تحديث فوري (Realtime)
+- تفعيل Realtime على الجداول: `employees`, `attendance`, `employee_leaves` عبر migration:
+  ```sql
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.employees;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.employee_leaves;
+  ```
+- إضافة hook عام `useRealtimeInvalidate(table, queryKey)` في `src/hooks/useRealtime.ts` يعمل subscribe ويستدعي `queryClient.invalidateQueries` عند أي تغيير، مع تنظيف القناة عند unmount.
+- استدعاؤه داخل `Dashboard.tsx` لكل من: `employees`, `attendance` → كل تغيير في صفحة الطاقم يحدّث مركز القيادة فوراً بدون reload.
 
-**الخيار الأفضل (الأسرع والأدق):** ارفع لي صور الإقامات (واحدة لكل عامل)، والنظام أصلاً عنده ميزة استخراج تلقائي بالذكاء الاصطناعي (`extract-iqama-data`) راح تقرأ:
-- اسم صاحب الإقامة
-- رقم الإقامة
-- تاريخ الإصدار/الانتهاء
-- الجنسية
+## الملفات المتأثرة
 
-**أو يدوياً:** زوّدني بقائمة فيها لكل عامل:
-- الاسم الكامل
-- الوظيفة / القسم
-- رقم الإقامة + تاريخ الانتهاء
-- الجنسية
-- الراتب (اختياري)
+| الملف | التغيير |
+|---|---|
+| `supabase/migrations/<new>.sql` | تفعيل Realtime على 3 جداول |
+| `src/hooks/useRealtime.ts` (جديد) | hook عام للاشتراك بـ Realtime |
+| `src/hooks/useTodayAttendance.ts` (جديد) | جلب حضور اليوم |
+| `src/pages/Dashboard.tsx` | استبدال البطاقة الثابتة بمكون ديناميكي + اشتراك Realtime |
 
-عند التنفيذ سأقوم بـ:
-1. إنشاء سجلات الموظفين الناقصين في جدول `employees`.
-2. إضافة وثيقة "إقامة" لكل موظف في `employee_docs` مع تاريخ الانتهاء وحالة تلقائية (سارية/تنتهي قريباً/منتهية).
-3. لو رفعت الصور: تحميلها على bucket `employee-docs` وربطها بالسجل.
-
-## 3) ملفات سيتم تعديلها
-
-- `src/pages/Staff.tsx` — إعادة ترتيب الهيدر + RTL.
-- (محتمل) `src/components/staff/EmployeeProfileCard.tsx` — تعديلات RTL طفيفة لو لزم.
-- إدخال بيانات في `employees` و`employee_docs` بعد ما تزوّدني بالإقامات.
-
----
-
-**سؤال مهم قبل التنفيذ:** كيف تبي تعطيني الإقامات؟ (صور / قائمة نصية / Excel)
+## ملاحظات
+- ما بنغيّر التصميم البصري (نفس `ios-card` و `StatusBadge`) — فقط البيانات تصير حقيقية.
+- لو عدد الموظفين كبير (>8)، البطاقة تتحول لقائمة قابلة للتمرير الأفقي.
