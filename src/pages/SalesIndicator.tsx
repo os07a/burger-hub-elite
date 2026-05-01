@@ -8,17 +8,19 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import PosSyncDialog from "@/components/dashboard/PosSyncDialog";
 import { useSalesIndicator } from "@/hooks/useSalesIndicator";
 import { fmt, formatArabicDayMonth } from "@/lib/format";
+import { useDateRange } from "@/components/dashboard/TimeRangeBar";
 
 interface SalesIndicatorProps {
   embedded?: boolean;
 }
 
 const SalesIndicator = ({ embedded = false }: SalesIndicatorProps) => {
-  const [rangeDays, setRangeDays] = useState<number>(30); // 7 | 30 | 0 (=90+ all)
+  const [localRangeDays, setLocalRangeDays] = useState<number>(30); // standalone mode only
   const [posSyncOpen, setPosSyncOpen] = useState(false);
   const queryClient = useQueryClient();
+  const urlRange = useDateRange();
 
-  const computeRange = (days: number) => {
+  const computeLocalRange = (days: number) => {
     if (days <= 0) return { fromDate: undefined, toDate: undefined };
     const end = new Date();
     const start = new Date();
@@ -26,8 +28,13 @@ const SalesIndicator = ({ embedded = false }: SalesIndicatorProps) => {
     const iso = (d: Date) => d.toISOString().slice(0, 10);
     return { fromDate: iso(start), toDate: iso(end) };
   };
-  const { fromDate, toDate } = computeRange(rangeDays);
-  const hasFilter = rangeDays > 0;
+  // When embedded inside CommandCenter, follow the URL range; otherwise use local toggle.
+  const rangeDays = embedded ? urlRange.rangeDays : localRangeDays;
+  const { fromDate, toDate } = embedded
+    ? { fromDate: urlRange.fromDate, toDate: urlRange.toDate }
+    : computeLocalRange(localRangeDays);
+  const hasFilter = embedded ? urlRange.isFiltered : localRangeDays > 0;
+  const setRangeDays = (n: number) => setLocalRangeDays(n);
 
   const { isLoading, error, data } = useSalesIndicator({
     fromDate,
