@@ -16,6 +16,21 @@ const todayKsa = (): string => {
   return fmtD.format(new Date());
 };
 
+// Latin 12-hour time formatter — e.g. "6:27 PM"
+const timeFmt = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "Asia/Riyadh",
+});
+const formatTimeLatin = (iso: string | null) => (iso ? timeFmt.format(new Date(iso)) : "—");
+
+// Strip the constant POS prefix ("1-2897" → "2897"); fall back to original.
+const shortReceiptNo = (s: string) => {
+  const m = /^\d+-(.+)$/.exec(s);
+  return m ? m[1] : s;
+};
+
 const SalesLogCard = () => {
   const { data: days = [], isLoading: daysLoading } = useDailySalesSummary({ limit: 30 });
   const defaultDate = days[0]?.date ?? todayKsa();
