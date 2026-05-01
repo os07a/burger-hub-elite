@@ -140,9 +140,7 @@ const SalesLogCard = () => {
               <div className="divide-y divide-border/40">
                 {receipts.map((r) => {
                   const isRefund = r.receipt_type === "REFUND";
-                  const time = r.created_at_pos
-                    ? new Date(r.created_at_pos).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
-                    : "-";
+                  const time = formatTimeLatin(r.created_at_pos);
                   const isOpen = expanded === r.receipt_number;
                   return (
                     <ReceiptRow
