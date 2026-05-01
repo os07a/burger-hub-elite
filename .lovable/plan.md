@@ -1,71 +1,40 @@
 # المشكلة
 
-شريط النطاق الزمني (`TimeRangeBar`) في صفحة **مركز القيادة** يكتب القيمة في رابط الصفحة (`?range=7`) ويغيّر مظهر الزر فقط، لكن **لا أحد من الكروت يقرأ هذه القيمة**. كل مكوّن داخلي يجلب بياناته بشكل مستقل:
+المستشار الذكي يرجع خطأ 500 ويعرض "حدث خطأ، حاول لاحقاً" عند إرسال أي رسالة.
 
-- `DailyStoryCard` يقرأ **اليوم فقط** دائماً (مفلتر بـ `todayStr`).
-- `SalesLogCard` يقرأ آخر **30 يوم ثابتة** (`limit: 30`).
-- `Dashboard` (نظرة عامة), `SalesIndicator`, `ProjectStatus`, `Behavior` كلها تستخدم `useState` محلي خاص بها للنطاق وتتجاهل الـ URL.
+السبب من سجلات Edge Function:
+```
+TypeError: userClient.auth.getClaims is not a function
+  at business-advisor/index.ts:121
+```
 
-النتيجة: ضغط "أمس" أو "7 أيام" أو "90+" يُحدّث اللون فقط بدون أي تأثير على الأرقام.
+دالة `auth.getClaims()` غير موجودة في مكتبة Supabase JS المستخدمة في الـ edge function، لذا كل طلب يفشل في خطوة التحقق من الهوية ويرجع 500.
 
 # الحل
 
-جعل `useRangeDays` (الموجود في `TimeRangeBar.tsx`) هو **مصدر الحقيقة الوحيد** للنطاق الزمني داخل مركز القيادة، ثم تمرير `fromDate / toDate` المحسوبة لكل الكروت.
+استبدال `userClient.auth.getClaims(token)` في `supabase/functions/business-advisor/index.ts` بـ `userClient.auth.getUser(token)` وهي الطريقة القياسية للتحقق من الـ JWT والحصول على المستخدم.
 
-## الخطوات
+## التغيير
 
-### 1. توحيد منطق حساب النطاق
-إنشاء `src/lib/dateRange.ts` يحتوي:
-- `computeRange(rangeDays)` يُرجع `{ fromDate, toDate, label }` بصيغة `YYYY-MM-DD` بتوقيت الرياض.
-- المنطق:
-  - `1` → اليوم فقط (from = to = اليوم)
-  - `-1` → أمس فقط (from = to = أمس)
-  - `7` → آخر 7 أيام (to = اليوم، from = اليوم - 6)
-  - `30` → آخر 30 يوم
-  - `0` → بدون فلتر (90+ يوم / كل البيانات)
+في `supabase/functions/business-advisor/index.ts` (سطور ~121-127):
 
-### 2. تحديث `useRangeDays` في `TimeRangeBar.tsx`
-إضافة دالة مساعدة `useDateRange()` تستدعي `useRangeDays` ثم `computeRange` وتُرجع `{ rangeDays, fromDate, toDate }` جاهزة للاستخدام.
+```ts
+const token = authHeader.replace("Bearer ", "");
+const { data: { user }, error: userErr } = await userClient.auth.getUser(token);
+if (userErr || !user) {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+```
 
-### 3. تحديث الكروت لاستهلاك النطاق
+لا تغييرات في الواجهة. ستُنشر الدالة تلقائياً بعد الحفظ.
 
-**أ. `DailyStoryCard.tsx`**
-- بدل قراءة `todayStr` ثابتة، يقرأ `useDateRange()`.
-- إذا `rangeDays === 1` → يبقى نفس السلوك (يوم واحد).
-- إذا نطاق متعدد الأيام → يجمع `total_sales / net_sales / orders_count` من `daily_sales` بين `fromDate` و `toDate`، ويعرض القصة بصيغة "خلال آخر X يوم: …" بدل "اليوم".
+## النتيجة
 
-**ب. `SalesLogCard.tsx`**
-- استبدال `useDailySalesSummary({ limit: 30 })` بـ `useDailySalesSummary({ fromDate, toDate, limit: 90 })` المأخوذتين من `useDateRange()`.
-- في حالة `rangeDays === 1` أو `-1` يُختار اليوم/الأمس تلقائياً كالتاريخ الافتراضي للسجل.
-
-**ج. `Dashboard.tsx` (تبويب نظرة عامة)**
-- البحث عن أي `useState` محلي للنطاق واستبداله بـ `useDateRange()` عند تشغيله مع `embedded`.
-
-**د. `SalesIndicator.tsx` و `ProjectStatus.tsx`**
-- نفس المعالجة: عند `embedded` يقرأ `useDateRange()` بدل `useState` المحلي، ويُخفي شريط الفلاتر الداخلي لتجنب التكرار. خارج مركز القيادة يحتفظ بالسلوك الحالي.
-
-**هـ. `Behavior.tsx`**
-- ليس داخل مركز القيادة، يبقى كما هو (شريط محلي).
-
-### 4. مؤشّر بصري للنطاق النشط
-إضافة سطر صغير تحت `PageHeader` في `CommandCenter.tsx` يعرض الفترة الفعلية المستخدمة:
-`الفترة: 24 أبريل – 30 أبريل 2026 (7 أيام)` — يُحدَّث تلقائياً مع الزر.
+- المستشار الذكي يرد على الرسائل بدون خطأ 500.
+- التحقق من الهوية يبقى سليماً (JWT صالح من مستخدم مسجّل).
 
 ## الملفات المتأثرة
 
-```text
-src/lib/dateRange.ts                              [جديد]
-src/components/dashboard/TimeRangeBar.tsx         [إضافة useDateRange]
-src/components/dashboard/DailyStoryCard.tsx       [قراءة fromDate/toDate]
-src/components/dashboard/SalesLogCard.tsx         [تمرير fromDate/toDate]
-src/pages/Dashboard.tsx                           [قراءة النطاق عند embedded]
-src/pages/SalesIndicator.tsx                      [قراءة النطاق عند embedded]
-src/pages/ProjectStatus.tsx                       [قراءة النطاق عند embedded]
-src/pages/CommandCenter.tsx                       [عرض ملصق الفترة]
-```
-
-## النتيجة المتوقعة
-- ضغط **أمس** → كل الكروت تعرض بيانات يوم أمس فقط.
-- ضغط **7 أيام** → الكروت تجمع/تعرض آخر 7 أيام.
-- ضغط **90+ يوم** → بدون فلتر تاريخي، كل البيانات.
-- شريط واحد يتحكم بكل شيء في مركز القيادة.
+- `supabase/functions/business-advisor/index.ts`
