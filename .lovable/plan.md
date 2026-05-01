@@ -1,69 +1,57 @@
-# إثراء جدول الإيصالات في مركز القيادة
+## Goal
 
-تبويب "نظرة عامة" داخل مركز القيادة يعرض حالياً جدول إيصالات بسيط (المبلغ، النوع، الوقت، رقم). نريد جعله أذكى — يكشف الكاشير، الخصم، الضريبة، الكاش/الشبكة، وتفاصيل المرتجع — مع الإبقاء على بساطة الصف الأساسي.
+Reorganize receipt rows in **سجل المبيعات** (Sales Log) so columns are clean, balanced, and easy to scan in RTL — with **Latin numerals everywhere** and smarter inline metadata.
 
-## ما الجديد في كل صف إيصال
+## Problems with current row
 
-سطر واحد مدمج (نفس الارتفاع تقريباً) يحمل بصرياً:
+Looking at the screenshot:
+- Time uses Arabic-Indic digits (`٦:٢٧ م`) while receipt # uses Latin (`#1-2897`) → inconsistent.
+- Right side feels crammed (`v #1-2897 ٦:٢٧ م`) while the middle is empty whitespace.
+- Left side only shows a tiny icon + amount → no real "smart" info (no cashier, no item count, no discount visible at a glance).
+- Cashier badge only appears on `sm:` screens and is hidden on this viewport — wasted intelligence.
+- Payment icon is just a generic card glyph with no distinction between cash / network / delivery in the compact view.
 
-```text
-[#رقم]  [⏱الوقت]  [👤الكاشير]  [💳شبكة|كاش|توصيل]  [↩مرتجع/خصم بادج]  [الإجمالي ﷼]
-```
-
-- **رقم الإيصال** — يبقى قابل للنقر (Chevron) لفتح التفاصيل.
-- **الوقت** — HH:MM بصيغة عربية.
-- **الكاشير** — اسم مختصر داخل badge رمادي (مثل: "👤 يوسف"). إذا غير معروف → نخفيه.
-- **طريقة الدفع** — أيقونة صغيرة فقط (CreditCard / Banknote / Bike) مع لون دلالي بدل النص الكامل.
-- **بادج المرتجع/الخصم** — يظهر فقط لو موجود:
-  - مرتجع → بادج أحمر "↩ استرجاع".
-  - خصم → بادج وردي "−X ﷼ خصم".
-- **الإجمالي** — يبقى يميناً، أحمر للمرتجع.
-
-## التوسعة عند الضغط (Expanded view)
-
-إضافة شريط ميتا قبل قائمة الأصناف:
+## New row layout (RTL — reading right → left)
 
 ```text
-┌──────────────────────────────────────────────┐
-│ الإجمالي قبل الخصم: 65 ﷼                    │
-│ الخصم: −5 ﷼     الضريبة: 8.7 ﷼              │
-│ صافي الإيصال: 68.7 ﷼                         │
-│ الدفع: شبكة 50 ﷼ • كاش 18.7 ﷼                │
-│ الكاشير: يوسف   •   #1-2897   •   15:27      │
-└──────────────────────────────────────────────┘
+[ ▾ ]  [ #2897 ]  [ 6:27 PM ]  [ 👤 محمد ]  [ ⚡ 3 أصناف ]      [ −5.00 ﷼ ]  [ 💳 شبكة ]  [ 58.00 ﷼ ]
+ ──────── identity (right) ────────────  ── smart middle ──   ──────── financial (left) ────────
 ```
-ثم تفاصيل الأصناف الحالية كما هي.
 
-## التغييرات التقنية
+Three balanced zones:
 
-### 1) قاعدة البيانات (migration)
-إضافة أعمدة لـ `pos_receipts`:
-- `cashier_name text` — اسم الموظف من Loyverse.
-- `cashier_id text` — معرّف Loyverse للموظف.
-- `discount numeric default 0` — قيمة الخصم.
-- `tax numeric default 0` — الضريبة.
-- `gross numeric default 0` — الإجمالي قبل الخصم/الضريبة.
+1. **Identity zone (right, fixed)** — chevron + `#2897` (drop the redundant `1-` prefix; keep full # in tooltip) + time in **Latin 12-hour format** (`6:27 PM`).
+2. **Smart middle (flex, truncates)** — cashier name (always shown, not just `sm:`) + item count badge (e.g. `3 أصناف`) so the row tells a story.
+3. **Financial zone (left, fixed)** — discount chip (if any) → payment-method chip with **Arabic label + colored icon** (شبكة / كاش / توصيل) → total in bold.
 
-كلها `nullable`/default 0 حتى لا تكسر السجلات الموجودة.
+Refund rows: replace payment chip with a red `استرجاع` chip and color the total red.
 
-### 2) Edge Function `sync-loyverse-sales`
-- جلب `employees` من Loyverse مرة واحدة وبناء `Map<employee_id, name>`.
-- تمرير `employee_id` من الإيصال لاستخراج الاسم.
-- حفظ `discount`, `tax`, `gross`, `cashier_name`, `cashier_id` ضمن `receiptRows`.
+## Numeric formatting
 
-### 3) Hook `usePosReceipts`
-لا تغيير في التوقيع — الجدول يدعم `select *` فيلتقط الأعمدة الجديدة تلقائياً. تحديث نوع الإرجاع فقط.
+- All numbers (receipt #, time, amounts, item counts) → **Latin digits** via `toLocaleString("en-US", …)` and `Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true })`.
+- Add `tabular-nums` everywhere for clean column alignment.
+- Currency stays as `RiyalIcon` SVG (per project rule).
 
-### 4) `SalesLogCard.tsx` (الجدول داخل مركز القيادة)
-- توسيع `FragmentRow` لاستقبال: `cashierName`, `discount`, `tax`, `gross`, `cash`, `card`, `delivery`.
-- جدول جديد بـ 5 أعمدة بدل 4: رقم | وقت+كاشير | بادجات (دفع/مرتجع/خصم) | — | الإجمالي.
-- على الموبايل: إخفاء عمود الكاشير/البادجات الثانوية والإبقاء على الأساسيات.
-- مكوّن جديد `ReceiptMetaStrip` يُعرض داخل الـ expanded أعلى قائمة الأصناف.
+## Smart additions
 
-### 5) `PosReceiptsTable.tsx`
-نفس الإثراء بصيغة مبسطة (هذا الجدول يُستخدم في صفحة Dashboard المنفصلة).
+- **Item count per receipt**: derive from `useReceiptItemsByDate` — group by `receipt_number` once, pass count into each row. Shown as a subtle pill `3 أصناف`.
+- **Cashier always visible** (truncates with ellipsis if long), no responsive hiding.
+- **Payment chip** shows method label + icon together (not just icon), color-coded:
+  - شبكة → primary, کاش → success, توصیل → warning.
+- **Discount chip** stays inline only when discount > 0 (and not refund).
+- Receipt number trimmed: `1-2897` → `#2897` (POS prefix is constant; full value still in `title=` for accessibility).
 
-## ملاحظات
-- الإيصالات القديمة قبل المزامنة الجديدة سيكون عندها `cashier_name = null` و`discount = 0` — العرض يخفي البادجات في هذه الحالة فلا يبدو فارغاً.
-- لا يحتاج المستخدم إعادة مزامنة قسرية؛ بمجرد ضغطه "مزامنة من الكاشير" تتعبأ البيانات الجديدة.
-- الألوان تتبع نظام البراند الحالي (Rose-700 للخصم، Forest Green للإيجابي، Crimson للمرتجع).
+## Files to edit
+
+- `src/components/dashboard/SalesLogCard.tsx` — only file changed.
+  - New helper `formatTimeLatin(date)` using `en-US`.
+  - New helper `shortReceiptNo(s)` stripping leading `\d+-`.
+  - Pass `itemCount` map from `useReceiptItemsByDate` aggregation into each `ReceiptRow`.
+  - Rewrite `ReceiptRow` main row markup with the three-zone layout above.
+  - Update `Kpi`, `last 7 days`, and items tab to also use `tabular-nums` + Latin digits (already mostly Latin via `fmt`).
+
+## Out of scope
+
+- No DB / edge-function changes.
+- No layout changes to the KPI cards or payment-split bar (already clean).
+- Expanded `ReceiptMetaStrip` stays as-is (already good after last iteration).
