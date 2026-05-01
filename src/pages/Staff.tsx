@@ -111,22 +111,22 @@ const Staff = () => {
   }
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <PageHeader title="الطاقم" subtitle="نظام إدارة موارد بشرية ذكي — وثائق، إجازات، تقييمات، ورواتب" badge={`${employees.length} موظف`} />
-        <div className="flex gap-2 flex-wrap">
-          {isAdmin && (
-            <>
-              <Button variant="outline" onClick={exportPayrollCsv} className="gap-1.5">
-                <Download size={16} /> كشف رواتب {monthYM}
-              </Button>
-              <Button onClick={() => { setEditingEmployee(null); setEmpDialogOpen(true); }} className="gap-1.5">
-                <Plus size={16} /> إضافة موظف
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+    <div className="animate-fade-in" dir="rtl">
+      <PageHeader
+        title="الطاقم"
+        subtitle="نظام إدارة موارد بشرية ذكي — وثائق، إجازات، تقييمات، ورواتب"
+        badge={`${employees.length} موظف`}
+        actions={isAdmin ? (
+          <>
+            <Button variant="outline" onClick={exportPayrollCsv} className="gap-1.5">
+              <Download size={16} /> كشف رواتب {monthYM}
+            </Button>
+            <Button onClick={() => { setEditingEmployee(null); setEmpDialogOpen(true); }} className="gap-1.5">
+              <Plus size={16} /> إضافة موظف
+            </Button>
+          </>
+        ) : undefined}
+      />
 
       {/* Smart alerts strip */}
       {(expiringContracts.length > 0 || expiredContracts.length > 0 || dangerDocsCount > 0 || warningDocsCount > 0 || evaluationsDue > 0) && (
