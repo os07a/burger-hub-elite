@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Bot, User, Loader2, Sparkles, Paperclip, Mic, Square, X, FileText, Image as ImageIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/business-advisor`;
 const TRANSCRIBE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`;
@@ -160,11 +161,16 @@ const BusinessAdvisor = () => {
     let assistantSoFar = "";
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) throw new Error("انتهت الجلسة، سجّل الدخول مرة ثانية.");
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
           messages: allMessages.map(({ role, content }) => ({ role, content })),

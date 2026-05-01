@@ -3,6 +3,7 @@ import { Bot, X, Sparkles, Send, Loader2, AlertTriangle, Info, MessageCircle, Li
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/business-advisor`;
 
@@ -47,11 +48,16 @@ const FloatingAdvisor = () => {
     let so_far = "";
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) throw new Error("انتهت الجلسة، سجّل الدخول مرة ثانية.");
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ messages: all.map(({ role, content }) => ({ role, content })) }),
       });
