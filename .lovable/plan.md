@@ -1,40 +1,66 @@
-# المشكلة
+# خطة ترتيب صفحة الطاقم وإضافة الإقامات
 
-المستشار الذكي يرجع خطأ 500 ويعرض "حدث خطأ، حاول لاحقاً" عند إرسال أي رسالة.
+## 1) إصلاح المحاذاة (RTL) في صفحة الطاقم
 
-السبب من سجلات Edge Function:
+**المشكلة الحالية:** في `src/pages/Staff.tsx` الـ `PageHeader` ملفوف داخل `flex justify-between` خارجي مع أزرار "إضافة موظف" و"كشف رواتب" — هذا يتعارض مع الـ `flex justify-between` الموجود أصلاً داخل `PageHeader` نفسه، فيُكسر المحاذاة ويخلي العنوان يطفو في النص.
+
+**الحل (بنفس نمط `CommandCenter.tsx`):**
+- إضافة `dir="rtl"` على الحاوية الجذرية.
+- استخدام prop `actions` المدمج في `PageHeader` لتمرير الأزرار بدل اللف الخارجي → العنوان يثبت يمين تلقائياً والأزرار يسار.
+- توحيد العنوان "الطاقم" + subtitle + badge "X موظف" بنفس نمط مركز القيادة.
+
+```tsx
+<div className="animate-fade-in" dir="rtl">
+  <PageHeader
+    title="الطاقم"
+    subtitle="نظام إدارة موارد بشرية ذكي — وثائق، إجازات، تقييمات، ورواتب"
+    badge={`${employees.length} موظف`}
+    actions={isAdmin && (
+      <>
+        <Button variant="outline" onClick={exportPayrollCsv} className="gap-1.5">
+          <Download size={16} /> كشف رواتب {monthYM}
+        </Button>
+        <Button onClick={() => { setEditingEmployee(null); setEmpDialogOpen(true); }} className="gap-1.5">
+          <Plus size={16} /> إضافة موظف
+        </Button>
+      </>
+    )}
+  />
+  ...
+</div>
 ```
-TypeError: userClient.auth.getClaims is not a function
-  at business-advisor/index.ts:121
-```
 
-دالة `auth.getClaims()` غير موجودة في مكتبة Supabase JS المستخدمة في الـ edge function، لذا كل طلب يفشل في خطوة التحقق من الهوية ويرجع 500.
+- مراجعة شريط التنبيهات الذكية (border-r-4) والفلاتر وبطاقات المؤشرات للتأكد إنها كلها متناسقة مع RTL (text-right حيث يلزم).
+- التأكد إن `EmployeeProfileCard` نفسه يحترم RTL (سأفحصه عند التنفيذ وأعدّله لو فيه `flex` بدون `dir`).
 
-# الحل
+## 2) إضافة الإقامات لكل العمال
 
-استبدال `userClient.auth.getClaims(token)` في `supabase/functions/business-advisor/index.ts` بـ `userClient.auth.getUser(token)` وهي الطريقة القياسية للتحقق من الـ JWT والحصول على المستخدم.
+حالياً قاعدة البيانات فيها **موظف واحد فقط** (مد شيمول). علشان أضيف إقامات لكل العمال، أحتاج منك البيانات.
 
-## التغيير
+**الخيار الأفضل (الأسرع والأدق):** ارفع لي صور الإقامات (واحدة لكل عامل)، والنظام أصلاً عنده ميزة استخراج تلقائي بالذكاء الاصطناعي (`extract-iqama-data`) راح تقرأ:
+- اسم صاحب الإقامة
+- رقم الإقامة
+- تاريخ الإصدار/الانتهاء
+- الجنسية
 
-في `supabase/functions/business-advisor/index.ts` (سطور ~121-127):
+**أو يدوياً:** زوّدني بقائمة فيها لكل عامل:
+- الاسم الكامل
+- الوظيفة / القسم
+- رقم الإقامة + تاريخ الانتهاء
+- الجنسية
+- الراتب (اختياري)
 
-```ts
-const token = authHeader.replace("Bearer ", "");
-const { data: { user }, error: userErr } = await userClient.auth.getUser(token);
-if (userErr || !user) {
-  return new Response(JSON.stringify({ error: "Unauthorized" }), {
-    status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-```
+عند التنفيذ سأقوم بـ:
+1. إنشاء سجلات الموظفين الناقصين في جدول `employees`.
+2. إضافة وثيقة "إقامة" لكل موظف في `employee_docs` مع تاريخ الانتهاء وحالة تلقائية (سارية/تنتهي قريباً/منتهية).
+3. لو رفعت الصور: تحميلها على bucket `employee-docs` وربطها بالسجل.
 
-لا تغييرات في الواجهة. ستُنشر الدالة تلقائياً بعد الحفظ.
+## 3) ملفات سيتم تعديلها
 
-## النتيجة
+- `src/pages/Staff.tsx` — إعادة ترتيب الهيدر + RTL.
+- (محتمل) `src/components/staff/EmployeeProfileCard.tsx` — تعديلات RTL طفيفة لو لزم.
+- إدخال بيانات في `employees` و`employee_docs` بعد ما تزوّدني بالإقامات.
 
-- المستشار الذكي يرد على الرسائل بدون خطأ 500.
-- التحقق من الهوية يبقى سليماً (JWT صالح من مستخدم مسجّل).
+---
 
-## الملفات المتأثرة
-
-- `supabase/functions/business-advisor/index.ts`
+**سؤال مهم قبل التنفيذ:** كيف تبي تعطيني الإقامات؟ (صور / قائمة نصية / Excel)
