@@ -2,6 +2,7 @@ import { useSearchParams } from "react-router-dom";
 
 const RANGES = [
   { label: "اليوم", value: 1 },
+  { label: "أمس", value: -1 },
   { label: "7 أيام", value: 7 },
   { label: "30 يوم", value: 30 },
   { label: "90+ يوم", value: 0 },
