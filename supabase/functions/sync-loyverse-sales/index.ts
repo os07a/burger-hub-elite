@@ -84,26 +84,29 @@ Deno.serve(async (req) => {
       return json({ error: "LOYVERSE_API_TOKEN غير مهيأ" }, 500);
     }
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims?.sub) {
-      return json({ error: "Unauthorized" }, 401);
-    }
-    const userId = claimsData.claims.sub;
-
+    const isAuto = parsedBody.data.auto === true;
     const admin = createClient(supabaseUrl, serviceKey);
-    const { data: roleRow } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
 
-    if (!roleRow) {
-      return json({ error: "صلاحية المدير مطلوبة" }, 403);
+    if (!isAuto) {
+      // Manual call → require admin role
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const token = authHeader.replace("Bearer ", "");
+      const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+      if (claimsErr || !claimsData?.claims?.sub) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+      const userId = claimsData.claims.sub;
+      const { data: roleRow } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!roleRow) {
+        return json({ error: "صلاحية المدير مطلوبة" }, 403);
+      }
     }
 
     const mode = parsedBody.data.mode ?? "sync";
