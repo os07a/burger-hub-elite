@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRealtimeInvalidate } from "@/hooks/useRealtime";
 
 const typeConfig: Record<string, { label: string; variant: "info" | "success" | "warning" | "danger"; icon: string }> = {
   "tax-invoice": { label: "فاتورة ضريبية", variant: "info", icon: "🧾" },
@@ -36,6 +37,8 @@ const Archive = () => {
   const { data: invoices = [], isLoading } = useArchiveInvoices();
   const upload = useUploadInvoiceImage();
   const qc = useQueryClient();
+
+  useRealtimeInvalidate("invoices", [["archive-invoices"]]);
 
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<string | null>(null);
