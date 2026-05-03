@@ -9,10 +9,12 @@ import { useState } from "react";
 import SupplierFormDialog from "@/components/suppliers/SupplierFormDialog";
 import Suppliers from "./Suppliers";
 import Archive from "./Archive";
+import InvoiceIntake from "./InvoiceIntake";
 
 const SuppliersHub = () => {
   const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "archive" ? "archive" : "suppliers";
+  const tabParam = params.get("tab");
+  const tab = tabParam === "archive" ? "archive" : tabParam === "intake" ? "intake" : "suppliers";
   const { userRole } = useAuth();
   const isAdmin = userRole === "admin";
   const { data: suppliers = [] } = useSuppliers();
@@ -42,11 +44,13 @@ const SuppliersHub = () => {
       <Tabs value={tab} onValueChange={onChange} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="suppliers">🚚 الموردون والفواتير</TabsTrigger>
+          <TabsTrigger value="intake">📥 استقبال فاتورة</TabsTrigger>
           <TabsTrigger value="archive">📁 أرشيف المستندات</TabsTrigger>
         </TabsList>
         <TabsContent value="suppliers" className="mt-0">
           <Suppliers externalDialogOpen={supDialog} setExternalDialogOpen={setSupDialog} />
         </TabsContent>
+        <TabsContent value="intake" className="mt-0"><InvoiceIntake /></TabsContent>
         <TabsContent value="archive" className="mt-0"><Archive /></TabsContent>
       </Tabs>
     </div>
