@@ -727,6 +727,7 @@ export type Database = {
       invoices: {
         Row: {
           account: string | null
+          ai_extracted: Json | null
           amount: number
           confidence_score: number | null
           created_at: string
@@ -737,16 +738,20 @@ export type Database = {
           image_url: string | null
           invoice_number: string | null
           month_label: string | null
+          needs_review: boolean
           notes: string | null
           recipient: string | null
           source: string
           status: string
           subtotal: number
           supplier_id: string | null
+          supplier_name: string | null
           vat_amount: number
+          whatsapp_from: string | null
         }
         Insert: {
           account?: string | null
+          ai_extracted?: Json | null
           amount?: number
           confidence_score?: number | null
           created_at?: string
@@ -757,16 +762,20 @@ export type Database = {
           image_url?: string | null
           invoice_number?: string | null
           month_label?: string | null
+          needs_review?: boolean
           notes?: string | null
           recipient?: string | null
           source?: string
           status?: string
           subtotal?: number
           supplier_id?: string | null
+          supplier_name?: string | null
           vat_amount?: number
+          whatsapp_from?: string | null
         }
         Update: {
           account?: string | null
+          ai_extracted?: Json | null
           amount?: number
           confidence_score?: number | null
           created_at?: string
@@ -777,13 +786,16 @@ export type Database = {
           image_url?: string | null
           invoice_number?: string | null
           month_label?: string | null
+          needs_review?: boolean
           notes?: string | null
           recipient?: string | null
           source?: string
           status?: string
           subtotal?: number
           supplier_id?: string | null
+          supplier_name?: string | null
           vat_amount?: number
+          whatsapp_from?: string | null
         }
         Relationships: [
           {
