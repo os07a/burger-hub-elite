@@ -9,6 +9,8 @@ import { useWhatsappMessages, useWhatsappStats } from "@/hooks/useWhatsappMessag
 import { formatSaudiPhoneDisplay } from "@/lib/phoneNormalize";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ConversationsTab from "@/components/messages/ConversationsTab";
+import WhatsappSendersDialog from "@/components/messages/WhatsappSendersDialog";
+import { Receipt } from "lucide-react";
 import { useWhatsappContacts } from "@/hooks/useWhatsappContacts";
 
 const templates = [
@@ -56,6 +58,7 @@ const Messages = () => {
   const { data: recentDb } = useWhatsappMessages(10);
   const { data: contactsData } = useWhatsappContacts();
   const totalUnread = (contactsData ?? []).reduce((s, c) => s + c.unreadCount, 0);
+  const [sendersOpen, setSendersOpen] = useState(false);
 
   const projectRef = "bjfhrrtajyvvdcsrpwqb";
   const webhookUrl = `https://${projectRef}.supabase.co/functions/v1/whatsapp-webhook`;
@@ -109,7 +112,21 @@ const Messages = () => {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="الرسائل النصية" subtitle="إرسال رسائل واتساب وSMS للعملاء · Twilio" badge="جديد" />
+      <PageHeader
+        title="الرسائل النصية"
+        subtitle="إرسال رسائل واتساب وSMS للعملاء · Twilio"
+        badge="جديد"
+        actions={
+          <button
+            onClick={() => setSendersOpen(true)}
+            className="flex items-center gap-1.5 text-[12px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 rounded-xl px-3 py-2 transition-colors"
+          >
+            <Receipt size={14} />
+            استقبال الفواتير
+          </button>
+        }
+      />
+      <WhatsappSendersDialog open={sendersOpen} onOpenChange={setSendersOpen} />
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4 mb-6">
