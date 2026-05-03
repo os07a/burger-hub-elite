@@ -73,6 +73,17 @@ const Dashboard = ({ embedded = false }: DashboardProps) => {
   useRealtimeInvalidate("attendance", [["attendance", "today"]]);
   useRealtimeInvalidate("employee_leaves", [["employee_leaves", "today"]]);
 
+  // Realtime: new POS receipts / sales summary updates → refresh dashboard instantly
+  useRealtimeInvalidate("pos_receipts", [
+    ["pos_receipts"],
+    ["daily-sales-summary"],
+    ["daily_sales"],
+  ]);
+  useRealtimeInvalidate("daily_sales", [
+    ["daily-sales-summary"],
+    ["daily_sales"],
+  ]);
+
   const totalSalaries = employees.reduce((s, e) => s + Number(e.salary || 0), 0);
 
   const invalidateSalesQueries = () => {

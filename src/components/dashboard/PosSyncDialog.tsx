@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Wifi, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Wifi, RefreshCw, CheckCircle2, XCircle, Zap } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -58,6 +58,15 @@ export default function PosSyncDialog({ open, onOpenChange, onSynced }: Props) {
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="flex items-center gap-2 bg-success/10 text-success rounded-xl p-2.5 text-[12px] font-semibold">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+            </span>
+            <Zap size={13} />
+            المزامنة التلقائية مفعّلة — يتم سحب المبيعات كل دقيقة بدون تدخل
+          </div>
+
           <div className="bg-muted/50 rounded-lg p-3 text-[12px] leading-6 text-muted-foreground">
             <b className="text-foreground">كيف تحصل على التوكن؟</b>
             <ol className="list-decimal mr-5 mt-1 space-y-0.5">

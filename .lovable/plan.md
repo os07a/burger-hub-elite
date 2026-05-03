@@ -1,50 +1,66 @@
-## المشكلة
+# مزامنة الكاشير التلقائية (بدون زر)
 
-بطاقة **"👥 حالة الطاقم اليوم"** في مركز القيادة (داخل `src/pages/Dashboard.tsx` السطور 350-370) مكتوبة بأسماء وهمية ثابتة في الكود:
-- 4 موظفين ثابتين (يونس، شيمول، ميراج، ريان) بحالات وهمية
-- إجمالي رواتب ثابت = 10,400 ريال
-- متوسط يومي ثابت = 696 ريال
+الهدف: لما يتباع أي شي في Loyverse، يظهر في النظام مباشرة بدون ما تضغط زر "مزامنة الآن".
 
-لذلك أي إضافة/تعديل/حذف في صفحة الطاقم **لا ينعكس** أبداً في مركز القيادة.
+## كيف راح يشتغل
 
-## الحل
+Loyverse API ما يدعم Webhooks مباشرة لجميع الحسابات، فالحل الأنسب والأمتن:
 
-### 1) ربط البطاقة بالموظفين الفعليين
-- استبدال المصفوفة الثابتة باستخدام `useEmployees()` الموجود مسبقاً.
-- عرض كل الموظفين النشطين، مع اسم مختصر (أول كلمة) ومسمى وظيفي مختصر (`role_short` أو أول 8 أحرف من `role`).
-- تخطيط شبكي متجاوب (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4`) عشان يستوعب 5+ موظفين بدون كسر.
+1. **استدعاء تلقائي كل دقيقة** عبر `pg_cron` + `pg_net` يستدعي `sync-loyverse-sales` في الخلفية.
+2. **Realtime على الجداول** (`pos_receipts`, `pos_receipt_items`, `daily_sales`) — أي صف جديد يتسجل، الواجهة تتحدّث فوراً بدون refresh.
+3. **مؤشر "آخر مزامنة"** صغير في الهيدر يبيّن آخر وقت تمت فيه المزامنة + Pulse أخضر إذا فيه فاتورة جديدة.
 
-### 2) ربط حالة الحضور الحقيقية
-- جلب سجلات `attendance` لتاريخ اليوم عبر hook بسيط (`useTodayAttendance`).
-- لكل موظف: 
-  - إذا فيه `check_in` بدون `late_minutes` → "حاضر" (success)
-  - إذا `late_minutes > 0` → "تأخر Xد" (warning)
-  - إذا ما فيه سجل لليوم → "غائب" (danger)
-  - إذا فيه إجازة معتمدة في `employee_leaves` تشمل اليوم → "إجازة" (info)
+النتيجة: متوسط زمن ظهور البيع في النظام = 30 ثانية تقريباً (نص دورة الدقيقة) بدون أي تدخل يدوي.
 
-### 3) حساب الرواتب الفعلية
-- `totalSalaries = sum(employees.salary)` بدل القيمة الثابتة 10,400.
-- `avgDaily` يُجلب من `daily_sales` آخر 30 يوم (متوسط `total_sales`) بدل 696 الثابت — موجود فعلاً عبر `useDailySalesSummary`.
+## الخطوات التقنية
 
-### 4) تحديث فوري (Realtime)
-- تفعيل Realtime على الجداول: `employees`, `attendance`, `employee_leaves` عبر migration:
-  ```sql
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.employees;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.employee_leaves;
-  ```
-- إضافة hook عام `useRealtimeInvalidate(table, queryKey)` في `src/hooks/useRealtime.ts` يعمل subscribe ويستدعي `queryClient.invalidateQueries` عند أي تغيير، مع تنظيف القناة عند unmount.
-- استدعاؤه داخل `Dashboard.tsx` لكل من: `employees`, `attendance` → كل تغيير في صفحة الطاقم يحدّث مركز القيادة فوراً بدون reload.
+### 1) تفعيل الإضافات والجدولة (insert tool)
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
 
-## الملفات المتأثرة
+select cron.schedule(
+  'auto-sync-loyverse-sales',
+  '* * * * *',  -- كل دقيقة
+  $$
+  select net.http_post(
+    url := 'https://bjfhrrtajyvvdcsrpwqb.supabase.co/functions/v1/sync-loyverse-sales',
+    headers := '{"Content-Type":"application/json","apikey":"<ANON_KEY>","Authorization":"Bearer <ANON_KEY>"}'::jsonb,
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
 
-| الملف | التغيير |
-|---|---|
-| `supabase/migrations/<new>.sql` | تفعيل Realtime على 3 جداول |
-| `src/hooks/useRealtime.ts` (جديد) | hook عام للاشتراك بـ Realtime |
-| `src/hooks/useTodayAttendance.ts` (جديد) | جلب حضور اليوم |
-| `src/pages/Dashboard.tsx` | استبدال البطاقة الثابتة بمكون ديناميكي + اشتراك Realtime |
+### 2) Realtime migration
+```sql
+alter publication supabase_realtime add table public.pos_receipts;
+alter publication supabase_realtime add table public.pos_receipt_items;
+alter publication supabase_realtime add table public.daily_sales;
+```
+
+### 3) تعديلات الواجهة
+- `Dashboard.tsx`: استخدم `useRealtimeInvalidate` على الجداول الثلاثة لتحديث:
+  - `daily_sales` summary (الكاش/الشبكة/الإجمالي)
+  - `pos_receipts` (آخر الفواتير)
+  - عدّاد الفواتير اليوم
+- `PosSyncDialog.tsx`: يبقى للاختبار اليدوي، لكن نضيف شارة "مزامنة تلقائية مفعّلة ✓".
+- مؤشر صغير في `CommandCenter` header: "آخر مزامنة قبل X ثانية" مع نقطة خضراء نابضة.
+
+### 4) حماية من الازدحام
+- داخل `sync-loyverse-sales`: لو آخر استدعاء كان قبل أقل من 20 ثانية، يرجع فوراً بدون مناداة Loyverse (rate-limit guard) — يمنع أي تداخل مع الكرون أو الزر اليدوي.
 
 ## ملاحظات
-- ما بنغيّر التصميم البصري (نفس `ios-card` و `StatusBadge`) — فقط البيانات تصير حقيقية.
-- لو عدد الموظفين كبير (>8)، البطاقة تتحول لقائمة قابلة للتمرير الأفقي.
+
+- **التوصيل (Delivery)** يبقى يدوي كما هو (memory محفوظ) — التلقائي يخص الكاش/الشبكة/الخصومات/الضرائب فقط.
+- استهلاك Loyverse API: 60 طلب/ساعة فقط من الكرون، أقل بكثير من الحد المسموح (300/دقيقة).
+- لو أبغيت تأخير أقل (كل 30 ثانية بدل دقيقة) ممكن، لكن دقيقة هي التوازن المثالي بين السرعة وعدم إرهاق API.
+
+## الملفات المعدّلة
+
+- `supabase/migrations/...` — Realtime publication
+- insert SQL — pg_cron job
+- `supabase/functions/sync-loyverse-sales/index.ts` — rate-limit guard
+- `src/pages/Dashboard.tsx` — realtime hooks للفواتير
+- `src/pages/CommandCenter.tsx` — مؤشر آخر مزامنة
+- `src/components/dashboard/PosSyncDialog.tsx` — شارة "تلقائي مفعّل"
