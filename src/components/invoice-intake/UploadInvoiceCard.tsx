@@ -147,7 +147,7 @@ const UploadInvoiceCard = () => {
 
   return (
     <>
-      <Card className="p-5 flex flex-col gap-4 md:col-span-3">
+      <Card className="p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">📤</span>
@@ -256,13 +256,11 @@ const UploadInvoiceCard = () => {
 
       {/* Batch summary appears below */}
       {showSummary && successIds.length > 0 && (
-        <div className="md:col-span-3">
-          <BatchSummaryCard
-            invoiceIds={successIds}
-            failedCount={errorFiles.length}
-            onClose={() => setShowSummary(false)}
-          />
-        </div>
+        <BatchSummaryCard
+          invoiceIds={successIds}
+          failedCount={errorFiles.length}
+          onClose={() => setShowSummary(false)}
+        />
       )}
     </>
   );
