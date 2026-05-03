@@ -12,6 +12,8 @@ import ConversationsTab from "@/components/messages/ConversationsTab";
 import WhatsappSendersDialog from "@/components/messages/WhatsappSendersDialog";
 import { Receipt } from "lucide-react";
 import { useWhatsappContacts } from "@/hooks/useWhatsappContacts";
+import WhatsappInvoiceIntakeTab from "@/components/messages/WhatsappInvoiceIntakeTab";
+import { useWhatsappInvoiceIntakeStats } from "@/hooks/useWhatsappInvoiceIntake";
 
 const templates = [
   { id: "welcome", name: "ترحيب عميل جديد", emoji: "👋", body: "أهلاً {name}! شكراً لزيارتك برقرهم 🍔 نتمنى تكون تجربتك ممتازة. تابعنا لعروض حصرية!" },
@@ -59,6 +61,7 @@ const Messages = () => {
   const { data: contactsData } = useWhatsappContacts();
   const totalUnread = (contactsData ?? []).reduce((s, c) => s + c.unreadCount, 0);
   const [sendersOpen, setSendersOpen] = useState(false);
+  const { data: intakeStats } = useWhatsappInvoiceIntakeStats();
 
   const projectRef = "bjfhrrtajyvvdcsrpwqb";
   const webhookUrl = `https://${projectRef}.supabase.co/functions/v1/whatsapp-webhook`;
@@ -149,10 +152,22 @@ const Messages = () => {
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="invoices" className="text-[12px]">
+            <Receipt size={12} className="ml-1.5" /> فواتير الواتساب
+            {intakeStats && intakeStats.failedRecentCount > 0 && (
+              <span className="mr-1.5 bg-danger text-primary-foreground text-[9px] font-bold rounded-full min-w-[16px] h-[16px] inline-flex items-center justify-center px-1">
+                {intakeStats.failedRecentCount}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="conversations" className="mt-0">
           <ConversationsTab />
+        </TabsContent>
+
+        <TabsContent value="invoices" className="mt-0">
+          <WhatsappInvoiceIntakeTab />
         </TabsContent>
 
         <TabsContent value="send" className="mt-0 space-y-6">
