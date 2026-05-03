@@ -1475,6 +1475,81 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_allowed_senders: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string
+        }
+        Relationships: []
+      }
+      whatsapp_invoice_intake: {
+        Row: {
+          amount: number | null
+          caption: string | null
+          created_at: string
+          error_message: string | null
+          from_phone: string
+          id: string
+          image_url: string | null
+          invoice_id: string | null
+          media_id: string
+          meta_message_id: string | null
+          processing_time_ms: number | null
+          status: string
+          supplier_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          caption?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_phone: string
+          id?: string
+          image_url?: string | null
+          invoice_id?: string | null
+          media_id: string
+          meta_message_id?: string | null
+          processing_time_ms?: number | null
+          status?: string
+          supplier_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          caption?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_phone?: string
+          id?: string
+          image_url?: string | null
+          invoice_id?: string | null
+          media_id?: string
+          meta_message_id?: string | null
+          processing_time_ms?: number | null
+          status?: string
+          supplier_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_messages: {
         Row: {
           body: string

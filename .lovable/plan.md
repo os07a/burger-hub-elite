@@ -1,66 +1,127 @@
-# مزامنة الكاشير التلقائية (بدون زر)
+# لوحة تشخيص فواتير الواتساب
 
-الهدف: لما يتباع أي شي في Loyverse، يظهر في النظام مباشرة بدون ما تضغط زر "مزامنة الآن".
+إضافة تبويب جديد في صفحة **الرسائل** يعرض آخر الفواتير المستقبلة عبر الواتساب مع حالة المعالجة (نجحت / فشلت / قيد المعالجة)، عشان تكون عندك رؤية فورية على عمل النظام والكشف عن أي خطأ في الاستخراج.
 
-## كيف راح يشتغل
+## ما سيتم بناؤه
 
-Loyverse API ما يدعم Webhooks مباشرة لجميع الحسابات، فالحل الأنسب والأمتن:
+### 1. جدول تتبع جديد `whatsapp_invoice_intake`
+عشان نسجّل **كل** محاولة معالجة (حتى الفاشلة منها قبل ما تُحفظ في `invoices`):
 
-1. **استدعاء تلقائي كل دقيقة** عبر `pg_cron` + `pg_net` يستدعي `sync-loyverse-sales` في الخلفية.
-2. **Realtime على الجداول** (`pos_receipts`, `pos_receipt_items`, `daily_sales`) — أي صف جديد يتسجل، الواجهة تتحدّث فوراً بدون refresh.
-3. **مؤشر "آخر مزامنة"** صغير في الهيدر يبيّن آخر وقت تمت فيه المزامنة + Pulse أخضر إذا فيه فاتورة جديدة.
+| العمود | الوصف |
+|---|---|
+| `id` | UUID |
+| `from_phone` | رقم المرسل |
+| `meta_message_id` | معرّف رسالة واتساب |
+| `media_id` | معرّف الصورة في Meta |
+| `image_url` | رابط الصورة بعد رفعها للتخزين |
+| `status` | `processing` / `success` / `failed` |
+| `invoice_id` | ربط بالفاتورة المستخرجة (إن نجحت) |
+| `supplier_name` | اسم المورد المستخرج |
+| `amount` | المبلغ المستخرج |
+| `error_message` | تفاصيل الخطأ (إن فشلت) |
+| `processing_time_ms` | كم استغرقت المعالجة |
+| `created_at` / `updated_at` | التواريخ |
 
-النتيجة: متوسط زمن ظهور البيع في النظام = 30 ثانية تقريباً (نص دورة الدقيقة) بدون أي تدخل يدوي.
+- RLS: عرض لكل المسجّلين، تعديل/حذف للأدمن فقط.
+- تفعيل Realtime على الجدول.
 
-## الخطوات التقنية
+### 2. تحديث Edge Function `process-whatsapp-invoice`
+- في بداية التنفيذ: إنشاء سجل بحالة `processing`.
+- بعد نجاح Gemini والإدراج: تحديث السجل لـ `success` + ربطه بـ `invoice_id`.
+- في حالة أي فشل (تحميل الصورة، Gemini، إنشاء المورد، الإدراج): تحديث السجل لـ `failed` مع `error_message` واضح.
+- قياس مدة المعالجة بالميلي ثانية.
 
-### 1) تفعيل الإضافات والجدولة (insert tool)
+### 3. مكوّن جديد `WhatsappInvoiceIntakeTab.tsx`
+يُعرض داخل تبويب جديد في صفحة الرسائل بعنوان **"📄 فواتير الواتساب"**:
+
+```text
+┌─────────────────────────────────────────────────────┐
+│  📊 ملخص اليوم                                      │
+│  [مستلمة: 5] [نجحت: 4] [فشلت: 1] [قيد المعالجة: 0] │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  آخر 20 فاتورة مستقبلة                              │
+├──────┬──────────┬──────┬─────────┬────────┬────────┤
+│ صورة │ المرسل   │ المورد│ المبلغ │ الحالة │ الوقت  │
+├──────┼──────────┼──────┼─────────┼────────┼────────┤
+│ 🖼️   │ ...8834  │ تموين│ 1,250  │ ✅ نجح │ 2:30م │
+│ 🖼️   │ ...4521  │  —   │   —    │ ❌ فشل │ 1:15م │
+│      │          │      │         │ السبب: │       │
+│      │          │      │         │ الصورة │       │
+│      │          │      │         │ غير    │       │
+│      │          │      │         │ واضحة  │       │
+└──────┴──────────┴──────┴─────────┴────────┴────────┘
+```
+
+**ميزات المكوّن:**
+- **MetricCards** علوية: إجمالي اليوم / نجحت / فشلت / قيد المعالجة.
+- **جدول** بآخر 20 محاولة، مع:
+  - صورة مصغّرة قابلة للنقر (تفتح `InvoiceImageViewer` الموجود).
+  - StatusBadge ملوّن (success/danger/warning).
+  - عرض `error_message` تحت الصف الفاشل.
+  - زر **"إعادة المحاولة"** للسجلات الفاشلة (يستدعي الـ Edge Function مرة ثانية بنفس `media_id`).
+  - زر **"فتح الفاتورة"** للسجلات الناجحة (ينقل لصفحة الأرشيف).
+- **Realtime**: استخدام `useRealtimeInvalidate` لتحديث الجدول فوراً عند وصول فاتورة جديدة.
+- **زر "تحديث"** يدوي احتياطي.
+
+### 4. Hook جديد `useWhatsappInvoiceIntake.ts`
+- `useWhatsappInvoiceIntakeList(limit=20)` — يجيب آخر السجلات.
+- `useWhatsappInvoiceIntakeStats()` — يحسب إحصائيات اليوم.
+- `useRetryInvoiceProcessing()` — Mutation لإعادة المحاولة.
+
+### 5. تحديث `Messages.tsx`
+- إضافة تبويب جديد في `Tabs` بعنوان **"📄 فواتير الواتساب"** بجانب التبويبات الحالية.
+- إضافة عداد بجانب اسم التبويب لعدد الفواتير الفاشلة (لو موجود) كتنبيه بصري.
+
+## التفاصيل التقنية
+
+**SQL Migration:**
 ```sql
-create extension if not exists pg_cron;
-create extension if not exists pg_net;
-
-select cron.schedule(
-  'auto-sync-loyverse-sales',
-  '* * * * *',  -- كل دقيقة
-  $$
-  select net.http_post(
-    url := 'https://bjfhrrtajyvvdcsrpwqb.supabase.co/functions/v1/sync-loyverse-sales',
-    headers := '{"Content-Type":"application/json","apikey":"<ANON_KEY>","Authorization":"Bearer <ANON_KEY>"}'::jsonb,
-    body := '{}'::jsonb
-  );
-  $$
+create table public.whatsapp_invoice_intake (
+  id uuid primary key default gen_random_uuid(),
+  from_phone text not null,
+  meta_message_id text,
+  media_id text not null,
+  image_url text,
+  status text not null default 'processing',
+  invoice_id uuid references public.invoices(id) on delete set null,
+  supplier_name text,
+  amount numeric,
+  error_message text,
+  processing_time_ms integer,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
+alter publication supabase_realtime add table public.whatsapp_invoice_intake;
+-- + RLS policies (admin write, authenticated read)
 ```
 
-### 2) Realtime migration
-```sql
-alter publication supabase_realtime add table public.pos_receipts;
-alter publication supabase_realtime add table public.pos_receipt_items;
-alter publication supabase_realtime add table public.daily_sales;
+**التدفق المُحدَّث:**
+```text
+WhatsApp Image → webhook → process-whatsapp-invoice
+                              ├─ INSERT intake (processing)
+                              ├─ Download → Storage
+                              ├─ Gemini Vision
+                              ├─ Insert supplier + invoice
+                              └─ UPDATE intake (success | failed)
+                                            ↓ realtime
+                                   لوحة التشخيص تتحدّث فوراً
 ```
 
-### 3) تعديلات الواجهة
-- `Dashboard.tsx`: استخدم `useRealtimeInvalidate` على الجداول الثلاثة لتحديث:
-  - `daily_sales` summary (الكاش/الشبكة/الإجمالي)
-  - `pos_receipts` (آخر الفواتير)
-  - عدّاد الفواتير اليوم
-- `PosSyncDialog.tsx`: يبقى للاختبار اليدوي، لكن نضيف شارة "مزامنة تلقائية مفعّلة ✓".
-- مؤشر صغير في `CommandCenter` header: "آخر مزامنة قبل X ثانية" مع نقطة خضراء نابضة.
+## الملفات المُعدَّلة/المُنشأة
 
-### 4) حماية من الازدحام
-- داخل `sync-loyverse-sales`: لو آخر استدعاء كان قبل أقل من 20 ثانية، يرجع فوراً بدون مناداة Loyverse (rate-limit guard) — يمنع أي تداخل مع الكرون أو الزر اليدوي.
+**جديد:**
+- `supabase/migrations/[timestamp]_whatsapp_invoice_intake_log.sql`
+- `src/hooks/useWhatsappInvoiceIntake.ts`
+- `src/components/messages/WhatsappInvoiceIntakeTab.tsx`
 
-## ملاحظات
+**تعديل:**
+- `supabase/functions/process-whatsapp-invoice/index.ts` (إضافة تسجيل المراحل)
+- `src/pages/Messages.tsx` (إضافة التبويب)
 
-- **التوصيل (Delivery)** يبقى يدوي كما هو (memory محفوظ) — التلقائي يخص الكاش/الشبكة/الخصومات/الضرائب فقط.
-- استهلاك Loyverse API: 60 طلب/ساعة فقط من الكرون، أقل بكثير من الحد المسموح (300/دقيقة).
-- لو أبغيت تأخير أقل (كل 30 ثانية بدل دقيقة) ممكن، لكن دقيقة هي التوازن المثالي بين السرعة وعدم إرهاق API.
-
-## الملفات المعدّلة
-
-- `supabase/migrations/...` — Realtime publication
-- insert SQL — pg_cron job
-- `supabase/functions/sync-loyverse-sales/index.ts` — rate-limit guard
-- `src/pages/Dashboard.tsx` — realtime hooks للفواتير
-- `src/pages/CommandCenter.tsx` — مؤشر آخر مزامنة
-- `src/components/dashboard/PosSyncDialog.tsx` — شارة "تلقائي مفعّل"
+## الفوائد
+- رؤية فورية لكل فاتورة دخلت النظام عبر الواتساب.
+- معرفة أسباب الفشل بدقة (صورة غير واضحة، خطأ في Gemini، رقم غير مسموح، إلخ).
+- إعادة المحاولة بضغطة زر بدون الحاجة لإرسال الصورة من جديد.
+- تنبيه بصري على التبويب لو فيه فواتير فاشلة تحتاج مراجعة.
