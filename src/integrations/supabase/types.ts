@@ -1475,6 +1475,30 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_allowed_senders: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string
+        }
+        Relationships: []
+      }
       whatsapp_invoice_intake: {
         Row: {
           amount: number | null
