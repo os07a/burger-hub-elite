@@ -57,6 +57,7 @@ interface LoyverseEmployee {
 interface SyncBody {
   date?: string;
   mode?: "test" | "sync";
+  auto?: boolean;
 }
 
 Deno.serve(async (req) => {
