@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.menu-engineering-advice]
 verify_jwt = false
+
+[functions.process-whatsapp-invoice]
+verify_jwt = false
