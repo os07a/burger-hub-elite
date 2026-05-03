@@ -74,7 +74,7 @@ const RecentIntakeList = () => {
                     {Number(r.amount).toFixed(2)} <RiyalIcon size={12} />
                   </div>
                 )}
-                <StatusBadge label={statusText} variant={variant} />
+                <StatusBadge variant={variant}>{statusText}</StatusBadge>
                 <div className="text-xs text-muted-foreground w-16 text-left">{timeAgo(r.created_at)}</div>
               </div>
             );
