@@ -670,51 +670,132 @@ export type Database = {
           },
         ]
       }
+      invoice_line_items: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          invoice_id: string
+          item_name: string
+          matched_automatically: boolean
+          quantity: number
+          total: number
+          unit: string | null
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          invoice_id: string
+          item_name: string
+          matched_automatically?: boolean
+          quantity?: number
+          total?: number
+          unit?: string | null
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          invoice_id?: string
+          item_name?: string
+          matched_automatically?: boolean
+          quantity?: number
+          total?: number
+          unit?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           account: string | null
+          ai_extracted: Json | null
           amount: number
+          confidence_score: number | null
           created_at: string
           date: string
+          discount: number
           doc_type: string | null
           id: string
           image_url: string | null
           invoice_number: string | null
           month_label: string | null
+          needs_review: boolean
           notes: string | null
           recipient: string | null
+          source: string
           status: string
+          subtotal: number
           supplier_id: string | null
+          supplier_name: string | null
+          vat_amount: number
+          whatsapp_from: string | null
         }
         Insert: {
           account?: string | null
+          ai_extracted?: Json | null
           amount?: number
+          confidence_score?: number | null
           created_at?: string
           date?: string
+          discount?: number
           doc_type?: string | null
           id?: string
           image_url?: string | null
           invoice_number?: string | null
           month_label?: string | null
+          needs_review?: boolean
           notes?: string | null
           recipient?: string | null
+          source?: string
           status?: string
+          subtotal?: number
           supplier_id?: string | null
+          supplier_name?: string | null
+          vat_amount?: number
+          whatsapp_from?: string | null
         }
         Update: {
           account?: string | null
+          ai_extracted?: Json | null
           amount?: number
+          confidence_score?: number | null
           created_at?: string
           date?: string
+          discount?: number
           doc_type?: string | null
           id?: string
           image_url?: string | null
           invoice_number?: string | null
           month_label?: string | null
+          needs_review?: boolean
           notes?: string | null
           recipient?: string | null
+          source?: string
           status?: string
+          subtotal?: number
           supplier_id?: string | null
+          supplier_name?: string | null
+          vat_amount?: number
+          whatsapp_from?: string | null
         }
         Relationships: [
           {
@@ -1386,11 +1467,13 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          last_invoice_at: string | null
           name: string
           notes: string | null
           payment_terms: string | null
           phone: string | null
           rating: number | null
+          tax_number: string | null
           updated_at: string
         }
         Insert: {
@@ -1399,11 +1482,13 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          last_invoice_at?: string | null
           name: string
           notes?: string | null
           payment_terms?: string | null
           phone?: string | null
           rating?: number | null
+          tax_number?: string | null
           updated_at?: string
         }
         Update: {
@@ -1412,11 +1497,13 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          last_invoice_at?: string | null
           name?: string
           notes?: string | null
           payment_terms?: string | null
           phone?: string | null
           rating?: number | null
+          tax_number?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1505,13 +1592,14 @@ export type Database = {
           caption: string | null
           created_at: string
           error_message: string | null
-          from_phone: string
+          from_phone: string | null
           id: string
           image_url: string | null
           invoice_id: string | null
-          media_id: string
+          media_id: string | null
           meta_message_id: string | null
           processing_time_ms: number | null
+          source: string
           status: string
           supplier_name: string | null
           updated_at: string
@@ -1521,13 +1609,14 @@ export type Database = {
           caption?: string | null
           created_at?: string
           error_message?: string | null
-          from_phone: string
+          from_phone?: string | null
           id?: string
           image_url?: string | null
           invoice_id?: string | null
-          media_id: string
+          media_id?: string | null
           meta_message_id?: string | null
           processing_time_ms?: number | null
+          source?: string
           status?: string
           supplier_name?: string | null
           updated_at?: string
@@ -1537,13 +1626,14 @@ export type Database = {
           caption?: string | null
           created_at?: string
           error_message?: string | null
-          from_phone?: string
+          from_phone?: string | null
           id?: string
           image_url?: string | null
           invoice_id?: string | null
-          media_id?: string
+          media_id?: string | null
           meta_message_id?: string | null
           processing_time_ms?: number | null
+          source?: string
           status?: string
           supplier_name?: string | null
           updated_at?: string
