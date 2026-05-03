@@ -21,6 +21,10 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const startTime = Date.now();
+  let intakeId: string | null = null;
+  let admin: ReturnType<typeof createClient> | null = null;
+
   try {
     const body = (await req.json()) as InvokeBody;
     if (!body?.media_id || !body?.from_phone) {
@@ -37,7 +41,21 @@ Deno.serve(async (req) => {
       return json({ error: "Missing required env vars" }, 500);
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    // 0) Create intake tracking row (status = processing)
+    const { data: intakeRow } = await admin
+      .from("whatsapp_invoice_intake")
+      .insert({
+        from_phone: body.from_phone,
+        meta_message_id: body.message_id,
+        media_id: body.media_id,
+        caption: body.caption ?? null,
+        status: "processing",
+      })
+      .select("id")
+      .single();
+    intakeId = intakeRow?.id ?? null;
 
     // 1) Resolve media URL from Meta
     const mediaMetaRes = await fetch(`https://graph.facebook.com/v20.0/${body.media_id}`, {
@@ -46,6 +64,7 @@ Deno.serve(async (req) => {
     if (!mediaMetaRes.ok) {
       const t = await mediaMetaRes.text();
       console.error("media meta failed", t);
+      await markIntake(admin, intakeId, "failed", { error_message: `media meta failed: ${t.slice(0, 300)}`, processing_time_ms: Date.now() - startTime });
       return json({ error: "media meta failed", details: t }, 502);
     }
     const mediaMeta = await mediaMetaRes.json();
@@ -54,7 +73,10 @@ Deno.serve(async (req) => {
 
     // 2) Download binary
     const binRes = await fetch(mediaUrl, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
-    if (!binRes.ok) return json({ error: "media download failed" }, 502);
+    if (!binRes.ok) {
+      await markIntake(admin, intakeId, "failed", { error_message: "media download failed", processing_time_ms: Date.now() - startTime });
+      return json({ error: "media download failed" }, 502);
+    }
     const bytes = new Uint8Array(await binRes.arrayBuffer());
 
     // 3) Upload to invoice-images bucket
@@ -66,8 +88,10 @@ Deno.serve(async (req) => {
     });
     if (upErr) {
       console.error("upload failed", upErr);
+      await markIntake(admin, intakeId, "failed", { error_message: `upload failed: ${upErr.message}`, processing_time_ms: Date.now() - startTime });
       return json({ error: "upload failed", details: upErr.message }, 500);
     }
+    await markIntake(admin, intakeId, "processing", { image_url: filePath });
 
     // 4) Call Lovable AI to extract invoice fields (vision via image_url with base64)
     const base64 = btoa(String.fromCharCode(...bytes));
@@ -130,7 +154,7 @@ Deno.serve(async (req) => {
       const t = await aiRes.text();
       console.error("AI extraction failed", aiRes.status, t);
       // Save invoice as needs_review with no extraction
-      await admin.from("invoices").insert({
+      const { data: failedInv } = await admin.from("invoices").insert({
         amount: 0,
         date: new Date().toISOString().slice(0, 10),
         status: "معلقة",
@@ -139,6 +163,12 @@ Deno.serve(async (req) => {
         source: "whatsapp",
         needs_review: true,
         whatsapp_from: body.from_phone,
+      }).select("id").single();
+      await markIntake(admin, intakeId, "failed", {
+        error_message: `AI extraction failed (${aiRes.status}): ${t.slice(0, 200)}`,
+        invoice_id: failedInv?.id ?? null,
+        image_url: filePath,
+        processing_time_ms: Date.now() - startTime,
       });
       await sendWa(WA_TOKEN, WA_PHONE_ID, body.from_phone, "📄 وصلت الصورة وحفظناها، لكن تعذر التحليل التلقائي. تمت إضافتها لقائمة المراجعة.");
       return json({ ok: true, needs_review: true });
@@ -181,7 +211,7 @@ Deno.serve(async (req) => {
     }
 
     // 6) Insert invoice (needs_review = true always for AI-imported)
-    const { error: invErr } = await admin.from("invoices").insert({
+    const { data: invRow, error: invErr } = await admin.from("invoices").insert({
       supplier_id: supplierId,
       supplier_name: supplierName ?? null,
       invoice_number: invoiceNumber ?? null,
@@ -194,12 +224,28 @@ Deno.serve(async (req) => {
       needs_review: true,
       whatsapp_from: body.from_phone,
       ai_extracted: extracted,
-    });
+    }).select("id").single();
 
     if (invErr) {
       console.error("invoice insert failed", invErr);
+      await markIntake(admin, intakeId, "failed", {
+        error_message: `invoice insert failed: ${invErr.message}`,
+        supplier_name: supplierName ?? null,
+        amount,
+        image_url: filePath,
+        processing_time_ms: Date.now() - startTime,
+      });
       return json({ error: "invoice insert failed", details: invErr.message }, 500);
     }
+
+    // Mark intake as success
+    await markIntake(admin, intakeId, "success", {
+      invoice_id: invRow?.id ?? null,
+      supplier_name: supplierName ?? null,
+      amount,
+      image_url: filePath,
+      processing_time_ms: Date.now() - startTime,
+    });
 
     // 7) WhatsApp confirmation reply
     const confEmoji = confidence >= 0.8 ? "✅" : "⚠️";
@@ -215,9 +261,29 @@ Deno.serve(async (req) => {
     return json({ ok: true, supplier_id: supplierId, amount, confidence });
   } catch (e) {
     console.error("process-whatsapp-invoice error", e);
+    if (admin && intakeId) {
+      await markIntake(admin, intakeId, "failed", {
+        error_message: String((e as Error)?.message ?? e).slice(0, 500),
+        processing_time_ms: Date.now() - startTime,
+      });
+    }
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
 });
+
+async function markIntake(
+  admin: ReturnType<typeof createClient>,
+  id: string | null,
+  status: string,
+  patch: Record<string, unknown>,
+) {
+  if (!id) return;
+  try {
+    await admin.from("whatsapp_invoice_intake").update({ status, ...patch }).eq("id", id);
+  } catch (e) {
+    console.error("markIntake failed", e);
+  }
+}
 
 async function sendWa(token: string, phoneId: string, to: string, text: string) {
   try {
