@@ -203,6 +203,12 @@ const Archive = () => {
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-[12px] font-bold text-foreground">{Number(doc.amount).toLocaleString()} ر</span>
                               <StatusBadge variant={statusVariant(doc.status)} className="text-[8px]">{doc.status}</StatusBadge>
+                              {(doc as any).source === "whatsapp" && (
+                                <span className="text-[8px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md" title="من واتساب">📱 واتساب</span>
+                              )}
+                              {(doc as any).needs_review && (
+                                <span className="text-[8px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md" title="يحتاج مراجعة">⚠️ مراجعة</span>
+                              )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); setViewingInvoice(viewingInvoice === doc.id ? null : doc.id); }}
                                 className={`text-[9px] px-2 py-1 rounded-md transition-colors ${
@@ -283,6 +289,12 @@ const Archive = () => {
                               <StatusBadge variant={tc.variant} className="text-[8px]">{tc.label}</StatusBadge>
                               <span className="text-[12px] font-bold text-foreground">{Number(doc.amount).toLocaleString()} ر</span>
                               <StatusBadge variant={statusVariant(doc.status)} className="text-[8px]">{doc.status}</StatusBadge>
+                              {(doc as any).source === "whatsapp" && (
+                                <span className="text-[8px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md" title="من واتساب">📱 واتساب</span>
+                              )}
+                              {(doc as any).needs_review && (
+                                <span className="text-[8px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md" title="يحتاج مراجعة">⚠️ مراجعة</span>
+                              )}
                               <button
                                 onClick={(e) => { e.stopPropagation(); setViewingInvoice(viewingInvoice === doc.id ? null : doc.id); }}
                                 className={`text-[9px] px-2 py-1 rounded-md transition-colors ${
