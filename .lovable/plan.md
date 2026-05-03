@@ -1,127 +1,223 @@
-# لوحة تشخيص فواتير الواتساب
+## الفكرة الأساسية
 
-إضافة تبويب جديد في صفحة **الرسائل** يعرض آخر الفواتير المستقبلة عبر الواتساب مع حالة المعالجة (نجحت / فشلت / قيد المعالجة)، عشان تكون عندك رؤية فورية على عمل النظام والكشف عن أي خطأ في الاستخراج.
+كل فاتورة تدخل المحل (سواءً ورقية، إلكترونية، أو واتساب) → تنتهي في **مكان واحد موحد** (الأرشيف + جدول الموردين) بدون إدخال يدوي. الحفظ تلقائي مباشر مع إشعار للمراجعة.
+
+---
+
+## القنوات الثلاث
+
+```text
+┌────────────────────┐    ┌────────────────────┐    ┌────────────────────┐
+│  📷 كاميرا/صورة     │    │  🔲 ZATCA QR Code   │    │  💬 واتساب (موجود)   │
+│  Gemini Vision     │    │  Base64 TLV Parser │    │  Gemini Vision     │
+└─────────┬──────────┘    └─────────┬──────────┘    └─────────┬──────────┘
+          │                         │                         │
+          └─────────────────────────┼─────────────────────────┘
+                                    ▼
+                    ┌─────────────────────────────────┐
+                    │  Edge Function موحدة:            │
+                    │  process-supplier-invoice        │
+                    │  • استخراج/تحليل                  │
+                    │  • إنشاء/مطابقة المورد           │
+                    │  • حفظ الفاتورة + الأصناف        │
+                    │  • تسجيل في intake للمراقبة      │
+                    └────────────────┬─────────────────┘
+                                     ▼
+                    ┌─────────────────────────────────┐
+                    │  📁 الأرشيف + 🚚 الموردين        │
+                    │  + إشعار في صفحة الرسائل         │
+                    └─────────────────────────────────┘
+```
+
+---
 
 ## ما سيتم بناؤه
 
-### 1. جدول تتبع جديد `whatsapp_invoice_intake`
-عشان نسجّل **كل** محاولة معالجة (حتى الفاشلة منها قبل ما تُحفظ في `invoices`):
+### 1. صفحة جديدة: "استقبال الفواتير" (`/invoice-intake`)
 
-| العمود | الوصف |
-|---|---|
-| `id` | UUID |
-| `from_phone` | رقم المرسل |
-| `meta_message_id` | معرّف رسالة واتساب |
-| `media_id` | معرّف الصورة في Meta |
-| `image_url` | رابط الصورة بعد رفعها للتخزين |
-| `status` | `processing` / `success` / `failed` |
-| `invoice_id` | ربط بالفاتورة المستخرجة (إن نجحت) |
-| `supplier_name` | اسم المورد المستخرج |
-| `amount` | المبلغ المستخرج |
-| `error_message` | تفاصيل الخطأ (إن فشلت) |
-| `processing_time_ms` | كم استغرقت المعالجة |
-| `created_at` / `updated_at` | التواريخ |
-
-- RLS: عرض لكل المسجّلين، تعديل/حذف للأدمن فقط.
-- تفعيل Realtime على الجدول.
-
-### 2. تحديث Edge Function `process-whatsapp-invoice`
-- في بداية التنفيذ: إنشاء سجل بحالة `processing`.
-- بعد نجاح Gemini والإدراج: تحديث السجل لـ `success` + ربطه بـ `invoice_id`.
-- في حالة أي فشل (تحميل الصورة، Gemini، إنشاء المورد، الإدراج): تحديث السجل لـ `failed` مع `error_message` واضح.
-- قياس مدة المعالجة بالميلي ثانية.
-
-### 3. مكوّن جديد `WhatsappInvoiceIntakeTab.tsx`
-يُعرض داخل تبويب جديد في صفحة الرسائل بعنوان **"📄 فواتير الواتساب"**:
+تبويب جديد داخل **SuppliersHub** بعنوان "📥 استقبال فاتورة"، يحتوي على 3 طرق إدخال جنباً إلى جنب:
 
 ```text
-┌─────────────────────────────────────────────────────┐
-│  📊 ملخص اليوم                                      │
-│  [مستلمة: 5] [نجحت: 4] [فشلت: 1] [قيد المعالجة: 0] │
-└─────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────┐
-│  آخر 20 فاتورة مستقبلة                              │
-├──────┬──────────┬──────┬─────────┬────────┬────────┤
-│ صورة │ المرسل   │ المورد│ المبلغ │ الحالة │ الوقت  │
-├──────┼──────────┼──────┼─────────┼────────┼────────┤
-│ 🖼️   │ ...8834  │ تموين│ 1,250  │ ✅ نجح │ 2:30م │
-│ 🖼️   │ ...4521  │  —   │   —    │ ❌ فشل │ 1:15م │
-│      │          │      │         │ السبب: │       │
-│      │          │      │         │ الصورة │       │
-│      │          │      │         │ غير    │       │
-│      │          │      │         │ واضحة  │       │
-└──────┴──────────┴──────┴─────────┴────────┴────────┘
+┌──────────────────────────────────────────────────────────┐
+│  📥 استقبال فاتورة جديدة                                  │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│   ┌────────────┐  ┌────────────┐  ┌────────────┐        │
+│   │  📷        │  │  🔲        │  │  📤        │        │
+│   │  تصوير     │  │  مسح QR    │  │  رفع صورة  │        │
+│   │  مباشر     │  │  ضريبي     │  │  / PDF     │        │
+│   └────────────┘  └────────────┘  └────────────┘        │
+│                                                          │
+│   آخر 5 فواتير مستقبلة (real-time):                       │
+│   ✅ بقالة الراشد — 1,250 ر.س — قبل 3 د                  │
+│   ✅ مطعم القهوة — 340 ر.س — قبل 12 د                    │
+│   ⏳ قيد المعالجة...                                      │
+└──────────────────────────────────────────────────────────┘
 ```
 
-**ميزات المكوّن:**
-- **MetricCards** علوية: إجمالي اليوم / نجحت / فشلت / قيد المعالجة.
-- **جدول** بآخر 20 محاولة، مع:
-  - صورة مصغّرة قابلة للنقر (تفتح `InvoiceImageViewer` الموجود).
-  - StatusBadge ملوّن (success/danger/warning).
-  - عرض `error_message` تحت الصف الفاشل.
-  - زر **"إعادة المحاولة"** للسجلات الفاشلة (يستدعي الـ Edge Function مرة ثانية بنفس `media_id`).
-  - زر **"فتح الفاتورة"** للسجلات الناجحة (ينقل لصفحة الأرشيف).
-- **Realtime**: استخدام `useRealtimeInvalidate` لتحديث الجدول فوراً عند وصول فاتورة جديدة.
-- **زر "تحديث"** يدوي احتياطي.
+### 2. مكوّن "تصوير مباشر بالكاميرا"
 
-### 4. Hook جديد `useWhatsappInvoiceIntake.ts`
-- `useWhatsappInvoiceIntakeList(limit=20)` — يجيب آخر السجلات.
-- `useWhatsappInvoiceIntakeStats()` — يحسب إحصائيات اليوم.
-- `useRetryInvoiceProcessing()` — Mutation لإعادة المحاولة.
+- يفتح كاميرا الجوال/اللابتوب باستخدام `navigator.mediaDevices.getUserMedia`
+- زر "التقاط" → يحوّل اللقطة إلى Base64 → يرسلها للـ Edge Function
+- إطار أصفر يساعد المستخدم على محاذاة الفاتورة
+- يعمل كذلك من سطح المكتب (يستخدم الكاميرا الأمامية)
 
-### 5. تحديث `Messages.tsx`
-- إضافة تبويب جديد في `Tabs` بعنوان **"📄 فواتير الواتساب"** بجانب التبويبات الحالية.
-- إضافة عداد بجانب اسم التبويب لعدد الفواتير الفاشلة (لو موجود) كتنبيه بصري.
+### 3. مكوّن "مسح QR ضريبي ZATCA"
+
+- يستخدم مكتبة `@zxing/library` لقراءة QR من الكاميرا أو من صورة مرفوعة
+- يفك ترميز TLV (Tag-Length-Value) المعتمد من هيئة الزكاة:
+  - Tag 1: اسم البائع
+  - Tag 2: الرقم الضريبي
+  - Tag 3: التاريخ والوقت
+  - Tag 4: الإجمالي مع الضريبة
+  - Tag 5: قيمة الضريبة
+- **استخراج فوري بدقة 100%** (بدون AI، البيانات داخل QR نفسها)
+- لا يحتاج صورة كاملة للفاتورة — فقط الـ QR
+
+### 4. مكوّن "رفع يدوي مع استخراج تلقائي"
+
+- يستبدل الفورم اليدوي الحالي في `InvoiceFormDialog`
+- المستخدم يرفع صورة/PDF فقط → الـ AI يعبّي الحقول
+- يدعم Multi-page PDF (كل صفحة فاتورة منفصلة)
+
+### 5. Edge Function موحدة: `process-supplier-invoice`
+
+تحلّ محل `process-whatsapp-invoice` وتُعمَّم:
+
+**Input:**
+```typescript
+{
+  source: "camera" | "upload" | "whatsapp" | "zatca_qr",
+  image_base64?: string,           // للكاميرا والرفع
+  image_url?: string,              // للواتساب
+  zatca_qr_data?: string,          // للـ QR (Base64 TLV)
+  from_phone?: string,             // للواتساب
+}
+```
+
+**Pipeline:**
+1. إنشاء سجل في `whatsapp_invoice_intake` (سيُعاد تسميته لـ `invoice_intake`)
+2. **لو ZATCA QR**: فك TLV مباشرة → بيانات أساسية مضمونة
+3. **لو صورة**: رفع للتخزين → Gemini Vision مع structured output
+4. **مطابقة المورد**: بحث fuzzy في `suppliers` بالاسم + الرقم الضريبي → ينشئ مورد جديد لو ما لقاه
+5. إنشاء سجل في `invoices` + سجلات في جدول جديد `invoice_line_items`
+6. تحديث intake لـ `success`
+7. إشعار realtime يظهر في صفحة الرسائل
+
+**Gemini Prompt (Tool Calling):**
+يستخرج structured object يحتوي:
+- `supplier_name`, `supplier_tax_number`
+- `invoice_number`, `invoice_date`
+- `subtotal`, `vat_amount`, `discount`, `total`
+- `line_items[]`: `{ name, quantity, unit, unit_price, total }`
+- `confidence_score` (0-1) لكل حقل
+
+### 6. جدول جديد: `invoice_line_items`
+
+```sql
+create table public.invoice_line_items (
+  id uuid primary key default gen_random_uuid(),
+  invoice_id uuid not null references invoices(id) on delete cascade,
+  item_name text not null,
+  quantity numeric not null default 1,
+  unit text,
+  unit_price numeric not null default 0,
+  total numeric not null default 0,
+  inventory_item_id uuid references inventory_items(id),  -- ربط بالمخزون
+  matched_automatically boolean default false,
+  created_at timestamptz default now()
+);
+```
+
+- RLS: عرض للمسجّلين، تعديل للأدمن
+- **Auto-match مع المخزون**: لو اسم الصنف يطابق `inventory_items.name` بنسبة >80% → ربط تلقائي + تحديث `cost_per_unit` و `last_restock` و `quantity`
+
+### 7. تحديث `suppliers`
+
+إضافة عمودين:
+- `tax_number text` — الرقم الضريبي (للمطابقة الذكية)
+- `last_invoice_at timestamptz` — آخر فاتورة لتنبيه الموردين الخاملين
+
+### 8. توسعة `invoices`
+
+إضافة:
+- `subtotal numeric` (قبل الضريبة)
+- `vat_amount numeric` (الضريبة)
+- `discount numeric` (الخصم)
+- `source text` — `camera | upload | whatsapp | zatca_qr | manual`
+- `confidence_score numeric` — ثقة الـ AI (للفلترة لاحقاً)
+
+### 9. سياسة الحفظ التلقائي + الإشعار
+
+- كل فاتورة تُحفظ مباشرة بدون مراجعة (حسب اختيارك)
+- يظهر إشعار toast: "✅ تمت إضافة فاتورة من [المورد] بمبلغ [X] ر.س — [مراجعة]"
+- زر "مراجعة" يفتح dialog فيها تعدّل الحقول لو فيه خطأ
+- الفواتير ذات `confidence_score < 0.6` تُعلّم بـ شارة برتقالية "⚠️ يحتاج مراجعة" في الأرشيف
+
+---
 
 ## التفاصيل التقنية
 
-**SQL Migration:**
-```sql
-create table public.whatsapp_invoice_intake (
-  id uuid primary key default gen_random_uuid(),
-  from_phone text not null,
-  meta_message_id text,
-  media_id text not null,
-  image_url text,
-  status text not null default 'processing',
-  invoice_id uuid references public.invoices(id) on delete set null,
-  supplier_name text,
-  amount numeric,
-  error_message text,
-  processing_time_ms integer,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-alter publication supabase_realtime add table public.whatsapp_invoice_intake;
--- + RLS policies (admin write, authenticated read)
-```
+### المكتبات الجديدة
+- `@zxing/browser` — لقراءة QR من الكاميرا والصور
+- `@zxing/library` — لفك ترميز TLV الخاص بـ ZATCA
 
-**التدفق المُحدَّث:**
-```text
-WhatsApp Image → webhook → process-whatsapp-invoice
-                              ├─ INSERT intake (processing)
-                              ├─ Download → Storage
-                              ├─ Gemini Vision
-                              ├─ Insert supplier + invoice
-                              └─ UPDATE intake (success | failed)
-                                            ↓ realtime
-                                   لوحة التشخيص تتحدّث فوراً
-```
-
-## الملفات المُعدَّلة/المُنشأة
+### بنية الملفات الجديدة
 
 **جديد:**
-- `supabase/migrations/[timestamp]_whatsapp_invoice_intake_log.sql`
-- `src/hooks/useWhatsappInvoiceIntake.ts`
-- `src/components/messages/WhatsappInvoiceIntakeTab.tsx`
+- `src/pages/InvoiceIntake.tsx` — الصفحة الرئيسية بالطرق الثلاث
+- `src/components/invoice-intake/CameraCaptureCard.tsx`
+- `src/components/invoice-intake/ZatcaQrScannerCard.tsx`
+- `src/components/invoice-intake/UploadInvoiceCard.tsx`
+- `src/components/invoice-intake/InvoiceReviewDialog.tsx` — للمراجعة الاختيارية
+- `src/components/invoice-intake/RecentIntakeList.tsx` — قائمة آخر 5
+- `src/lib/zatcaQrParser.ts` — فك TLV
+- `src/hooks/useInvoiceIntake.ts` — Mutations للقنوات الثلاث
+- `supabase/functions/process-supplier-invoice/index.ts` — الـ Function الموحّدة
+- `supabase/migrations/[ts]_invoice_intake_unified.sql`
 
 **تعديل:**
-- `supabase/functions/process-whatsapp-invoice/index.ts` (إضافة تسجيل المراحل)
-- `src/pages/Messages.tsx` (إضافة التبويب)
+- `src/pages/SuppliersHub.tsx` — إضافة تبويب "📥 استقبال"
+- `src/pages/Archive.tsx` — عرض شارة `confidence_score` و `source`
+- `supabase/functions/process-whatsapp-invoice/index.ts` — يصبح wrapper يستدعي الـ Function الموحّدة
+- جدول `suppliers`, `invoices` — إضافة الأعمدة
 
-## الفوائد
-- رؤية فورية لكل فاتورة دخلت النظام عبر الواتساب.
-- معرفة أسباب الفشل بدقة (صورة غير واضحة، خطأ في Gemini، رقم غير مسموح، إلخ).
-- إعادة المحاولة بضغطة زر بدون الحاجة لإرسال الصورة من جديد.
-- تنبيه بصري على التبويب لو فيه فواتير فاشلة تحتاج مراجعة.
+### تدفق ZATCA QR التقني
+
+```text
+QR Image → @zxing scan → Base64 string
+                      ↓
+           atob() → Uint8Array
+                      ↓
+           Loop bytes: [tag, length, value]
+                      ↓
+   { sellerName, vatNumber, timestamp, total, vat }
+                      ↓
+       حفظ مباشر في invoices (بدون AI، 100% دقة)
+```
+
+### تكامل Gemini Vision
+
+نموذج: `google/gemini-2.5-flash` (متوازن سرعة/دقة)
+- Tool calling لـ structured output
+- يدعم العربية والإنجليزية
+- يفهم خط اليد والفواتير الورقية الباهتة
+
+---
+
+## الفوائد للمحل
+
+1. **3 طرق مرنة** حسب الموقف: مورد جالس قدامك → كاميرا، فاتورة ضريبية → QR (أسرع وأدق)، فاتورة قديمة في الجوال → رفع
+2. **صفر إدخال يدوي** للحقول المتكررة
+3. **ربط تلقائي بالمخزون** — تحديث الكميات والتكاليف بدون تدخل
+4. **تتبع كامل** عبر `intake table` لمعرفة أي محاولة فشلت ولماذا
+5. **فواتير ضريبية مضمونة** عبر QR (مهم للتقارير الضريبية ZATCA)
+6. **مكان واحد موحد** بدل تشتت بين Suppliers/Archive/Messages
+
+---
+
+## ما لن يتغيّر
+
+- نظام الواتساب الحالي يبقى يشتغل بنفس الطريقة (نفس الويبهوك ونفس الـ allowed_senders)
+- البيانات الموجودة في `invoices` و `suppliers` تبقى كما هي
+- `process-whatsapp-invoice` يصير wrapper رفيع يستدعي الـ Function الجديدة الموحّدة
