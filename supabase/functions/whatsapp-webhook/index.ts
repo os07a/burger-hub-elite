@@ -111,11 +111,15 @@ Deno.serve(async (req) => {
 
           let body = "";
           let mediaType: string | null = null;
+          let mediaId: string | null = null;
+          let caption: string | null = null;
           if (type === "text") {
             body = msg?.text?.body ?? "";
           } else if (type === "image") {
             body = msg?.image?.caption ?? "[صورة]";
             mediaType = "image";
+            mediaId = msg?.image?.id ?? null;
+            caption = msg?.image?.caption ?? null;
           } else if (type === "audio") {
             body = "[رسالة صوتية]";
             mediaType = "audio";
@@ -125,6 +129,8 @@ Deno.serve(async (req) => {
           } else if (type === "document") {
             body = msg?.document?.filename ?? "[مستند]";
             mediaType = "document";
+            mediaId = msg?.document?.id ?? null;
+            caption = msg?.document?.caption ?? null;
           } else if (type === "button") {
             body = msg?.button?.text ?? "[زر]";
           } else if (type === "interactive") {
@@ -170,6 +176,39 @@ Deno.serve(async (req) => {
 
           if (insErr) {
             console.error("Failed to insert inbound message", insErr);
+          }
+
+          // ===== Invoice intake: if image/document from an allowed sender → process =====
+          if (mediaId && (mediaType === "image" || mediaType === "document")) {
+            try {
+              const { data: allowed } = await admin
+                .from("whatsapp_allowed_senders")
+                .select("phone, is_active")
+                .eq("is_active", true);
+              const isAllowed = (allowed ?? []).some((s: { phone: string | null }) => {
+                const sp = String(s.phone ?? "").replace(/\D/g, "");
+                return sp && (sp === fromPhone || sp.endsWith(fromPhone) || fromPhone.endsWith(sp));
+              });
+              if (isAllowed) {
+                fetch(`${supabaseUrl}/functions/v1/process-whatsapp-invoice`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${serviceKey}`,
+                  },
+                  body: JSON.stringify({
+                    media_id: mediaId,
+                    from_phone: fromPhone,
+                    message_id: metaMessageId,
+                    caption: caption ?? undefined,
+                  }),
+                }).catch((e) => console.error("invoice processor invoke failed", e));
+              } else {
+                console.log("media from non-allowed sender, skipping", fromPhone);
+              }
+            } catch (e) {
+              console.error("allowed-sender check failed", e);
+            }
           }
         }
 
